@@ -1,18 +1,19 @@
-import type { AccountPatch } from "@/domain/Account";
+import type { AccountGeneralPatch } from "@/domain/AccountGeneralSettings";
 import { ApplicationError } from "../errors";
-import type { AuthRepository } from "../ports/AuthRepository";
+import type { AccountSettingsRepository } from "../ports/AccountSettingsRepository";
 
-const VISIBILITY_VALUES = new Set([1, 2, 3]);
+const EDITOR_MODES = new Set(["rich", "plain"]);
 
-export async function updateAccountGeneral(
-  auth: AuthRepository,
+export function updateAccountGeneral(
+  settings: AccountSettingsRepository,
   token: string,
-  patch: AccountPatch,
+  patch: AccountGeneralPatch,
 ) {
   const language = patch.language?.trim() ?? "";
   const timeZone = patch.timeZone?.trim() ?? "";
-  const tags = (patch.tags ?? []).map((tag) => tag.trim()).filter(Boolean);
-  const visibility = patch.visibility ?? 1;
+  const tags = uniqueTexts(patch.tags);
+  const markdownEditorMode = patch.markdownEditorMode;
+  const blockedUserIds = uniquePositiveIds(patch.blockedUserIds);
 
   if (!language) {
     throw new ApplicationError("Informe o idioma.", 400);
@@ -22,12 +23,41 @@ export async function updateAccountGeneral(
     throw new ApplicationError("Informe o fuso horário.", 400);
   }
 
-  if (!VISIBILITY_VALUES.has(visibility)) {
-    throw new ApplicationError("Visibilidade inválida.", 400);
+  if (!EDITOR_MODES.has(markdownEditorMode)) {
+    throw new ApplicationError("Modo de editor inválido.", 400);
   }
 
-  const account = await auth.getAccount(token);
-  return auth.updateUser(token, account.userId, {
-    account: { language, timeZone, tags, visibility },
+  return settings.save(token, {
+    tags,
+    language,
+    timeZone,
+    visibility: Number(patch.visibility) || 1,
+    hideOnlineStatus: Boolean(patch.hideOnlineStatus),
+    hideTourPanel: Boolean(patch.hideTourPanel),
+    markdownEditorMode,
+    blockedUserIds,
   });
+}
+
+function uniqueTexts(values: string[] | undefined): string[] {
+  const unique = new Set<string>();
+  for (const value of values ?? []) {
+    const trimmed = value.trim();
+    if (trimmed) {
+      unique.add(trimmed);
+    }
+  }
+
+  return [...unique];
+}
+
+function uniquePositiveIds(ids: number[] | undefined): number[] {
+  const unique = new Set<number>();
+  for (const id of ids ?? []) {
+    if (Number.isFinite(id) && id > 0) {
+      unique.add(Math.trunc(id));
+    }
+  }
+
+  return [...unique];
 }

@@ -8,34 +8,29 @@ export async function PUT(request: Request) {
     language?: string;
     timeZone?: string;
     visibility?: number;
-    tags?: string[] | string;
+    tags?: string[];
+    hideOnlineStatus?: boolean;
+    hideTourPanel?: boolean;
+    markdownEditorMode?: "rich" | "plain";
+    blockedUserIds?: number[];
   } | null;
 
   try {
     const token = await requireAuthToken();
-    const account = await app.updateAccountGeneral(token, {
+    const settings = await app.updateAccountGeneral(token, {
       language: body?.language ?? "",
       timeZone: body?.timeZone ?? "",
       visibility: Number(body?.visibility ?? 1),
-      tags: readTags(body?.tags),
+      tags: Array.isArray(body?.tags) ? body.tags : [],
+      hideOnlineStatus: Boolean(body?.hideOnlineStatus),
+      hideTourPanel: Boolean(body?.hideTourPanel),
+      markdownEditorMode: body?.markdownEditorMode === "plain" ? "plain" : "rich",
+      blockedUserIds: Array.isArray(body?.blockedUserIds)
+        ? body.blockedUserIds
+        : [],
     });
-    return NextResponse.json(account);
+    return NextResponse.json(settings);
   } catch (error) {
     return jsonError(error, "Não foi possível salvar as configurações.");
   }
-}
-
-function readTags(tags: string[] | string | undefined): string[] {
-  if (Array.isArray(tags)) {
-    return tags;
-  }
-
-  if (typeof tags !== "string") {
-    return [];
-  }
-
-  return tags
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
 }

@@ -42,12 +42,14 @@ export function AccountSelect({
   name,
   value,
   options,
+  disabled,
   onChange,
 }: {
   label: string;
   name: string;
   value: string;
   options: readonly { value: string; label: string }[];
+  disabled?: boolean;
   onChange: (value: string) => void;
 }) {
   return (
@@ -56,8 +58,9 @@ export function AccountSelect({
       <select
         name={name}
         value={value}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className={INPUT_CLASS}
+        className={`${INPUT_CLASS} disabled:bg-zinc-50 disabled:text-zinc-500`}
       >
         {options.map((option) => (
           <option key={option.value || option.label} value={option.value}>
@@ -141,5 +144,30 @@ export function AccountSubmit({
     >
       {disabled ? pendingLabel : label}
     </button>
+  );
+}
+
+export function AccountCheckbox({
+  label,
+  name,
+  checked,
+  onChange,
+}: {
+  label: string;
+  name: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2 text-sm text-zinc-700">
+      <input
+        type="checkbox"
+        name={name}
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-4 w-4 accent-teal-600"
+      />
+      {label}
+    </label>
   );
 }

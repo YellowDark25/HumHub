@@ -12,13 +12,22 @@ import { AccountSidebar } from "@/components/AccountSidebar";
 import { AccountUsernameForm } from "@/components/AccountUsernameForm";
 import { LoadError } from "@/components/LoadError";
 import type { Account } from "@/domain/Account";
+import type { AccountGeneralSettings } from "@/domain/AccountGeneralSettings";
+import type { AccountProfileModule } from "@/domain/AccountProfileModule";
 import type { NotificationPreferences } from "@/domain/NotificationPreferences";
 import type { Space } from "@/domain/Space";
+import type { User } from "@/domain/User";
 import { app } from "@/infrastructure/composition";
 import {
   redirectIfUnauthorized,
   requirePageToken,
 } from "@/infrastructure/pageSession";
+import {
+  ACCOUNT_GENERAL_DESCRIPTION,
+  ACCOUNT_GENERAL_TITLE,
+  ACCOUNT_MODULES_DESCRIPTION,
+  ACCOUNT_MODULES_TITLE,
+} from "@/shared/accountProfileFields";
 import {
   NOTIFICATION_SETTINGS_DESCRIPTION,
   NOTIFICATION_SETTINGS_TITLE,
@@ -43,6 +52,9 @@ export default async function ConfiguracoesPage({
   let account: Account | null = null;
   let spaces: Space[] = [];
   let preferences: NotificationPreferences | null = null;
+  let generalSettings: AccountGeneralSettings | null = null;
+  let people: User[] = [];
+  let profileModules: AccountProfileModule[] | null = null;
   let loadError = "";
 
   try {
@@ -51,6 +63,14 @@ export default async function ConfiguracoesPage({
       const loaded = await loadNotificationPage(token);
       spaces = loaded.spaces;
       preferences = loaded.preferences;
+    }
+    if (section === "geral") {
+      const loaded = await loadGeneralPage(token);
+      generalSettings = loaded.settings;
+      people = loaded.people;
+    }
+    if (section === "modulos") {
+      profileModules = await app.listAccountModules(token);
     }
   } catch (error) {
     await redirectIfUnauthorized(error);
@@ -70,6 +90,9 @@ export default async function ConfiguracoesPage({
             account={account}
             spaces={spaces}
             preferences={preferences}
+            generalSettings={generalSettings}
+            people={people}
+            profileModules={profileModules}
             section={section}
             tab={tab}
           />
@@ -83,12 +106,18 @@ function AccountContent({
   account,
   spaces,
   preferences,
+  generalSettings,
+  people,
+  profileModules,
   section,
   tab,
 }: {
   account: Account;
   spaces: Space[];
   preferences: NotificationPreferences | null;
+  generalSettings: AccountGeneralSettings | null;
+  people: User[];
+  profileModules: AccountProfileModule[] | null;
   section: AccountSectionId;
   tab: AccountProfileTabId;
 }) {
@@ -123,16 +152,30 @@ function AccountContent({
 
   if (section === "geral") {
     return (
-      <AccountPanel title="Geral">
-        <AccountGeneralForm account={account} />
+      <AccountPanel
+        title={ACCOUNT_GENERAL_TITLE}
+        description={ACCOUNT_GENERAL_DESCRIPTION}
+      >
+        {generalSettings ? (
+          <AccountGeneralForm settings={generalSettings} people={people} />
+        ) : (
+          <LoadError message="Não foi possível carregar as configurações gerais." />
+        )}
       </AccountPanel>
     );
   }
 
   if (section === "modulos") {
     return (
-      <AccountPanel title="Módulos">
-        <AccountModulesSettings />
+      <AccountPanel
+        title={ACCOUNT_MODULES_TITLE}
+        description={ACCOUNT_MODULES_DESCRIPTION}
+      >
+        {profileModules ? (
+          <AccountModulesSettings modules={profileModules} />
+        ) : (
+          <LoadError message="Não foi possível carregar os módulos." />
+        )}
       </AccountPanel>
     );
   }
@@ -178,4 +221,13 @@ async function loadNotificationPage(token: string) {
   ]);
 
   return { spaces, preferences };
+}
+
+async function loadGeneralPage(token: string) {
+  const settings = await app.getAccountGeneralSettings(token);
+  const people = settings.showBlockedUsers
+    ? await app.listPeople(token)
+    : [];
+
+  return { settings, people };
 }

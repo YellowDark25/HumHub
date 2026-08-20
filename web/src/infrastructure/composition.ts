@@ -27,13 +27,20 @@ import { changeEmail } from "@/application/usecases/changeEmail";
 import { changePassword } from "@/application/usecases/changePassword";
 import { changeUsername } from "@/application/usecases/changeUsername";
 import { deleteAccount } from "@/application/usecases/deleteAccount";
+import { disableAccountModule } from "@/application/usecases/disableAccountModule";
+import { enableAccountModule } from "@/application/usecases/enableAccountModule";
 import { getAccount } from "@/application/usecases/getAccount";
-import type { AccountPatch, AccountProfile } from "@/domain/Account";
+import { getAccountGeneralSettings } from "@/application/usecases/getAccountGeneralSettings";
+import { listAccountModules } from "@/application/usecases/listAccountModules";
+import type { AccountProfile } from "@/domain/Account";
+import type { AccountGeneralPatch } from "@/domain/AccountGeneralSettings";
 import type { NotificationPreferencePatch } from "@/domain/NotificationPreferences";
 import {
   updateSpaceImage,
   type SpaceImageKind,
 } from "@/application/usecases/updateSpaceImage";
+import { HumhubAccountModulesRepository } from "./humhub/HumhubAccountModulesRepository";
+import { HumhubAccountSettingsRepository } from "./humhub/HumhubAccountSettingsRepository";
 import { HumhubAuthRepository } from "./humhub/HumhubAuthRepository";
 import { HumhubFeedRepository } from "./humhub/HumhubFeedRepository";
 import { HumhubNotificationRepository } from "./humhub/HumhubNotificationRepository";
@@ -41,6 +48,8 @@ import { HumhubSpaceRepository } from "./humhub/HumhubSpaceRepository";
 import { NexchatChatRepository } from "./nexchat/NexchatChatRepository";
 
 const auth = new HumhubAuthRepository();
+const accountSettings = new HumhubAccountSettingsRepository();
+const accountModules = new HumhubAccountModulesRepository();
 const feed = new HumhubFeedRepository();
 const spaces = new HumhubSpaceRepository();
 const notifications = new HumhubNotificationRepository();
@@ -50,10 +59,18 @@ export const app = {
   login: (username: string, password: string) => login(auth, username, password),
   getCurrentUser: (token: string) => getCurrentUser(auth, token),
   getAccount: (token: string) => getAccount(auth, token),
+  getAccountGeneralSettings: (token: string) =>
+    getAccountGeneralSettings(accountSettings, token),
   updateAccountProfile: (token: string, profile: AccountProfile) =>
     updateAccountProfile(auth, token, profile),
-  updateAccountGeneral: (token: string, patch: AccountPatch) =>
-    updateAccountGeneral(auth, token, patch),
+  updateAccountGeneral: (token: string, patch: AccountGeneralPatch) =>
+    updateAccountGeneral(accountSettings, token, patch),
+  listAccountModules: (token: string) =>
+    listAccountModules(accountModules, token),
+  enableAccountModule: (token: string, moduleId: string) =>
+    enableAccountModule(accountModules, token, moduleId),
+  disableAccountModule: (token: string, moduleId: string) =>
+    disableAccountModule(accountModules, token, moduleId),
   changeUsername: (token: string, username: string, currentPassword: string) =>
     changeUsername(auth, token, username, currentPassword),
   changeEmail: (token: string, email: string, currentPassword: string) =>

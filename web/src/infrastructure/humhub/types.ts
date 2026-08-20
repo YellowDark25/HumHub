@@ -115,6 +115,52 @@ export type HumhubMembership = {
   user?: HumhubUserShort;
 };
 
+export type HumhubSelectOption = {
+  value?: string;
+  label?: string;
+};
+
+export type HumhubBlockedUser = {
+  id?: number;
+  name?: string;
+};
+
+export type HumhubAccountSettings = {
+  tags?: string[];
+  language?: string;
+  timeZone?: string;
+  visibility?: number;
+  hideOnlineStatus?: boolean;
+  hideTourPanel?: boolean;
+  markdownEditorMode?: number;
+  blockedUsers?: HumhubBlockedUser[];
+  languages?: HumhubSelectOption[];
+  timeZones?: HumhubSelectOption[];
+  visibilityOptions?: HumhubSelectOption[];
+  editorModes?: HumhubSelectOption[];
+  showVisibility?: boolean;
+  visibilityEditable?: boolean;
+  showOnlineStatus?: boolean;
+  showTourPanel?: boolean;
+  showBlockedUsers?: boolean;
+};
+
+export type HumhubAccountProfileModule = {
+  id?: string;
+  name?: string;
+  version?: string;
+  description?: string;
+  imageUrl?: string;
+  isEnabled?: boolean;
+  canEnable?: boolean;
+  canDisable?: boolean;
+  configUrl?: string | null;
+};
+
+export type HumhubAccountModules = {
+  modules?: HumhubAccountProfileModule[];
+};
+
 export type HumhubPage<T> = {
   total?: number;
   page?: number;

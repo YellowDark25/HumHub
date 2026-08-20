@@ -26,5 +26,10 @@ return [
         'nexchat/notification-settings' => 'nexchat/notification-settings/index',
         'nexchat/notification-settings/save' => 'nexchat/notification-settings/save',
         'nexchat/notification-settings/reset' => 'nexchat/notification-settings/reset',
+        'nexchat/account-settings' => 'nexchat/account-settings/index',
+        'nexchat/account-settings/save' => 'nexchat/account-settings/save',
+        'nexchat/account-modules' => 'nexchat/account-modules/index',
+        'nexchat/account-modules/enable' => 'nexchat/account-modules/enable',
+        'nexchat/account-modules/disable' => 'nexchat/account-modules/disable',
     ],
 ];

@@ -100,6 +100,59 @@ export const ACCOUNT_VISIBILITY_OPTIONS = [
   { value: 3, label: "Oculto" },
 ] as const;
 
+export const ACCOUNT_GENERAL_TITLE = "Geral";
+
+export const ACCOUNT_GENERAL_DESCRIPTION =
+  "Defina as configurações básicas para o seu perfil. Você pode adicionar tags adequadas a você, escolher o idioma e seu fuso horário e bloquear usuários indesejados.";
+
+export const ACCOUNT_TAGS_HINT =
+  "Adicione tags ao seu perfil descrevendo você e destacando suas habilidades e interesses. Suas tags serão exibidas em seu perfil e no diretório 'Pessoas'.";
+
+export const ACCOUNT_EDITOR_MODES = [
+  { value: "rich", label: "Rich Text" },
+  { value: "plain", label: "Simples" },
+] as const;
+
+export const ACCOUNT_MODULES_TITLE = "Módulos de Perfil";
+
+export const ACCOUNT_MODULES_DESCRIPTION =
+  "Semelhante aos Espaços, seu perfil pessoal também permite que você use módulos. Por favor, tenha em mente que as informações que você compartilha em seu perfil estão disponíveis para outros usuários da rede.";
+
+export const ACCOUNT_MODULE_LABELS: Record<
+  string,
+  { name: string; description: string }
+> = {
+  cfiles: {
+    name: "Arquivos",
+    description: "Adicionar o módulo de arquivos no seu perfil.",
+  },
+  files: {
+    name: "Arquivos",
+    description: "Adicionar o módulo de arquivos no seu perfil.",
+  },
+  tasks: {
+    name: "Tarefas",
+    description:
+      "Crie tarefas, atribua pessoas, defina prazos e organize projetos para manter a equipe no ritmo.",
+  },
+  wiki: {
+    name: "Wiki",
+    description: "Adicionar uma wiki para este perfil.",
+  },
+  polls: {
+    name: "Enquetes",
+    description: "Permitir iniciar enquetes.",
+  },
+};
+
+export function accountModuleCopy(
+  id: string,
+  name: string,
+  description: string,
+) {
+  return ACCOUNT_MODULE_LABELS[id] ?? { name, description };
+}
+
 export const MAIL_SUMMARY_INTERVALS = [
   { value: "0", label: "Nunca" },
   { value: "1", label: "A cada hora" },

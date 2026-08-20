@@ -1,27 +1,41 @@
 import type { Account, AccountPatch, AccountProfile } from "@/domain/Account";
+import type {
+  AccountGeneralPatch,
+  AccountGeneralSettings,
+  AccountSelectOption,
+} from "@/domain/AccountGeneralSettings";
 import { emptyAccountProfile } from "@/domain/Account";
 import type { Activity } from "@/domain/Activity";
 import type { Comment } from "@/domain/Comment";
 import type { Notification } from "@/domain/Notification";
 import type { NotificationPreferences } from "@/domain/NotificationPreferences";
+import type { AccountProfileModule } from "@/domain/AccountProfileModule";
 import type { Post } from "@/domain/Post";
 import type { Space } from "@/domain/Space";
 import type { SpaceMember } from "@/domain/SpaceMember";
 import type { User } from "@/domain/User";
 import { stripHtml } from "@/shared/format";
+import { accountModuleCopy } from "@/shared/accountProfileFields";
 import { getPublicHumhubUrl } from "../config";
 import {
+  HUMHUB_EDITOR_PLAIN,
+  HUMHUB_EDITOR_RICH_TEXT,
   PROFILE_IMAGE_FOLDER,
   SPACE_BANNER_FOLDER,
   UNKNOWN_AUTHOR,
 } from "./constants";
 import type {
+  HumhubAccountModules,
+  HumhubAccountProfileModule,
+  HumhubAccountSettings,
   HumhubActivity,
+  HumhubBlockedUser,
   HumhubComment,
   HumhubMembership,
   HumhubNotification,
   HumhubNotificationPreferenceCategory,
   HumhubNotificationPreferences,
+  HumhubSelectOption,
   HumhubPost,
   HumhubProfile,
   HumhubSpace,
@@ -125,6 +139,95 @@ export function toHumhubAccount(patch: AccountPatch) {
     ...(patch.visibility !== undefined ? { visibility: patch.visibility } : {}),
     ...(patch.tags !== undefined ? { tagsField: patch.tags } : {}),
   };
+}
+
+export function mapAccountSettings(
+  dto: HumhubAccountSettings,
+): AccountGeneralSettings {
+  return {
+    tags: readTags(dto.tags),
+    language: text(dto.language) || "pt-BR",
+    timeZone: text(dto.timeZone) || "America/Sao_Paulo",
+    visibility: dto.visibility ?? 1,
+    hideOnlineStatus: Boolean(dto.hideOnlineStatus),
+    hideTourPanel: Boolean(dto.hideTourPanel),
+    markdownEditorMode:
+      dto.markdownEditorMode === HUMHUB_EDITOR_PLAIN ? "plain" : "rich",
+    blockedUsers: (dto.blockedUsers ?? [])
+      .map(mapBlockedUser)
+      .filter((user) => user.id > 0),
+    languages: mapSelectOptions(dto.languages),
+    timeZones: mapSelectOptions(dto.timeZones),
+    visibilityOptions: mapSelectOptions(dto.visibilityOptions),
+    editorModes: mapSelectOptions(dto.editorModes),
+    showVisibility: Boolean(dto.showVisibility),
+    visibilityEditable: dto.visibilityEditable !== false,
+    showOnlineStatus: dto.showOnlineStatus !== false,
+    showTourPanel: Boolean(dto.showTourPanel),
+    showBlockedUsers: Boolean(dto.showBlockedUsers),
+  };
+}
+
+export function toHumhubAccountSettings(patch: AccountGeneralPatch) {
+  return {
+    tags: patch.tags,
+    language: patch.language,
+    timeZone: patch.timeZone,
+    visibility: patch.visibility,
+    hideOnlineStatus: patch.hideOnlineStatus,
+    hideTourPanel: patch.hideTourPanel,
+    markdownEditorMode:
+      patch.markdownEditorMode === "plain"
+        ? HUMHUB_EDITOR_PLAIN
+        : HUMHUB_EDITOR_RICH_TEXT,
+    blockedUserIds: patch.blockedUserIds,
+  };
+}
+
+export function mapAccountModules(
+  dto: HumhubAccountModules,
+): AccountProfileModule[] {
+  return (dto.modules ?? [])
+    .map(mapAccountProfileModule)
+    .filter((module) => module.id !== "");
+}
+
+function mapAccountProfileModule(
+  dto: HumhubAccountProfileModule,
+): AccountProfileModule {
+  const configUrl = dto.configUrl?.trim() ?? "";
+  const id = dto.id?.trim() ?? "";
+  const copy = accountModuleCopy(id, text(dto.name) || "Módulo", text(dto.description));
+
+  return {
+    id,
+    name: copy.name,
+    version: text(dto.version),
+    description: copy.description,
+    imageUrl: resolvePublicImageUrl(dto.imageUrl),
+    isEnabled: Boolean(dto.isEnabled),
+    canEnable: Boolean(dto.canEnable),
+    canDisable: Boolean(dto.canDisable),
+    configUrl: configUrl ? resolvePublicImageUrl(configUrl) : null,
+  };
+}
+
+function mapBlockedUser(dto: HumhubBlockedUser) {
+  return {
+    id: dto.id ?? 0,
+    name: text(dto.name) || "Usuário",
+  };
+}
+
+function mapSelectOptions(
+  options: HumhubSelectOption[] | undefined,
+): AccountSelectOption[] {
+  return (options ?? [])
+    .map((option) => ({
+      value: option.value?.trim() ?? "",
+      label: option.label?.trim() ?? option.value?.trim() ?? "",
+    }))
+    .filter((option) => option.value !== "" && option.label !== "");
 }
 
 function mapAccountProfile(profile?: HumhubProfile): AccountProfile {

@@ -44,6 +44,11 @@ class BearerLogin
         }
 
         Yii::$app->user->login($identity);
+        if (method_exists(Yii::$app->i18n, 'setUserLocale')) {
+            Yii::$app->i18n->setUserLocale($identity);
+        } elseif (!empty($identity->language)) {
+            Yii::$app->language = $identity->language;
+        }
         Yii::$app->request->parsers['application/json'] = JsonParser::class;
         Yii::$app->request->setBodyParams(null);
     }
