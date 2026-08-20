@@ -1,0 +1,10 @@
+{
+    "id": "chatwoot",
+    "name": "Chatwoot",
+    "description": "Adiciona um item no menu superior que abre o painel do Chatwoot em uma URL configurável.",
+    "keywords": ["chatwoot", "atendimento", "suporte"],
+    "version": "0.1.0",
+    "humhub": {
+        "minVersion": "1.15"
+    }
+}

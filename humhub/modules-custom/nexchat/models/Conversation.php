@@ -1,0 +1,185 @@
+<?php
+
+namespace humhub\modules\nexchat\models;
+
+use humhub\components\ActiveRecord;
+use humhub\modules\user\models\User;
+use Yii;
+
+/**
+ * @property int $id
+ * @property string $type dm|channel
+ * @property string|null $name
+ * @property string|null $dm_key
+ * @property string|null $last_message_at
+ * @property string|null $created_at
+ * @property int|null $created_by
+ * @property string|null $updated_at
+ * @property int|null $updated_by
+ *
+ * @property-read Membership[] $memberships
+ * @property-read Message[] $messages
+ * @property-read User[] $members
+ */
+class Conversation extends ActiveRecord
+{
+    public const TYPE_DM = 'dm';
+    public const TYPE_CHANNEL = 'channel';
+
+    public static function tableName()
+    {
+        return 'nexchat_conversation';
+    }
+
+    public function rules()
+    {
+        return [
+            [['type'], 'required'],
+            [['type'], 'in', 'range' => [self::TYPE_DM, self::TYPE_CHANNEL]],
+            [['name'], 'string', 'max' => 100],
+            [['dm_key'], 'string', 'max' => 50],
+            [['name'], 'required', 'when' => fn(self $model) => $model->type === self::TYPE_CHANNEL],
+            [['last_message_at'], 'safe'],
+        ];
+    }
+
+    public function getMemberships()
+    {
+        return $this->hasMany(Membership::class, ['conversation_id' => 'id']);
+    }
+
+    public function getMessages()
+    {
+        return $this->hasMany(Message::class, ['conversation_id' => 'id'])
+            ->orderBy(['created_at' => SORT_ASC]);
+    }
+
+    public function getMembers()
+    {
+        return $this->hasMany(User::class, ['id' => 'user_id'])
+            ->via('memberships');
+    }
+
+    public function getDisplayName(?User $viewer = null): string
+    {
+        if ($this->type === self::TYPE_CHANNEL) {
+            return $this->name ?: Yii::t('NexchatModule.base', 'Canal sem nome');
+        }
+
+        $viewer = $viewer ?: Yii::$app->user->identity;
+        foreach ($this->members as $member) {
+            if ($viewer && (int) $member->id !== (int) $viewer->id) {
+                return $member->displayName;
+            }
+        }
+
+        return Yii::t('NexchatModule.base', 'Conversa direta');
+    }
+
+    public static function buildDmKey(int $userA, int $userB): string
+    {
+        $ids = [(int) $userA, (int) $userB];
+        sort($ids);
+
+        return $ids[0] . '_' . $ids[1];
+    }
+
+    public static function findOrCreateDm(int $userA, int $userB): Conversation
+    {
+        $dmKey = self::buildDmKey($userA, $userB);
+        $conversation = self::findOne(['type' => self::TYPE_DM, 'dm_key' => $dmKey]);
+
+        if ($conversation) {
+            return $conversation;
+        }
+
+        $conversation = new self([
+            'type' => self::TYPE_DM,
+            'dm_key' => $dmKey,
+        ]);
+        $conversation->save();
+
+        Membership::addMember($conversation->id, $userA);
+        Membership::addMember($conversation->id, $userB);
+
+        return $conversation;
+    }
+
+    public static function createChannel(string $name, int $creatorId): Conversation
+    {
+        $conversation = new self([
+            'type' => self::TYPE_CHANNEL,
+            'name' => trim($name),
+        ]);
+        $conversation->save();
+
+        Membership::addMember($conversation->id, $creatorId, Membership::ROLE_ADMIN);
+
+        return $conversation;
+    }
+
+    public function isMember(int $userId): bool
+    {
+        return Membership::find()
+            ->where([
+                'conversation_id' => $this->id,
+                'user_id' => $userId,
+                'status' => Membership::STATUS_ACTIVE,
+            ])
+            ->exists();
+    }
+
+    public function isAdmin(int $userId): bool
+    {
+        return Membership::find()
+            ->where([
+                'conversation_id' => $this->id,
+                'user_id' => $userId,
+                'role' => Membership::ROLE_ADMIN,
+                'status' => Membership::STATUS_ACTIVE,
+            ])
+            ->exists();
+    }
+
+    public function getMembership(int $userId): ?Membership
+    {
+        return Membership::findOne(['conversation_id' => $this->id, 'user_id' => $userId]);
+    }
+
+    public function getLastMessageId(): int
+    {
+        return (int) Message::find()
+            ->where(['conversation_id' => $this->id])
+            ->max('id');
+    }
+
+    /**
+     * @return Conversation[]
+     */
+    public static function findForUser(int $userId): array
+    {
+        return self::find()
+            ->innerJoin('nexchat_membership m', 'm.conversation_id = nexchat_conversation.id')
+            ->where(['m.user_id' => $userId, 'm.status' => Membership::STATUS_ACTIVE])
+            ->orderBy(['last_message_at' => SORT_DESC, 'id' => SORT_DESC])
+            ->all();
+    }
+
+    /**
+     * Canais com convite pendente para o usuário (ainda não aceitos).
+     *
+     * @return Conversation[]
+     */
+    public static function findPendingInvitesForUser(int $userId): array
+    {
+        return self::find()
+            ->innerJoin('nexchat_membership m', 'm.conversation_id = nexchat_conversation.id')
+            ->where([
+                'm.user_id' => $userId,
+                'm.status' => Membership::STATUS_PENDING,
+                'nexchat_conversation.type' => self::TYPE_CHANNEL,
+            ])
+            ->orderBy(['nexchat_conversation.id' => SORT_DESC])
+            ->all();
+    }
+}

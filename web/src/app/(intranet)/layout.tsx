@@ -1,0 +1,54 @@
+import { AppHeader } from "@/components/AppHeader";
+import { MobileNav } from "@/components/MobileNav";
+import { isUnauthorized } from "@/application/errors";
+import { app } from "@/infrastructure/composition";
+import { requirePageToken } from "@/infrastructure/pageSession";
+import { clearAuthToken } from "@/infrastructure/session";
+import { redirect } from "next/navigation";
+
+export default async function IntranetLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const token = await requirePageToken();
+
+  let displayName = "Você";
+  let unseenCount = 0;
+
+  try {
+    const user = await app.getCurrentUser(token);
+    displayName = user.name;
+    unseenCount = await loadUnseenCount(token);
+  } catch (error) {
+    if (isUnauthorized(error)) {
+      await clearAuthToken();
+      redirect("/login");
+    }
+
+    throw error;
+  }
+
+  return (
+    <div className="flex min-h-full flex-col bg-zinc-100">
+      <AppHeader displayName={displayName} unseenCount={unseenCount} />
+      <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</div>
+      <MobileNav />
+    </div>
+  );
+}
+
+async function loadUnseenCount(token: string): Promise<number> {
+  try {
+    return await app.countUnseenNotifications(token);
+  } catch (error) {
+    if (isUnauthorized(error)) {
+      throw error;
+    }
+
+    console.error(
+      `Falha ao contar notificações não lidas: ${error instanceof Error ? error.message : "erro desconhecido"}`,
+    );
+    return 0;
+  }
+}

@@ -1,0 +1,1177 @@
+.nexchat-app {
+    display: flex;
+    height: calc(100vh - 130px);
+    min-height: 520px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #1e1f22;
+    background: #313338;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.nexchat-sidebar {
+    width: 260px;
+    min-width: 260px;
+    background: #2b2d31;
+    color: #dbdee1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #1e1f22;
+}
+
+.nexchat-sidebar-header {
+    padding: 16px;
+    font-weight: 700;
+    font-size: 16px;
+    border-bottom: 1px solid #1e1f22;
+    background: #232428;
+}
+
+.nexchat-logo {
+    letter-spacing: 0.5px;
+}
+
+.nexchat-sidebar-section {
+    padding: 12px 8px;
+    border-bottom: 1px solid #1e1f22;
+}
+
+.nexchat-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #949ba4;
+    padding: 0 8px 8px;
+    letter-spacing: 0.04em;
+}
+
+.nexchat-sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    margin: 2px 0;
+    border-radius: 6px;
+    color: #b5bac1;
+    text-decoration: none !important;
+    transition: background 0.15s, color 0.15s;
+}
+
+.nexchat-sidebar-item:hover,
+.nexchat-sidebar-item.active {
+    background: #404249;
+    color: #fff;
+}
+
+.nexchat-hash,
+.nexchat-dm-icon {
+    color: #949ba4;
+    font-weight: 700;
+    min-width: 14px;
+}
+
+.nexchat-item-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nexchat-unread-badge {
+    background: #f23f43;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    line-height: 18px;
+    text-align: center;
+    border-radius: 999px;
+    padding: 0 5px;
+}
+
+.nexchat-empty-item {
+    padding: 6px 10px;
+    color: #72767d;
+    font-size: 13px;
+}
+
+/* Convites pendentes na sidebar */
+.nexchat-invites-section {
+    background: rgba(88, 101, 242, 0.08);
+}
+
+.nexchat-invite-item {
+    padding: 8px 10px;
+    margin: 2px 0;
+    border-radius: 6px;
+    background: #232428;
+    border: 1px solid #383a40;
+}
+
+.nexchat-invite-item + .nexchat-invite-item {
+    margin-top: 6px;
+}
+
+.nexchat-invite-channel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #f2f3f5;
+    font-weight: 600;
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+
+.nexchat-invite-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.nexchat-invite-accept,
+.nexchat-invite-decline {
+    flex: 1;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.nexchat-invite-accept {
+    background: #248046;
+    color: #fff;
+}
+
+.nexchat-invite-accept:hover {
+    background: #1a6334;
+}
+
+.nexchat-invite-accept:disabled,
+.nexchat-invite-decline:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.nexchat-invite-decline {
+    background: transparent;
+    color: #b5bac1;
+    border: 1px solid #4e5058;
+}
+
+.nexchat-invite-decline:hover {
+    background: #404249;
+    color: #fff;
+}
+
+.nexchat-inline-form {
+    padding: 8px 8px 0;
+}
+
+.nexchat-inline-form input,
+.nexchat-inline-form select {
+    width: 100%;
+    background: #1e1f22;
+    border: 1px solid #383a40;
+    color: #dbdee1;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+}
+
+.nexchat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #313338;
+    min-width: 0;
+}
+
+.nexchat-welcome {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #dbdee1;
+    text-align: center;
+    padding: 40px;
+}
+
+.nexchat-welcome-icon {
+    font-size: 64px;
+    color: #5865f2;
+    margin-bottom: 16px;
+}
+
+.nexchat-welcome-tips {
+    text-align: left;
+    margin-top: 20px;
+    color: #b5bac1;
+}
+
+.nexchat-chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.nexchat-chat-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid #1e1f22;
+    background: #313338;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.nexchat-chat-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #f2f3f5;
+}
+
+.nexchat-chat-meta {
+    color: #949ba4;
+    font-size: 12px;
+}
+
+.nexchat-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nexchat-header-btn {
+    background: transparent;
+    border: none;
+    color: #b5bac1;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nexchat-header-btn:hover {
+    background: #404249;
+    color: #fff;
+}
+
+.nexchat-chat-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+}
+
+.nexchat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 18px;
+}
+
+.nexchat-message {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 2px 6px;
+    position: relative;
+    border-radius: 6px;
+}
+
+.nexchat-message:hover {
+    background: #2e3035;
+}
+
+.nexchat-avatar {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #5865f2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nexchat-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.nexchat-avatar-fallback {
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+    text-transform: uppercase;
+}
+
+.nexchat-message-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.nexchat-message-own .nexchat-message-author {
+    color: #5865f2;
+}
+
+.nexchat-message-meta {
+    margin-bottom: 4px;
+}
+
+.nexchat-message-author {
+    font-weight: 700;
+    color: #f2f3f5;
+    margin-right: 8px;
+}
+
+.nexchat-message-time {
+    font-size: 11px;
+    color: #949ba4;
+}
+
+.nexchat-message-edited {
+    font-size: 11px;
+    color: #80848e;
+    margin-left: 6px;
+}
+
+/* Mensagem excluída (soft delete) */
+.nexchat-message-deleted:hover {
+    background: transparent;
+}
+
+.nexchat-message-deleted .nexchat-avatar {
+    opacity: 0.5;
+}
+
+.nexchat-deleted-text {
+    font-style: italic;
+    color: #80848e !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.nexchat-deleted-icon {
+    font-size: 13px;
+}
+
+/* Edição inline */
+.nexchat-edit-form {
+    margin-top: 4px;
+}
+
+.nexchat-edit-input {
+    width: 100%;
+    background: #383a40;
+    border: none;
+    color: #dbdee1;
+    border-radius: 8px;
+    padding: 10px 12px;
+    resize: vertical;
+    min-height: 38px;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.nexchat-edit-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.35);
+}
+
+.nexchat-edit-hint {
+    font-size: 11px;
+    color: #b5bac1;
+    margin-top: 4px;
+}
+
+.nexchat-edit-hint a {
+    color: #00a8fc;
+    cursor: pointer;
+}
+
+.nexchat-message-content {
+    color: #dbdee1;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.nexchat-empty-chat {
+    color: #949ba4;
+    text-align: center;
+    margin-top: 40px;
+}
+
+.nexchat-load-history {
+    display: block;
+    width: 100%;
+    margin-bottom: 12px;
+    background: transparent;
+    border: 1px dashed #4e5058;
+    color: #b5bac1;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 12px;
+}
+
+.nexchat-load-history:hover {
+    background: #404249;
+    color: #fff;
+}
+
+.nexchat-members-panel {
+    width: 220px;
+    border-left: 1px solid #1e1f22;
+    background: #2b2d31;
+    padding: 14px;
+    overflow-y: auto;
+}
+
+.nexchat-members-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #949ba4;
+    margin-bottom: 10px;
+}
+
+.nexchat-members-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 12px;
+}
+
+.nexchat-members-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    color: #dbdee1;
+    font-size: 13px;
+}
+
+.nexchat-member-avatar {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #5865f2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nexchat-member-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.nexchat-member-avatar .nexchat-avatar-fallback {
+    font-size: 12px;
+}
+
+.nexchat-member-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nexchat-dm-member {
+    background: transparent;
+    border: none;
+    color: #949ba4;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0 2px;
+}
+
+.nexchat-dm-member:hover {
+    color: #5865f2;
+}
+
+.nexchat-role-badge {
+    font-size: 10px;
+    background: #5865f2;
+    color: #fff;
+    border-radius: 4px;
+    padding: 1px 5px;
+}
+
+.nexchat-remove-member {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: #f23f43;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.nexchat-invite-form select {
+    width: 100%;
+    margin-bottom: 8px;
+    background: #1e1f22;
+    border: 1px solid #383a40;
+    color: #dbdee1;
+    border-radius: 6px;
+    padding: 6px 8px;
+}
+
+.nexchat-chat-footer {
+    padding: 14px 18px;
+    border-top: 1px solid #1e1f22;
+    background: #313338;
+}
+
+.nexchat-send-form {
+    display: flex;
+    gap: 10px;
+}
+
+.nexchat-send-form input {
+    flex: 1;
+    background: #383a40;
+    border: none;
+    color: #dbdee1;
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.nexchat-send-form input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.35);
+}
+
+.nexchat-send-form .btn-primary {
+    background: #5865f2;
+    border-color: #5865f2;
+    border-radius: 8px;
+    padding: 0 18px;
+}
+
+/* Anexos */
+.nexchat-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.nexchat-attachment-image {
+    display: block;
+    max-width: 360px;
+    border-radius: 8px;
+    overflow: hidden;
+    line-height: 0;
+}
+
+.nexchat-attachment-image img {
+    max-width: 360px;
+    max-height: 320px;
+    width: auto;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.nexchat-attachment-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #2b2d31;
+    border: 1px solid #1e1f22;
+    border-radius: 8px;
+    padding: 10px 14px;
+    text-decoration: none;
+    max-width: 320px;
+}
+
+.nexchat-attachment-file:hover {
+    background: #232428;
+    text-decoration: none;
+}
+
+.nexchat-attachment-icon {
+    font-size: 22px;
+}
+
+.nexchat-attachment-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.nexchat-attachment-name {
+    color: #00a8fc;
+    font-size: 13px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nexchat-attachment-size {
+    color: #949ba4;
+    font-size: 11px;
+}
+
+/* Ações na mensagem (hover) */
+.nexchat-message-actions {
+    position: absolute;
+    top: -12px;
+    right: 10px;
+    display: none;
+    background: #313338;
+    border: 1px solid #1e1f22;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.nexchat-message:hover .nexchat-message-actions {
+    display: flex;
+}
+
+.nexchat-message-actions button {
+    background: transparent;
+    border: none;
+    color: #b5bac1;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 8px;
+}
+
+.nexchat-message-actions button:hover {
+    background: #404249;
+    color: #fff;
+}
+
+.nexchat-message-actions button svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+.nexchat-message-actions .nexchat-action-delete:hover {
+    background: #f23f43;
+    color: #fff;
+}
+
+/* Reações (pills) */
+.nexchat-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.nexchat-reactions:empty {
+    display: none;
+}
+
+.nexchat-reaction-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #2b2d31;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #dbdee1;
+}
+
+.nexchat-reaction-pill:hover {
+    border-color: #4e5058;
+}
+
+.nexchat-reaction-pill.mine {
+    background: rgba(88, 101, 242, 0.18);
+    border-color: #5865f2;
+}
+
+.nexchat-reaction-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: #b5bac1;
+}
+
+.nexchat-reaction-pill.mine .nexchat-reaction-count {
+    color: #c9cdfb;
+}
+
+/* Picker de emoji flutuante */
+.nexchat-emoji-picker {
+    position: fixed;
+    z-index: 1050;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 232px;
+    background: #2b2d31;
+    border: 1px solid #1e1f22;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    padding: 8px;
+}
+
+.nexchat-emoji-option {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 22px;
+    line-height: 1;
+    padding: 6px;
+    border-radius: 8px;
+}
+
+.nexchat-emoji-option:hover {
+    background: #404249;
+}
+
+/* Resposta: citação acima da mensagem */
+.nexchat-reply-quote {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+    font-size: 12px;
+    color: #b5bac1;
+    text-decoration: none;
+    max-width: 100%;
+    cursor: pointer;
+}
+
+.nexchat-reply-quote:hover {
+    text-decoration: none;
+}
+
+.nexchat-reply-quote:hover .nexchat-reply-preview {
+    color: #dbdee1;
+}
+
+.nexchat-reply-icon {
+    color: #80848e;
+    font-size: 14px;
+}
+
+.nexchat-reply-avatar {
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #5865f2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nexchat-reply-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.nexchat-reply-avatar .nexchat-avatar-fallback {
+    font-size: 9px;
+}
+
+.nexchat-reply-author {
+    color: #5865f2;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.nexchat-reply-preview {
+    color: #949ba4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.nexchat-message-highlight {
+    animation: nexchat-flash 1.4s ease;
+}
+
+@keyframes nexchat-flash {
+    0%, 30% { background: rgba(88, 101, 242, 0.28); }
+    100% { background: transparent; }
+}
+
+/* Barra de resposta no footer */
+.nexchat-reply-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #2b2d31;
+    border-left: 3px solid #5865f2;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: #b5bac1;
+}
+
+.nexchat-reply-bar-icon {
+    color: #5865f2;
+}
+
+.nexchat-reply-bar-text strong {
+    color: #dbdee1;
+}
+
+.nexchat-reply-bar-preview {
+    color: #949ba4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.nexchat-reply-cancel {
+    background: transparent;
+    border: none;
+    color: #b5bac1;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    margin-left: auto;
+}
+
+.nexchat-reply-cancel:hover {
+    color: #fff;
+}
+
+/* Footer: anexar + preview */
+.nexchat-attach-btn {
+    background: #383a40;
+    border: none;
+    color: #b5bac1;
+    border-radius: 8px;
+    font-size: 20px;
+    line-height: 1;
+    padding: 0 14px;
+    cursor: pointer;
+}
+
+.nexchat-attach-btn:hover {
+    color: #fff;
+    background: #404249;
+}
+
+.nexchat-attachment-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.nexchat-preview-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #2b2d31;
+    border: 1px solid #1e1f22;
+    border-radius: 8px;
+    padding: 8px 10px;
+    max-width: 220px;
+}
+
+.nexchat-preview-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex: 0 0 40px;
+    background: #1e1f22;
+}
+
+.nexchat-preview-name {
+    font-size: 12px;
+    color: #dbdee1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nexchat-preview-remove {
+    background: transparent;
+    border: none;
+    color: #f23f43;
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+    margin-left: auto;
+}
+
+/* Modal de confirmação de exclusão */
+.nexchat-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.nexchat-modal {
+    background: #313338;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    padding: 20px;
+    color: #dbdee1;
+}
+
+.nexchat-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.nexchat-modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #f2f3f5;
+    margin: 0;
+}
+
+.nexchat-modal-close {
+    background: transparent;
+    border: none;
+    color: #b5bac1;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.nexchat-modal-close:hover {
+    color: #fff;
+}
+
+.nexchat-modal-subtitle {
+    color: #b5bac1;
+    font-size: 14px;
+    margin: 0 0 14px;
+}
+
+.nexchat-modal-preview {
+    display: flex;
+    gap: 12px;
+    background: #2b2d31;
+    border: 1px solid #1e1f22;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.nexchat-modal-preview-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.nexchat-modal-preview-meta {
+    margin-bottom: 2px;
+}
+
+.nexchat-modal-preview-content {
+    color: #dbdee1;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+.nexchat-modal-tip {
+    font-size: 13px;
+    color: #b5bac1;
+    margin: 14px 0 0;
+}
+
+.nexchat-modal-tip strong {
+    color: #f2f3f5;
+}
+
+.nexchat-modal-tip .nexchat-tip-label {
+    color: #3ba55d;
+}
+
+.nexchat-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.nexchat-btn-cancel,
+.nexchat-btn-danger {
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.nexchat-btn-cancel {
+    background: transparent;
+    color: #dbdee1;
+}
+
+.nexchat-btn-cancel:hover {
+    text-decoration: underline;
+}
+
+.nexchat-btn-danger {
+    background: #da373c;
+    color: #fff;
+}
+
+.nexchat-btn-danger:hover {
+    background: #a12828;
+}
+
+.nexchat-btn-primary {
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: #5865f2;
+    color: #fff;
+}
+
+.nexchat-btn-primary:hover {
+    background: #4752c4;
+}
+
+/* Modal grande (configurações) */
+.nexchat-modal-lg {
+    max-width: 520px;
+}
+
+.nexchat-modal-select,
+.nexchat-modal-input {
+    width: 100%;
+    background: #1e1f22;
+    border: 1px solid #383a40;
+    color: #dbdee1;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 14px;
+}
+
+.nexchat-modal-select:focus,
+.nexchat-modal-input:focus {
+    outline: none;
+    border-color: #5865f2;
+}
+
+.nexchat-modal-empty {
+    color: #949ba4;
+    font-size: 14px;
+    margin: 4px 0 0;
+}
+
+.nexchat-settings-section {
+    padding: 16px 0;
+    border-top: 1px solid #3f4147;
+}
+
+.nexchat-settings-section:first-of-type {
+    border-top: none;
+}
+
+.nexchat-settings-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #b5bac1;
+    margin-bottom: 8px;
+}
+
+.nexchat-rename-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nexchat-rename-hash {
+    color: #949ba4;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.nexchat-rename-form .nexchat-modal-input {
+    flex: 1;
+}
+
+.nexchat-settings-members {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.nexchat-settings-members li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    color: #dbdee1;
+    font-size: 14px;
+}
+
+.nexchat-danger-text {
+    color: #949ba4;
+    font-size: 13px;
+    margin: 0 0 12px;
+}
+
+.nexchat-danger-zone .nexchat-btn-danger.armed {
+    animation: nexchat-flash 1s ease infinite;
+}
+
+@media (max-width: 992px) {
+    .nexchat-app {
+        flex-direction: column;
+        height: auto;
+        min-height: 700px;
+    }
+
+    .nexchat-sidebar {
+        width: 100%;
+        min-width: 0;
+        max-height: 240px;
+        overflow-y: auto;
+    }
+
+    .nexchat-members-panel {
+        display: none;
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "id": "nexchat",
+    "name": "Chat",
+    "description": "Chat estilo Discord: conversas individuais (DM) e canais em grupo, com anexos, reações, respostas e convites com aceite.",
+    "keywords": ["chat", "messaging", "discord"],
+    "version": "0.12.0",
+    "humhub": {
+        "minVersion": "1.15"
+    }
+}

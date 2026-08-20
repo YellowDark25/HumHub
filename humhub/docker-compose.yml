@@ -1,0 +1,47 @@
+services:
+  humhub:
+    image: humhub/humhub:stable-nightly
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - humhub-data:/data
+      - ./modules-custom:/data/modules-custom
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - HUMHUB_DEBUG=true
+      - SERVER_NAME=:8090
+      - HUMHUB_FIXED_SETTINGS__BASE__BASE_URL=http://localhost:8090
+      - HUMHUB_CONFIG__COMPONENTS__DB__DSN=mysql:host=db;dbname=humhub
+      - HUMHUB_CONFIG__COMPONENTS__DB__USERNAME=humhub
+      - HUMHUB_CONFIG__COMPONENTS__DB__PASSWORD=humhub_senha_local
+
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    user: root
+    volumes:
+      - mysql-data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_senha_local
+      - MYSQL_DATABASE=humhub
+      - MYSQL_USER=humhub
+      - MYSQL_PASSWORD=humhub_senha_local
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  humhub-data:
+  mysql-data:
