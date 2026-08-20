@@ -93,7 +93,11 @@ export function CommentThread({ postId, total, latest }: CommentThreadProps) {
         <div className="mt-3 flex flex-col gap-3">
           {comments.map((comment) => (
             <div key={comment.id} className="flex gap-2">
-              <Avatar name={comment.authorName} size="sm" />
+              <Avatar
+                name={comment.authorName}
+                imageUrl={comment.authorImageUrl}
+                size="sm"
+              />
               <div className="rounded-xl bg-zinc-50 px-3 py-2">
                 <p className="text-xs font-semibold text-zinc-800">
                   {comment.authorName}

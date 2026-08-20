@@ -13,34 +13,45 @@ type NotificationDropdownProps = {
 };
 
 export function NotificationDropdown({ unseenCount }: NotificationDropdownProps) {
-  const dropdown = useNotificationDropdown(unseenCount);
+  const {
+    rootRef,
+    isOpen,
+    badgeCount,
+    items,
+    error,
+    isLoading,
+    isMarking,
+    toggle,
+    markAllAsSeen,
+    close,
+  } = useNotificationDropdown(unseenCount);
 
   return (
-    <div className="relative" ref={dropdown.rootRef}>
+    <div className="relative" ref={rootRef}>
       <button
         type="button"
-        onClick={() => void dropdown.toggle()}
-        aria-expanded={dropdown.isOpen}
+        onClick={() => void toggle()}
+        aria-expanded={isOpen}
         aria-haspopup="dialog"
         aria-label="Notificações"
         className="relative flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100"
       >
         <BellIcon />
-        {dropdown.badgeCount > 0 ? (
+        {badgeCount > 0 ? (
           <span className="absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-teal-700 px-1 text-[10px] font-semibold text-white">
-            {dropdown.badgeCount > BADGE_MAX ? `${BADGE_MAX}+` : dropdown.badgeCount}
+            {badgeCount > BADGE_MAX ? `${BADGE_MAX}+` : badgeCount}
           </span>
         ) : null}
       </button>
-      {dropdown.isOpen ? (
+      {isOpen ? (
         <NotificationPanel
-          items={dropdown.items}
-          error={dropdown.error}
-          isLoading={dropdown.isLoading}
-          isMarking={dropdown.isMarking}
-          canMarkAll={dropdown.badgeCount > 0}
-          onMarkAll={() => void dropdown.markAllAsSeen()}
-          onNavigate={dropdown.close}
+          items={items}
+          error={error}
+          isLoading={isLoading}
+          isMarking={isMarking}
+          canMarkAll={badgeCount > 0}
+          onMarkAll={() => void markAllAsSeen()}
+          onNavigate={close}
         />
       ) : null}
     </div>
@@ -159,7 +170,11 @@ function NotificationRow({
         onClick={onNavigate}
         className="flex gap-3 px-4 py-3 hover:bg-zinc-50"
       >
-        <Avatar name={notification.originatorName ?? "Usuário"} size="sm" />
+        <Avatar
+          name={notification.originatorName ?? "Usuário"}
+          imageUrl={notification.originatorImageUrl}
+          size="sm"
+        />
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-sm text-zinc-800">{notification.text}</p>
           <p className="mt-1 text-xs text-teal-700">

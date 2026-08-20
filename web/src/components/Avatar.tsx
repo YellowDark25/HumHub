@@ -1,21 +1,55 @@
-export function Avatar({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {
-  const initials = name
+"use client";
+
+import { useState } from "react";
+
+const SIZE_CLASS = {
+  sm: "h-8 w-8 text-xs",
+  md: "h-10 w-10 text-sm",
+  lg: "h-16 w-16 text-lg",
+  card: "h-20 w-20 text-xl",
+  xl: "h-32 w-32 text-2xl",
+} as const;
+
+type AvatarProps = {
+  name: string;
+  imageUrl?: string;
+  size?: keyof typeof SIZE_CLASS;
+  shape?: "circle" | "square";
+};
+
+export function Avatar({
+  name,
+  imageUrl = "",
+  size = "md",
+  shape = "square",
+}: AvatarProps) {
+  const [failedUrl, setFailedUrl] = useState("");
+  const showImage = Boolean(imageUrl) && failedUrl !== imageUrl;
+  const shapeClass = shape === "circle" ? "rounded-full" : "rounded-lg";
+
+  return (
+    <span
+      className={`relative flex shrink-0 items-center justify-center overflow-hidden bg-teal-100 font-semibold text-teal-800 ${SIZE_CLASS[size]} ${shapeClass}`}
+    >
+      {showImage ? (
+        <img
+          src={imageUrl}
+          alt={name}
+          className="h-full w-full object-cover"
+          onError={() => setFailedUrl(imageUrl)}
+        />
+      ) : (
+        readInitials(name)
+      )}
+    </span>
+  );
+}
+
+function readInitials(name: string) {
+  return name
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join("");
-
-  const className =
-    size === "sm"
-      ? "h-8 w-8 text-xs"
-      : "h-10 w-10 text-sm";
-
-  return (
-    <span
-      className={`flex shrink-0 items-center justify-center rounded-full bg-teal-100 font-semibold text-teal-800 ${className}`}
-    >
-      {initials}
-    </span>
-  );
 }

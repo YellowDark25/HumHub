@@ -1,6 +1,7 @@
 import { errorMessage } from "@/application/errors";
 import { FeedCard } from "@/components/FeedCard";
 import { HomeComposer } from "@/components/HomeComposer";
+import { LatestActivities } from "@/components/LatestActivities";
 import { LoadError } from "@/components/LoadError";
 import type { Activity } from "@/domain/Activity";
 import type { Post } from "@/domain/Post";
@@ -10,10 +11,7 @@ import {
   redirectIfUnauthorized,
   requirePageToken,
 } from "@/infrastructure/pageSession";
-import { formatDate } from "@/shared/format";
 import Link from "next/link";
-
-const SIDEBAR_ACTIVITY_LIMIT = 8;
 
 export default async function FeedPage() {
   const token = await requirePageToken();
@@ -68,25 +66,7 @@ export default async function FeedPage() {
             Ver todos
           </Link>
         </section>
-        <section className="rounded-2xl border border-zinc-200 bg-white p-4">
-          <h2 className="text-sm font-semibold text-zinc-900">
-            Últimas atividades
-          </h2>
-          <ul className="mt-3 flex flex-col gap-3">
-            {activities.length === 0 ? (
-              <li className="text-sm text-zinc-500">Nada recente.</li>
-            ) : (
-              activities.slice(0, SIDEBAR_ACTIVITY_LIMIT).map((activity) => (
-                <li key={activity.id} className="text-sm text-zinc-600">
-                  <p>{activity.text}</p>
-                  <p className="mt-1 text-xs text-zinc-400">
-                    {formatDate(activity.publishedAt)}
-                  </p>
-                </li>
-              ))
-            )}
-          </ul>
-        </section>
+        <LatestActivities activities={activities} />
       </aside>
     </div>
   );

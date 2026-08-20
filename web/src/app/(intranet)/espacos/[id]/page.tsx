@@ -1,7 +1,12 @@
 import { errorMessage, isNotFound } from "@/application/errors";
+import { Avatar } from "@/components/Avatar";
 import { FeedCard } from "@/components/FeedCard";
+import { LatestActivities } from "@/components/LatestActivities";
 import { LoadError } from "@/components/LoadError";
 import { PostComposer } from "@/components/PostComposer";
+import { SpaceHeader } from "@/components/SpaceHeader";
+import { SpaceMenu } from "@/components/SpaceMenu";
+import type { Activity } from "@/domain/Activity";
 import type { Post } from "@/domain/Post";
 import type { Space } from "@/domain/Space";
 import type { SpaceMember } from "@/domain/SpaceMember";
@@ -10,15 +15,33 @@ import {
   redirectIfUnauthorized,
   requirePageToken,
 } from "@/infrastructure/pageSession";
+import {
+  readSpaceSection,
+  type SpaceSectionId,
+} from "@/shared/spaceSection";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-type SpacePageProps = {
-  params: Promise<{ id: string }>;
+const EMPTY_SECTION_COPY: Record<
+  Exclude<SpaceSectionId, "stream" | "sobre" | "membros">,
+  string
+> = {
+  arquivos: "Nenhum arquivo neste espaço.",
+  tarefas: "Nenhuma tarefa neste espaço.",
+  wiki: "Nenhuma página wiki neste espaço.",
 };
 
-export default async function SpaceFeedPage({ params }: SpacePageProps) {
+type SpacePageProps = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function SpaceFeedPage({
+  params,
+  searchParams,
+}: SpacePageProps) {
   const { id } = await params;
+  const section = readSpaceSection(await searchParams);
   const spaceId = Number(id);
   const token = await requirePageToken();
 
@@ -29,6 +52,8 @@ export default async function SpaceFeedPage({ params }: SpacePageProps) {
   let space: Space | null = null;
   let posts: Post[] = [];
   let members: SpaceMember[] = [];
+  let activities: Activity[] = [];
+  let canManage = false;
   let loadError = "";
 
   try {
@@ -36,6 +61,8 @@ export default async function SpaceFeedPage({ params }: SpacePageProps) {
     space = page.space;
     posts = page.posts;
     members = page.members;
+    activities = page.activities;
+    canManage = page.canManage;
   } catch (error) {
     await redirectIfUnauthorized(error);
     if (isNotFound(error)) {
@@ -53,47 +80,119 @@ export default async function SpaceFeedPage({ params }: SpacePageProps) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
-      <main className="flex flex-col gap-4">
-        <Link href="/espacos" className="text-sm font-medium text-teal-700">
-          Todos os espaços
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold text-zinc-900">{space.name}</h1>
-          {space.description ? (
-            <p className="mt-1 text-sm text-zinc-500">{space.description}</p>
-          ) : null}
-        </div>
-        {loadError ? <LoadError message={loadError} /> : null}
-        <PostComposer spaceId={space.id} />
-        {posts.length === 0 && !loadError ? (
-          <p className="text-sm text-zinc-500">
-            Nenhuma publicação neste espaço.
-          </p>
-        ) : (
-          posts.map((post) => <FeedCard key={post.id} post={post} />)
-        )}
-      </main>
-      <aside className="rounded-2xl border border-zinc-200 bg-white p-4">
-        <h2 className="text-sm font-semibold text-zinc-900">Membros</h2>
-        <ul className="mt-3 flex flex-col gap-2">
-          {members.length === 0 ? (
-            <li className="text-sm text-zinc-500">Sem lista de membros.</li>
-          ) : (
-            members.map((membership) => (
-              <li key={membership.user.id} className="text-sm text-zinc-700">
-                {membership.user.name}
-                {membership.role ? (
-                  <span className="ml-1 text-xs text-zinc-400">
-                    {membership.role}
-                  </span>
-                ) : null}
-              </li>
-            ))
-          )}
-        </ul>
-      </aside>
+    <div className="flex flex-col gap-6">
+      <Link href="/espacos" className="text-sm font-medium text-teal-700">
+        Todos os espaços
+      </Link>
+      <SpaceHeader space={space} canManage={canManage} />
+      <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)_260px]">
+        <SpaceMenu spaceId={space.id} section={section} />
+        <main className="flex min-w-0 flex-col gap-4">
+          {loadError ? <LoadError message={loadError} /> : null}
+          <SpaceSection
+            section={section}
+            space={space}
+            posts={posts}
+            members={members}
+            loadError={loadError}
+          />
+        </main>
+        <LatestActivities activities={activities} />
+      </div>
     </div>
   );
 }
 
+function SpaceSection({
+  section,
+  space,
+  posts,
+  members,
+  loadError,
+}: {
+  section: SpaceSectionId;
+  space: Space;
+  posts: Post[];
+  members: SpaceMember[];
+  loadError: string;
+}) {
+  if (section === "sobre") {
+    return <AboutSection space={space} />;
+  }
+
+  if (section === "membros") {
+    return (
+      <section className="rounded-2xl border border-zinc-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-zinc-900">Membros</h2>
+        <MemberList members={members} />
+      </section>
+    );
+  }
+
+  if (section !== "stream") {
+    return (
+      <p className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-sm text-zinc-500">
+        {EMPTY_SECTION_COPY[section]}
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <PostComposer spaceId={space.id} />
+      {posts.length === 0 && !loadError ? (
+        <p className="text-sm text-zinc-500">
+          Nenhuma publicação neste espaço.
+        </p>
+      ) : (
+        posts.map((post) => <FeedCard key={post.id} post={post} />)
+      )}
+    </>
+  );
+}
+
+function AboutSection({ space }: { space: Space }) {
+  return (
+    <section className="rounded-2xl border border-zinc-200 bg-white p-6">
+      <h2 className="text-sm font-semibold text-zinc-900">Sobre</h2>
+      {space.description ? (
+        <p className="mt-3 text-sm leading-6 text-zinc-600">
+          {space.description}
+        </p>
+      ) : (
+        <p className="mt-3 text-sm text-zinc-400">Nenhuma descrição ainda.</p>
+      )}
+    </section>
+  );
+}
+
+function MemberList({ members }: { members: SpaceMember[] }) {
+  if (members.length === 0) {
+    return <p className="mt-3 text-sm text-zinc-500">Sem lista de membros.</p>;
+  }
+
+  return (
+    <ul className="mt-3 flex flex-col gap-2">
+      {members.map((membership) => (
+        <li
+          key={membership.user.id}
+          className="flex items-center gap-2 text-sm text-zinc-700"
+        >
+          <Avatar
+            name={membership.user.name}
+            imageUrl={membership.user.imageUrl}
+            size="sm"
+          />
+          <span className="min-w-0 truncate">
+            {membership.user.name}
+            {membership.role ? (
+              <span className="ml-1 text-xs text-zinc-400">
+                {membership.role}
+              </span>
+            ) : null}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}

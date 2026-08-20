@@ -9,10 +9,43 @@ export type HumhubUser = HumhubUserShort & {
   account?: {
     username?: string;
     email?: string;
+    tags?: string[];
+    language?: string;
+    time_zone?: string;
+    visibility?: number;
   };
-  profile?: {
-    image_url?: string;
-  };
+  profile?: HumhubProfile;
+};
+
+export type HumhubProfile = {
+  image_url?: string;
+  banner_url?: string;
+  title?: string;
+  about?: string;
+  firstname?: string;
+  lastname?: string;
+  gender?: string;
+  street?: string;
+  zip?: string;
+  city?: string;
+  country?: string;
+  state?: string;
+  birthday?: string;
+  phone_private?: string;
+  phone_work?: string;
+  mobile?: string;
+  fax?: string;
+  im_skype?: string;
+  im_xmpp?: string;
+  url?: string;
+  url_facebook?: string;
+  url_linkedin?: string;
+  url_xing?: string;
+  url_youtube?: string;
+  url_vimeo?: string;
+  url_flickr?: string;
+  url_myspace?: string;
+  url_twitter?: string;
 };
 
 export type HumhubSpace = {

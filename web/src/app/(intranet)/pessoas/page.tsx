@@ -37,7 +37,7 @@ export default async function PessoasPage() {
               key={person.id}
               className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4"
             >
-              <Avatar name={person.name} />
+              <Avatar name={person.name} imageUrl={person.imageUrl} />
               <p className="font-medium text-zinc-900">{person.name}</p>
             </li>
           ))}

@@ -14,11 +14,15 @@ export default async function IntranetLayout({
   const token = await requirePageToken();
 
   let displayName = "Você";
+  let imageUrl = "";
   let unseenCount = 0;
+  let isAdmin = false;
 
   try {
     const user = await app.getCurrentUser(token);
     displayName = user.name;
+    imageUrl = user.imageUrl;
+    isAdmin = user.isAdmin;
     unseenCount = await loadUnseenCount(token);
   } catch (error) {
     if (isUnauthorized(error)) {
@@ -31,7 +35,12 @@ export default async function IntranetLayout({
 
   return (
     <div className="flex min-h-full flex-col bg-zinc-100">
-      <AppHeader displayName={displayName} unseenCount={unseenCount} />
+      <AppHeader
+        displayName={displayName}
+        imageUrl={imageUrl}
+        unseenCount={unseenCount}
+        isAdmin={isAdmin}
+      />
       <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</div>
       <MobileNav />
     </div>

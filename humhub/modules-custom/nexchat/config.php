@@ -21,5 +21,7 @@ return [
     ],
     'urlManagerRules' => [
         'nexchat' => 'nexchat/index/index',
+        'nexchat/space-image/upload-image' => 'nexchat/space-image/upload-image',
+        'nexchat/space-image/upload-banner' => 'nexchat/space-image/upload-banner',
     ],
 ];

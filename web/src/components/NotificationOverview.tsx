@@ -50,7 +50,11 @@ function OverviewBody({
 function NotificationRow({ notification }: { notification: Notification }) {
   return (
     <li className="flex gap-3 border-b border-zinc-100 px-5 py-4 last:border-b-0">
-      <Avatar name={notification.originatorName ?? "Usuário"} size="sm" />
+      <Avatar
+        name={notification.originatorName ?? "Usuário"}
+        imageUrl={notification.originatorImageUrl}
+        size="sm"
+      />
       <div className="min-w-0 flex-1">
         <p className="text-sm text-zinc-800">{notification.text}</p>
         <p className="mt-1 text-xs text-zinc-400">

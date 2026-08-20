@@ -11,7 +11,7 @@ export function FeedCard({ post }: FeedCardProps) {
   return (
     <article className="rounded-2xl border border-zinc-200 bg-white p-5">
       <header className="flex items-center gap-3">
-        <Avatar name={post.authorName} />
+        <Avatar name={post.authorName} imageUrl={post.authorImageUrl} />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-zinc-900">
             {post.authorName}

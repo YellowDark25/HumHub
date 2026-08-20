@@ -12,6 +12,10 @@ export function isUnauthorized(error: unknown): boolean {
   return error instanceof ApplicationError && error.status === 401;
 }
 
+export function isForbidden(error: unknown): boolean {
+  return error instanceof ApplicationError && error.status === 403;
+}
+
 export function isNotFound(error: unknown): boolean {
   return error instanceof ApplicationError && error.status === 404;
 }

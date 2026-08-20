@@ -6,6 +6,7 @@ type HumhubRequest = {
   token?: string | null;
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
+  origin?: "rest" | "app";
 };
 
 export async function humhubRequest<T>({
@@ -13,6 +14,7 @@ export async function humhubRequest<T>({
   token,
   method = "GET",
   body,
+  origin = "rest",
 }: HumhubRequest): Promise<T> {
   const headers: Record<string, string> = {
     Accept: "application/json",
@@ -26,7 +28,8 @@ export async function humhubRequest<T>({
     headers["Content-Type"] = "application/json";
   }
 
-  const response = await fetch(`${getHumhubUrl()}/api/v1${path}`, {
+  const root = origin === "app" ? getHumhubUrl() : `${getHumhubUrl()}/api/v1`;
+  const response = await fetch(`${root}${path}`, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),

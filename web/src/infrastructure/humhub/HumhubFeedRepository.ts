@@ -45,7 +45,11 @@ export class HumhubFeedRepository implements FeedRepository {
     return mapPost(dto, space.id, space.name);
   }
 
-  async listActivities(token: string): Promise<Activity[]> {
+  async listActivities(token: string, spaceId?: number): Promise<Activity[]> {
+    if (spaceId !== undefined) {
+      return listActivitiesInSpace(token, spaceId);
+    }
+
     const page = await humhubRequest<HumhubPage<HumhubActivity>>({
       path: `/activity?limit=${ACTIVITY_PAGE_LIMIT}`,
       token,
@@ -82,6 +86,19 @@ export class HumhubFeedRepository implements FeedRepository {
 
     return mapComment(dto);
   }
+}
+
+async function listActivitiesInSpace(
+  token: string,
+  spaceId: number,
+): Promise<Activity[]> {
+  const space = await fetchSpaceDto(token, spaceId);
+  const page = await humhubRequest<HumhubPage<HumhubActivity>>({
+    path: `/activity/container/${space.contentcontainer_id}?limit=${ACTIVITY_PAGE_LIMIT}`,
+    token,
+  });
+
+  return (page.results ?? []).filter(Boolean).map(mapActivity);
 }
 
 async function listPostsInSpace(token: string, spaceId: number): Promise<Post[]> {

@@ -1,12 +1,12 @@
 import { errorMessage } from "@/application/errors";
 import { LoadError } from "@/components/LoadError";
+import { SpaceCard } from "@/components/SpaceCard";
 import type { Space } from "@/domain/Space";
 import { app } from "@/infrastructure/composition";
 import {
   redirectIfUnauthorized,
   requirePageToken,
 } from "@/infrastructure/pageSession";
-import Link from "next/link";
 
 export default async function EspacosPage() {
   const token = await requirePageToken();
@@ -34,17 +34,7 @@ export default async function EspacosPage() {
         <ul className="grid gap-4 sm:grid-cols-2">
           {spaces.map((space) => (
             <li key={space.id}>
-              <Link
-                href={`/espacos/${space.id}`}
-                className="block h-full rounded-2xl border border-zinc-200 bg-white p-5 hover:border-teal-200"
-              >
-                <p className="text-base font-semibold text-zinc-900">
-                  {space.name}
-                </p>
-                <p className="mt-2 line-clamp-3 text-sm leading-6 text-zinc-500">
-                  {space.description || "Sem descrição."}
-                </p>
-              </Link>
+              <SpaceCard space={space} />
             </li>
           ))}
         </ul>
@@ -52,3 +42,4 @@ export default async function EspacosPage() {
     </main>
   );
 }
+

@@ -4,7 +4,9 @@ export type Post = {
   id: number;
   spaceId: number | null;
   spaceName: string | null;
+  authorId: number | null;
   authorName: string;
+  authorImageUrl: string;
   message: string;
   publishedAt: string | null;
   likeCount: number;

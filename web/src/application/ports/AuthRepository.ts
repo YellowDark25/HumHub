@@ -1,3 +1,4 @@
+import type { Account, AccountUpdate } from "@/domain/Account";
 import type { User } from "@/domain/User";
 
 export type LoginResult = {
@@ -8,4 +9,17 @@ export type LoginResult = {
 export interface AuthRepository {
   login(username: string, password: string): Promise<LoginResult>;
   getCurrentUser(token: string): Promise<User>;
+  getUser(token: string, userId: number): Promise<User>;
+  getAccount(token: string): Promise<Account>;
+  updateUser(
+    token: string,
+    userId: number,
+    update: AccountUpdate,
+  ): Promise<Account>;
+  deleteAccount(token: string, userId: number): Promise<void>;
+  updateProfileImage(
+    token: string,
+    userId: number,
+    imageDataUrl: string,
+  ): Promise<User>;
 }
