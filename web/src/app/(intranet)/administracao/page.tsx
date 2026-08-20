@@ -1,6 +1,7 @@
 import { errorMessage, isForbidden } from "@/application/errors";
 import { LoadError } from "@/components/LoadError";
 import { app } from "@/infrastructure/composition";
+import { APP_NAME } from "@/shared/appName";
 import {
   redirectIfUnauthorized,
   requirePageToken,
@@ -11,7 +12,7 @@ const ADMIN_LINKS = [
   {
     href: "/pessoas",
     title: "Pessoas",
-    description: "Quem participa dos espaços da intranet.",
+    description: `Quem participa dos espaços do ${APP_NAME}.`,
   },
   {
     href: "/espacos",
@@ -38,7 +39,7 @@ export default async function AdministracaoPage() {
     <main>
       <h1 className="text-2xl font-semibold text-zinc-900">Administração</h1>
       <p className="mt-1 mb-6 text-sm text-zinc-500">
-        Gestão da intranet: pessoas, espaços e configurações do sistema.
+        Gestão do {APP_NAME}: pessoas, espaços e configurações do sistema.
       </p>
       {loadError ? (
         <LoadError message={loadError} />

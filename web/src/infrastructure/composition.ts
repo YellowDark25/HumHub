@@ -4,6 +4,7 @@ import { countUnseenNotifications } from "@/application/usecases/countUnseenNoti
 import { createSpace } from "@/application/usecases/createSpace";
 import { getConversationPage } from "@/application/usecases/getConversationPage";
 import { getCurrentUser } from "@/application/usecases/getCurrentUser";
+import { getNotificationPreferences } from "@/application/usecases/getNotificationPreferences";
 import { getProfilePage } from "@/application/usecases/getProfilePage";
 import { getSpacePage } from "@/application/usecases/getSpacePage";
 import { listComments } from "@/application/usecases/listComments";
@@ -16,6 +17,8 @@ import { login } from "@/application/usecases/login";
 import { markAllNotificationsAsSeen } from "@/application/usecases/markAllNotificationsAsSeen";
 import { publishPost } from "@/application/usecases/publishPost";
 import { requireAdminAccess } from "@/application/usecases/requireAdminAccess";
+import { resetNotificationPreferences } from "@/application/usecases/resetNotificationPreferences";
+import { saveNotificationPreferences } from "@/application/usecases/saveNotificationPreferences";
 import { sendMessage } from "@/application/usecases/sendMessage";
 import { updateAccountGeneral } from "@/application/usecases/updateAccountGeneral";
 import { updateAccountProfile } from "@/application/usecases/updateAccountProfile";
@@ -26,6 +29,7 @@ import { changeUsername } from "@/application/usecases/changeUsername";
 import { deleteAccount } from "@/application/usecases/deleteAccount";
 import { getAccount } from "@/application/usecases/getAccount";
 import type { AccountPatch, AccountProfile } from "@/domain/Account";
+import type { NotificationPreferencePatch } from "@/domain/NotificationPreferences";
 import {
   updateSpaceImage,
   type SpaceImageKind,
@@ -94,6 +98,14 @@ export const app = {
   listPeople: (token: string) => listPeople(spaces, token),
   listNotifications: (token: string, query?: NotificationListQuery) =>
     listNotifications(notifications, token, query),
+  getNotificationPreferences: (token: string) =>
+    getNotificationPreferences(notifications, token),
+  saveNotificationPreferences: (
+    token: string,
+    patch: NotificationPreferencePatch,
+  ) => saveNotificationPreferences(notifications, token, patch),
+  resetNotificationPreferences: (token: string) =>
+    resetNotificationPreferences(notifications, token),
   countUnseenNotifications: (token: string) =>
     countUnseenNotifications(notifications, token),
   markAllNotificationsAsSeen: (token: string) =>

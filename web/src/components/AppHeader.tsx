@@ -1,5 +1,6 @@
 "use client";
 
+import { APP_NAME } from "@/shared/appName";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MyAreaDropdown } from "./MyAreaDropdown";
@@ -15,6 +16,7 @@ const LINKS = [
 
 type AppHeaderProps = {
   displayName: string;
+  title: string;
   imageUrl: string;
   unseenCount: number;
   isAdmin: boolean;
@@ -22,6 +24,7 @@ type AppHeaderProps = {
 
 export function AppHeader({
   displayName,
+  title,
   imageUrl,
   unseenCount,
   isAdmin,
@@ -32,7 +35,7 @@ export function AppHeader({
     <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4">
         <Link href="/" className="text-base font-semibold tracking-tight text-zinc-900">
-          Intranet
+          {APP_NAME}
         </Link>
         <nav className="flex items-center gap-1">
           <MyAreaDropdown isAdmin={isAdmin} />
@@ -49,7 +52,12 @@ export function AppHeader({
         </nav>
         <div className="ml-auto flex items-center gap-3">
           <NotificationDropdown unseenCount={unseenCount} />
-          <UserMenu displayName={displayName} imageUrl={imageUrl} isAdmin={isAdmin} />
+          <UserMenu
+            displayName={displayName}
+            title={title}
+            imageUrl={imageUrl}
+            isAdmin={isAdmin}
+          />
         </div>
       </div>
     </header>

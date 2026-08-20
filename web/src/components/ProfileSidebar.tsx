@@ -1,5 +1,6 @@
 import type { Space } from "@/domain/Space";
 import Link from "next/link";
+import { Avatar } from "./Avatar";
 
 type ProfileSidebarProps = {
   tags: string[];
@@ -33,14 +34,21 @@ export function ProfileSidebar({ tags, spaces }: ProfileSidebarProps) {
         {spaces.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">Nenhum espaço.</p>
         ) : (
-          <ul className="mt-3 flex flex-col gap-1">
+          <ul className="mt-3 flex flex-wrap gap-2">
             {spaces.map((space) => (
               <li key={space.id}>
                 <Link
                   href={`/espacos/${space.id}`}
-                  className="block rounded-lg px-2 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+                  title={space.name}
+                  aria-label={space.name}
+                  className="block rounded-lg hover:ring-2 hover:ring-teal-200"
                 >
-                  {space.name}
+                  <Avatar
+                    name={space.name}
+                    imageUrl={space.imageUrl}
+                    size="sm"
+                    shape="square"
+                  />
                 </Link>
               </li>
             ))}

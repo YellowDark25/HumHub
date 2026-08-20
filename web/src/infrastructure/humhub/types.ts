@@ -88,6 +88,21 @@ export type HumhubNotification = {
   originator?: HumhubUserShort | null;
 };
 
+export type HumhubNotificationPreferences = {
+  spaceIds?: number[];
+  categories?: HumhubNotificationPreferenceCategory[];
+};
+
+export type HumhubNotificationPreferenceCategory = {
+  id?: string;
+  title?: string;
+  description?: string;
+  web?: boolean;
+  email?: boolean;
+  webEditable?: boolean;
+  emailEditable?: boolean;
+};
+
 export type HumhubActivity = {
   id: number;
   createdAt?: string;

@@ -26,23 +26,27 @@ export function AccountPanel({ title, description, children }: AccountPanelProps
 
 export function AccountProfileTabs({ tab }: { tab: AccountProfileTabId }) {
   return (
-    <div className="mb-4 flex flex-wrap gap-2 border-b border-zinc-200 pb-4">
+    <nav
+      aria-label="Abas do perfil"
+      className="mb-5 flex overflow-x-auto border-b border-zinc-200"
+    >
       {ACCOUNT_PROFILE_TABS.map((item) => {
         const active = item.id === tab;
         return (
           <Link
             key={item.id}
             href={accountProfileTabHref(item.id)}
-            className={`rounded-lg px-3 py-2 text-sm font-medium ${
+            aria-current={active ? "page" : undefined}
+            className={`shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap ${
               active
-                ? "bg-teal-700 text-white"
-                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                ? "border-teal-700 text-teal-800"
+                : "border-transparent text-zinc-500 hover:border-zinc-300 hover:text-zinc-800"
             }`}
           >
             {item.label}
           </Link>
         );
       })}
-    </div>
+    </nav>
   );
 }

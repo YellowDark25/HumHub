@@ -3,6 +3,7 @@ import { LoadError } from "@/components/LoadError";
 import { SpaceCard } from "@/components/SpaceCard";
 import type { Space } from "@/domain/Space";
 import { app } from "@/infrastructure/composition";
+import { APP_NAME } from "@/shared/appName";
 import {
   redirectIfUnauthorized,
   requirePageToken,
@@ -25,7 +26,7 @@ export default async function EspacosPage() {
     <main>
       <h1 className="text-2xl font-semibold text-zinc-900">Espaços</h1>
       <p className="mt-1 mb-6 text-sm text-zinc-500">
-        Marketing, desenvolvimento e os demais espaços da intranet.
+        Marketing, desenvolvimento e os demais espaços do {APP_NAME}.
       </p>
       {loadError ? <LoadError message={loadError} /> : null}
       {spaces.length === 0 && !loadError ? (

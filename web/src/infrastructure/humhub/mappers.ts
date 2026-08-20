@@ -3,6 +3,7 @@ import { emptyAccountProfile } from "@/domain/Account";
 import type { Activity } from "@/domain/Activity";
 import type { Comment } from "@/domain/Comment";
 import type { Notification } from "@/domain/Notification";
+import type { NotificationPreferences } from "@/domain/NotificationPreferences";
 import type { Post } from "@/domain/Post";
 import type { Space } from "@/domain/Space";
 import type { SpaceMember } from "@/domain/SpaceMember";
@@ -19,6 +20,8 @@ import type {
   HumhubComment,
   HumhubMembership,
   HumhubNotification,
+  HumhubNotificationPreferenceCategory,
+  HumhubNotificationPreferences,
   HumhubPost,
   HumhubProfile,
   HumhubSpace,
@@ -255,6 +258,31 @@ export function mapNotification(
     originatorImageUrl: mapUserImage(dto.originator),
     publishedAt: dto.createdAt ?? null,
     isUnseen,
+  };
+}
+
+export function mapNotificationPreferences(
+  dto: HumhubNotificationPreferences,
+): NotificationPreferences {
+  return {
+    spaceIds: (dto.spaceIds ?? []).filter((id) => Number.isFinite(id) && id > 0),
+    categories: (dto.categories ?? [])
+      .map(mapPreferenceCategory)
+      .filter((category) => category.id !== ""),
+  };
+}
+
+function mapPreferenceCategory(
+  dto: HumhubNotificationPreferenceCategory,
+): NotificationPreferences["categories"][number] {
+  return {
+    id: dto.id?.trim() ?? "",
+    title: dto.title?.trim() || "Notificação",
+    description: dto.description?.trim() ?? "",
+    web: Boolean(dto.web),
+    email: Boolean(dto.email),
+    webEditable: dto.webEditable !== false,
+    emailEditable: dto.emailEditable !== false,
   };
 }
 

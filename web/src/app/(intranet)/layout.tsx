@@ -6,7 +6,7 @@ import { requirePageToken } from "@/infrastructure/pageSession";
 import { clearAuthToken } from "@/infrastructure/session";
 import { redirect } from "next/navigation";
 
-export default async function IntranetLayout({
+export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -14,6 +14,7 @@ export default async function IntranetLayout({
   const token = await requirePageToken();
 
   let displayName = "Você";
+  let title = "";
   let imageUrl = "";
   let unseenCount = 0;
   let isAdmin = false;
@@ -21,6 +22,7 @@ export default async function IntranetLayout({
   try {
     const user = await app.getCurrentUser(token);
     displayName = user.name;
+    title = user.title;
     imageUrl = user.imageUrl;
     isAdmin = user.isAdmin;
     unseenCount = await loadUnseenCount(token);
@@ -37,6 +39,7 @@ export default async function IntranetLayout({
     <div className="flex min-h-full flex-col bg-zinc-100">
       <AppHeader
         displayName={displayName}
+        title={title}
         imageUrl={imageUrl}
         unseenCount={unseenCount}
         isAdmin={isAdmin}

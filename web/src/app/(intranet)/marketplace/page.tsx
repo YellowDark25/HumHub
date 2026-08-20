@@ -1,6 +1,7 @@
 import { errorMessage, isForbidden } from "@/application/errors";
 import { LoadError } from "@/components/LoadError";
 import { app } from "@/infrastructure/composition";
+import { APP_NAME } from "@/shared/appName";
 import {
   redirectIfUnauthorized,
   requirePageToken,
@@ -24,7 +25,7 @@ export default async function MarketplacePage() {
     <main>
       <h1 className="text-2xl font-semibold text-zinc-900">Marketplace</h1>
       <p className="mt-1 mb-6 text-sm text-zinc-500">
-        Módulos e extensões disponíveis para a intranet.
+        Módulos e extensões disponíveis para o {APP_NAME}.
       </p>
       {loadError ? (
         <LoadError message={loadError} />

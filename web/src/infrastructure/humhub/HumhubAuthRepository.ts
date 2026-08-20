@@ -29,7 +29,7 @@ export class HumhubAuthRepository implements AuthRepository {
   }
 
   async getCurrentUser(token: string): Promise<User> {
-    const user = await this.loadCurrentDto(token);
+    const user = await this.loadFullDto(token);
     return mapUser(user, await this.canAccessAdministration(token));
   }
 
@@ -43,20 +43,7 @@ export class HumhubAuthRepository implements AuthRepository {
   }
 
   async getAccount(token: string): Promise<Account> {
-    const current = await this.loadCurrentDto(token);
-    try {
-      const full = await humhubRequest<HumhubUser>({
-        path: `/user/${current.id}`,
-        token,
-      });
-      return mapAccount(mergeUserDto(current, full));
-    } catch (error) {
-      if (isUnauthorized(error)) {
-        throw error;
-      }
-
-      return mapAccount(current);
-    }
+    return mapAccount(await this.loadFullDto(token));
   }
 
   async updateUser(
@@ -101,6 +88,24 @@ export class HumhubAuthRepository implements AuthRepository {
     });
 
     return mapUser(user);
+  }
+
+  private async loadFullDto(token: string): Promise<HumhubUser> {
+    const current = await this.loadCurrentDto(token);
+
+    try {
+      const full = await humhubRequest<HumhubUser>({
+        path: `/user/${current.id}`,
+        token,
+      });
+      return mergeUserDto(current, full);
+    } catch (error) {
+      if (isUnauthorized(error)) {
+        throw error;
+      }
+
+      return current;
+    }
   }
 
   private async loadCurrentDto(token: string): Promise<HumhubUser> {

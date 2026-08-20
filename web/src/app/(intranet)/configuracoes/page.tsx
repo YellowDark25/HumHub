@@ -12,11 +12,17 @@ import { AccountSidebar } from "@/components/AccountSidebar";
 import { AccountUsernameForm } from "@/components/AccountUsernameForm";
 import { LoadError } from "@/components/LoadError";
 import type { Account } from "@/domain/Account";
+import type { NotificationPreferences } from "@/domain/NotificationPreferences";
+import type { Space } from "@/domain/Space";
 import { app } from "@/infrastructure/composition";
 import {
   redirectIfUnauthorized,
   requirePageToken,
 } from "@/infrastructure/pageSession";
+import {
+  NOTIFICATION_SETTINGS_DESCRIPTION,
+  NOTIFICATION_SETTINGS_TITLE,
+} from "@/shared/notificationSettings";
 import {
   readAccountProfileTab,
   readAccountSection,
@@ -35,10 +41,17 @@ export default async function ConfiguracoesPage({
   const tab = readAccountProfileTab(params);
 
   let account: Account | null = null;
+  let spaces: Space[] = [];
+  let preferences: NotificationPreferences | null = null;
   let loadError = "";
 
   try {
     account = await app.getAccount(token);
+    if (section === "notificacoes") {
+      const loaded = await loadNotificationPage(token);
+      spaces = loaded.spaces;
+      preferences = loaded.preferences;
+    }
   } catch (error) {
     await redirectIfUnauthorized(error);
     loadError = errorMessage(
@@ -53,7 +66,13 @@ export default async function ConfiguracoesPage({
       <main className="min-w-0">
         {loadError ? <LoadError message={loadError} /> : null}
         {account ? (
-          <AccountContent account={account} section={section} tab={tab} />
+          <AccountContent
+            account={account}
+            spaces={spaces}
+            preferences={preferences}
+            section={section}
+            tab={tab}
+          />
         ) : null}
       </main>
     </div>
@@ -62,10 +81,14 @@ export default async function ConfiguracoesPage({
 
 function AccountContent({
   account,
+  spaces,
+  preferences,
   section,
   tab,
 }: {
   account: Account;
+  spaces: Space[];
+  preferences: NotificationPreferences | null;
   section: AccountSectionId;
   tab: AccountProfileTabId;
 }) {
@@ -83,10 +106,17 @@ function AccountContent({
   if (section === "notificacoes") {
     return (
       <AccountPanel
-        title="Notificações"
-        description="Controle quais avisos você recebe na área de trabalho e por e-mail."
+        title={NOTIFICATION_SETTINGS_TITLE}
+        description={NOTIFICATION_SETTINGS_DESCRIPTION}
       >
-        <AccountNotificationSettings />
+        {preferences ? (
+          <AccountNotificationSettings
+            spaces={spaces}
+            preferences={preferences}
+          />
+        ) : (
+          <LoadError message="Não foi possível carregar as configurações de notificação." />
+        )}
       </AccountPanel>
     );
   }
@@ -139,4 +169,13 @@ function ProfileTab({
   }
 
   return <AccountProfileForm account={account} />;
+}
+
+async function loadNotificationPage(token: string) {
+  const [spaces, preferences] = await Promise.all([
+    app.listSpaces(token),
+    app.getNotificationPreferences(token),
+  ]);
+
+  return { spaces, preferences };
 }

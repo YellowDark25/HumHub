@@ -116,14 +116,3 @@ export const MAIL_SUMMARY_ACTIVITIES = [
   "Novo membro no espaço",
   "Seguindo",
 ] as const;
-
-export const NOTIFICATION_SETTING_CATEGORIES = [
-  "Curtidas",
-  "Comentários",
-  "Menções",
-  "Seguindo",
-  "Novo conteúdo",
-  "Associação a espaços",
-  "Conversa",
-  "Administrativo",
-] as const;

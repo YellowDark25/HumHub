@@ -1,3 +1,4 @@
+import { APP_NAME } from "@/shared/appName";
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
@@ -8,12 +9,12 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Intranet",
-  description: "Intranet mobile-first ligada ao HumHub",
-  applicationName: "Intranet",
+  title: APP_NAME,
+  description: `${APP_NAME} mobile-first ligado ao HumHub`,
+  applicationName: APP_NAME,
   appleWebApp: {
     capable: true,
-    title: "Intranet",
+    title: APP_NAME,
     statusBarStyle: "default",
   },
 };

@@ -23,11 +23,12 @@ const ADMIN_LINKS = [
 
 type UserMenuProps = {
   displayName: string;
+  title: string;
   imageUrl: string;
   isAdmin: boolean;
 };
 
-export function UserMenu({ displayName, imageUrl, isAdmin }: UserMenuProps) {
+export function UserMenu({ displayName, title, imageUrl, isAdmin }: UserMenuProps) {
   const pathname = usePathname();
   const rootRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -65,9 +66,14 @@ export function UserMenu({ displayName, imageUrl, isAdmin }: UserMenuProps) {
         aria-expanded={isOpen}
         aria-haspopup="menu"
         aria-label={`Conta de ${displayName}`}
-        className="flex max-w-52 items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100"
+        className="flex max-w-64 items-center gap-2 rounded-lg px-2 py-1 text-left text-zinc-700 hover:bg-zinc-100"
       >
-        <span className="truncate">{displayName}</span>
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-medium">{displayName}</span>
+          {title ? (
+            <span className="block truncate text-xs text-zinc-500">{title}</span>
+          ) : null}
+        </span>
         <Avatar name={displayName} imageUrl={imageUrl} size="sm" />
         <ChevronIcon />
       </button>

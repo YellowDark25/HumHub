@@ -3,14 +3,22 @@ import type {
   NotificationRepository,
 } from "@/application/ports/NotificationRepository";
 import type { Notification } from "@/domain/Notification";
+import type {
+  NotificationPreferencePatch,
+  NotificationPreferences,
+} from "@/domain/NotificationPreferences";
 import { humhubRequest } from "./client";
 import {
   HUMHUB_MAX_PAGE_LIMIT,
   NOTIFICATION_PAGE_LIMIT,
   UNSEEN_NOTIFICATION_LIMIT,
 } from "./constants";
-import { mapNotification } from "./mappers";
-import type { HumhubNotification, HumhubPage } from "./types";
+import { mapNotification, mapNotificationPreferences } from "./mappers";
+import type {
+  HumhubNotification,
+  HumhubNotificationPreferences,
+  HumhubPage,
+} from "./types";
 
 export class HumhubNotificationRepository implements NotificationRepository {
   async list(
@@ -48,6 +56,42 @@ export class HumhubNotificationRepository implements NotificationRepository {
       method: "PATCH",
       token,
     });
+  }
+
+  async getPreferences(token: string): Promise<NotificationPreferences> {
+    const dto = await humhubRequest<HumhubNotificationPreferences>({
+      path: "/nexchat/notification-settings",
+      token,
+      origin: "app",
+    });
+
+    return mapNotificationPreferences(dto);
+  }
+
+  async savePreferences(
+    token: string,
+    patch: NotificationPreferencePatch,
+  ): Promise<NotificationPreferences> {
+    const dto = await humhubRequest<HumhubNotificationPreferences>({
+      path: "/nexchat/notification-settings/save",
+      method: "POST",
+      token,
+      origin: "app",
+      body: patch,
+    });
+
+    return mapNotificationPreferences(dto);
+  }
+
+  async resetPreferences(token: string): Promise<NotificationPreferences> {
+    const dto = await humhubRequest<HumhubNotificationPreferences>({
+      path: "/nexchat/notification-settings/reset",
+      method: "POST",
+      token,
+      origin: "app",
+    });
+
+    return mapNotificationPreferences(dto);
   }
 }
 

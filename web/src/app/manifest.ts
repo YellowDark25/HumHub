@@ -1,10 +1,11 @@
+import { APP_NAME } from "@/shared/appName";
 import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Intranet",
-    short_name: "Intranet",
-    description: "App mobile da intranet HumHub",
+    name: APP_NAME,
+    short_name: APP_NAME,
+    description: `App mobile do ${APP_NAME}`,
     start_url: "/",
     display: "standalone",
     background_color: "#fafafa",

@@ -3,6 +3,7 @@ import { Avatar } from "@/components/Avatar";
 import { LoadError } from "@/components/LoadError";
 import type { User } from "@/domain/User";
 import { app } from "@/infrastructure/composition";
+import { APP_NAME } from "@/shared/appName";
 import {
   redirectIfUnauthorized,
   requirePageToken,
@@ -25,7 +26,7 @@ export default async function PessoasPage() {
     <main>
       <h1 className="text-2xl font-semibold text-zinc-900">Pessoas</h1>
       <p className="mt-1 mb-6 text-sm text-zinc-500">
-        Quem participa dos espaços da intranet.
+        Quem participa dos espaços do {APP_NAME}.
       </p>
       {loadError ? <LoadError message={loadError} /> : null}
       {people.length === 0 && !loadError ? (
