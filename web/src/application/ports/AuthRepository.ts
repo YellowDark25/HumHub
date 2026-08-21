@@ -23,4 +23,5 @@ export interface AuthRepository {
     userId: number,
     imageDataUrl: string,
   ): Promise<User>;
+  changeOwnPassword(token: string, newPassword: string): Promise<void>;
 }

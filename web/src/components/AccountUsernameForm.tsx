@@ -50,6 +50,7 @@ export function AccountUsernameForm({ account }: { account: Account }) {
         name="username"
         value={username}
         required
+        hint="Identificador de login, sem espaços. Ex.: joao.silva"
         onChange={setUsername}
       />
       <AccountFeedback error={error} success={success} />

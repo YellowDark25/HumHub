@@ -34,3 +34,16 @@ export type AdminGroupMember = {
   imageUrl: string;
   isManager: boolean;
 };
+
+export type AdminGroupPermissionState = "default" | "allow" | "deny";
+
+export type AdminGroupPermission = {
+  id: string;
+  moduleId: string;
+  moduleName: string;
+  title: string;
+  description: string;
+  state: AdminGroupPermissionState;
+  defaultLabel: string;
+  canChange: boolean;
+};

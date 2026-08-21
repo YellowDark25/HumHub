@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-type GroupSubnavId = "edit" | "members";
+type GroupSubnavId = "edit" | "permissions" | "members";
 
 type AdminGroupSubnavProps = {
   groupId: number;
@@ -16,7 +16,12 @@ export function AdminGroupSubnav({ groupId, active }: AdminGroupSubnavProps) {
       <SubnavLink
         href={`/administracao/usuarios/grupos/${groupId}`}
         active={active === "edit"}
-        label="Editar"
+        label="Configurações"
+      />
+      <SubnavLink
+        href={`/administracao/usuarios/grupos/${groupId}/permissoes`}
+        active={active === "permissions"}
+        label="Permissões"
       />
       <SubnavLink
         href={`/administracao/usuarios/grupos/${groupId}/membros`}

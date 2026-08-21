@@ -1,10 +1,12 @@
 import { AppContent } from "@/components/AppContent";
 import { AppHeader } from "@/components/AppHeader";
 import { MobileNav } from "@/components/MobileNav";
-import { isUnauthorized } from "@/application/errors";
+import { isForbidden, isUnauthorized } from "@/application/errors";
 import { app } from "@/infrastructure/composition";
-import { requirePageToken } from "@/infrastructure/pageSession";
-import { clearAuthToken } from "@/infrastructure/session";
+import {
+  redirectToClearSession,
+  requirePageToken,
+} from "@/infrastructure/pageSession";
 import { redirect } from "next/navigation";
 
 export default async function AppLayout({
@@ -30,16 +32,19 @@ export default async function AppLayout({
     isAdmin = user.isAdmin;
     unseenCount = await loadUnseenCount(token);
   } catch (error) {
+    if (isForbidden(error)) {
+      redirect("/trocar-senha");
+    }
+
     if (isUnauthorized(error)) {
-      await clearAuthToken();
-      redirect("/login");
+      redirectToClearSession();
     }
 
     throw error;
   }
 
   return (
-    <div className="flex h-full flex-col bg-zinc-100">
+    <div className="flex min-h-dvh flex-col bg-zinc-100">
       <AppHeader
         displayName={displayName}
         title={title}

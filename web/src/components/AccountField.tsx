@@ -8,6 +8,7 @@ type AccountFieldProps = {
   required?: boolean;
   type?: "text" | "password" | "email" | "date";
   autoComplete?: string;
+  hint?: string;
   onChange: (value: string) => void;
 };
 
@@ -18,6 +19,7 @@ export function AccountField({
   required,
   type = "text",
   autoComplete,
+  hint,
   onChange,
 }: AccountFieldProps) {
   return (
@@ -33,6 +35,9 @@ export function AccountField({
         onChange={(event) => onChange(event.target.value)}
         className={INPUT_CLASS}
       />
+      {hint ? (
+        <span className="text-xs font-normal text-zinc-500">{hint}</span>
+      ) : null}
     </label>
   );
 }

@@ -24,6 +24,17 @@ class Module extends \humhub\components\Module
         ];
     }
 
+    public function getPermissions($contentContainer = null)
+    {
+        if ($contentContainer) {
+            return [];
+        }
+
+        return [
+            new permissions\EditOtherUsers(),
+        ];
+    }
+
     public const MAX_UPLOAD_SIZE = 26214400;
 
     public const ALLOWED_EXTENSIONS = [

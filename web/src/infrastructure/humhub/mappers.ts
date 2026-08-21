@@ -1,7 +1,14 @@
 import type { Account, AccountPatch, AccountProfile } from "@/domain/Account";
-import type { AdminGroup, AdminGroupMember } from "@/domain/AdminGroup";
+import type { AdminGroup, AdminGroupMember, AdminGroupPermission, AdminGroupPermissionState } from "@/domain/AdminGroup";
 import type { AdminInformation } from "@/domain/AdminInformation";
 import type { AdminModule } from "@/domain/AdminModule";
+import type {
+  AdminProfileCatalog,
+  AdminProfileCategory,
+  AdminProfileField,
+  AdminProfileFieldKind,
+  AdminProfileFieldType,
+} from "@/domain/AdminProfile";
 import type {
   AdminSelectOption,
   AdminSettings,
@@ -47,9 +54,15 @@ import type {
   HumhubAdminGroupMember,
   HumhubAdminGroups,
   HumhubAdminGroupMembers,
+  HumhubAdminGroupPermission,
+  HumhubAdminGroupPermissions,
   HumhubAdminInformation,
   HumhubAdminModule,
   HumhubAdminModules,
+  HumhubAdminProfileCatalog,
+  HumhubAdminProfileCategory,
+  HumhubAdminProfileField,
+  HumhubAdminProfileFieldType,
   HumhubAdminSettings,
   HumhubBlockedUser,
   HumhubComment,
@@ -71,8 +84,14 @@ export function mapUser(
   dto: HumhubUser | HumhubUserShort,
   isAdmin = false,
 ): User {
-  const account = "account" in dto ? dto.account : undefined;
-  const profile = "profile" in dto ? dto.profile : undefined;
+  const account =
+    dto && typeof dto === "object" && "account" in dto
+      ? dto.account
+      : undefined;
+  const profile =
+    dto && typeof dto === "object" && "profile" in dto
+      ? dto.profile
+      : undefined;
 
   return {
     id: dto.id,
@@ -484,6 +503,125 @@ function mapAdminGroupMember(dto: HumhubAdminGroupMember): AdminGroupMember {
     imageUrl: text(dto.imageUrl),
     isManager: Boolean(dto.isManager),
   };
+}
+
+export function mapAdminGroupPermissions(
+  dto: HumhubAdminGroupPermissions,
+): AdminGroupPermission[] {
+  return (dto.permissions ?? [])
+    .map(mapAdminGroupPermission)
+    .filter((permission) => permission.id !== "" && permission.moduleId !== "");
+}
+
+function mapAdminGroupPermission(
+  dto: HumhubAdminGroupPermission,
+): AdminGroupPermission {
+  return {
+    id: text(dto.id),
+    moduleId: text(dto.moduleId),
+    moduleName: text(dto.moduleName) || "Módulo",
+    title: text(dto.title) || "Permissão",
+    description: text(dto.description),
+    state: readPermissionState(dto.state),
+    defaultLabel: text(dto.defaultLabel) || "Padrão",
+    canChange: Boolean(dto.canChange),
+  };
+}
+
+function readPermissionState(value?: string): AdminGroupPermissionState {
+  if (value === "allow" || value === "deny") {
+    return value;
+  }
+
+  return "default";
+}
+
+export function mapAdminProfileCatalog(
+  dto: HumhubAdminProfileCatalog,
+): AdminProfileCatalog {
+  return {
+    categories: (dto.categories ?? [])
+      .map(mapAdminProfileCategory)
+      .filter((category) => category.id > 0),
+    fieldTypes: (dto.fieldTypes ?? [])
+      .map(mapAdminProfileFieldType)
+      .filter((type) => type.id !== "other"),
+  };
+}
+
+export function mapAdminProfileCategory(
+  dto: HumhubAdminProfileCategory,
+): AdminProfileCategory {
+  return {
+    id: dto.id ?? 0,
+    title: text(dto.title) || "Categoria",
+    description: text(dto.description),
+    sortOrder: dto.sortOrder ?? 100,
+    isSystem: Boolean(dto.isSystem),
+    canDelete: Boolean(dto.canDelete),
+    fields: (dto.fields ?? [])
+      .map(mapAdminProfileField)
+      .filter((field) => field.id > 0),
+  };
+}
+
+export function mapAdminProfileField(
+  dto: HumhubAdminProfileField,
+): AdminProfileField {
+  return {
+    id: dto.id ?? 0,
+    categoryId: dto.categoryId ?? 0,
+    internalName: text(dto.internalName),
+    title: text(dto.title) || "Campo",
+    description: text(dto.description),
+    kind: readProfileFieldKind(dto.kind),
+    kindLabel: text(dto.kindLabel) || "Campo",
+    sortOrder: dto.sortOrder ?? 100,
+    isRequired: Boolean(dto.isRequired),
+    isVisible: Boolean(dto.isVisible),
+    isEditable: Boolean(dto.isEditable),
+    isSearchable: Boolean(dto.isSearchable),
+    showAtRegistration: Boolean(dto.showAtRegistration),
+    isSystem: Boolean(dto.isSystem),
+    isVirtual: Boolean(dto.isVirtual),
+    canDelete: Boolean(dto.canDelete),
+  };
+}
+
+function mapAdminProfileFieldType(
+  dto: HumhubAdminProfileFieldType,
+): AdminProfileFieldType {
+  return {
+    id: readProfileFieldKind(dto.id),
+    label: text(dto.label) || "Campo",
+  };
+}
+
+const PROFILE_FIELD_KINDS = new Set<AdminProfileFieldKind>([
+  "text",
+  "textarea",
+  "number",
+  "select",
+  "date",
+  "datetime",
+  "birthday",
+  "country",
+  "markdown",
+  "checkbox",
+  "checkboxList",
+  "userEmail",
+  "userName",
+  "userMemberSince",
+  "userLastLogin",
+  "userGroups",
+  "template",
+  "other",
+]);
+
+function readProfileFieldKind(value?: string): AdminProfileFieldKind {
+  return PROFILE_FIELD_KINDS.has(value as AdminProfileFieldKind)
+    ? (value as AdminProfileFieldKind)
+    : "other";
 }
 
 export function mapAdminModules(dto: HumhubAdminModules): AdminModule[] {

@@ -1,5 +1,7 @@
 import { ApplicationError } from "@/application/errors";
+import { MUST_CHANGE_PASSWORD_MESSAGE } from "@/shared/mustChangePassword";
 import { getHumhubUrl } from "../config";
+import { readHumhubErrorMessage } from "./errors";
 
 type HumhubRequest = {
   path: string;
@@ -34,30 +36,42 @@ export async function humhubRequest<T>({
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
+    redirect: "manual",
   });
 
-  const payload = (await response.json().catch(() => null)) as
-    | T
-    | { message?: string }
-    | null;
+  if (response.status >= 300 && response.status < 400) {
+    throw redirectError(response);
+  }
+
+  const isJson = (response.headers.get("content-type") ?? "").includes(
+    "application/json",
+  );
+  const payload = isJson
+    ? ((await response.json().catch(() => null)) as T | { message?: string } | null)
+    : null;
 
   if (!response.ok) {
-    throw new ApplicationError(readErrorMessage(payload, response.status), response.status);
+    throw new ApplicationError(
+      readHumhubErrorMessage(payload, response.status),
+      response.status,
+    );
+  }
+
+  if (!payload || typeof payload !== "object") {
+    throw new ApplicationError(
+      "O HumHub não devolveu dados válidos da sessão.",
+      502,
+    );
   }
 
   return payload as T;
 }
 
-function readErrorMessage(payload: unknown, status: number): string {
-  if (
-    payload &&
-    typeof payload === "object" &&
-    "message" in payload &&
-    typeof payload.message === "string" &&
-    payload.message
-  ) {
-    return payload.message;
+function redirectError(response: Response): ApplicationError {
+  const location = response.headers.get("location") ?? "";
+  if (location.includes("must-change-password")) {
+    return new ApplicationError(MUST_CHANGE_PASSWORD_MESSAGE, 403);
   }
 
-  return `HumHub retornou ${status}`;
+  return new ApplicationError("O HumHub recusou a sessão.", 502);
 }

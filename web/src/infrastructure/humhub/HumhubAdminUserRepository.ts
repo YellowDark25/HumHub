@@ -69,10 +69,12 @@ export class HumhubAdminUserRepository implements AdminUserRepository {
     input: UpdateAdminUserInput,
   ): Promise<AdminUser> {
     const dto = await humhubRequest<HumhubUser>({
-      path: `/user/${userId}`,
+      path: "/nexchat/account-profile/save",
       token,
-      method: "PUT",
+      origin: "app",
+      method: "POST",
       body: {
+        userId,
         account: {
           username: input.username,
           email: input.email,
@@ -82,9 +84,7 @@ export class HumhubAdminUserRepository implements AdminUserRepository {
           lastname: input.lastName,
           title: input.title,
         },
-        ...(input.password
-          ? { password: { newPassword: input.password } }
-          : {}),
+        ...(input.password ? { password: input.password } : {}),
       },
     });
 

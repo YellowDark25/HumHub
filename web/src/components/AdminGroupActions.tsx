@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
 const MENU_WIDTH = 176;
 const MENU_GAP = 4;
 const VIEWPORT_PAD = 8;
-const FALLBACK_MENU_HEIGHT = 160;
+const FALLBACK_MENU_HEIGHT = 200;
 
 type AdminGroupActionsProps = {
   group: AdminGroup;
@@ -118,7 +118,15 @@ export function AdminGroupActions({
                 className={ITEM_CLASS}
                 onClick={() => setIsOpen(false)}
               >
-                Editar
+                Configurações
+              </Link>
+              <Link
+                role="menuitem"
+                href={`/administracao/usuarios/grupos/${group.id}/permissoes`}
+                className={ITEM_CLASS}
+                onClick={() => setIsOpen(false)}
+              >
+                Permissões
               </Link>
               <Link
                 role="menuitem"

@@ -33,7 +33,7 @@ export default async function AdministracaoLayout({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
+    <div className="grid items-start gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
       <AdminSidebar />
       <div className="min-w-0">{children}</div>
     </div>

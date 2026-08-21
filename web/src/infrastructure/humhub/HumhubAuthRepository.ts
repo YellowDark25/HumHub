@@ -1,7 +1,12 @@
-import { ApplicationError, isUnauthorized } from "@/application/errors";
+import {
+  ApplicationError,
+  isForbidden,
+  isUnauthorized,
+} from "@/application/errors";
 import type { AuthRepository, LoginResult } from "@/application/ports/AuthRepository";
 import type { Account, AccountUpdate } from "@/domain/Account";
 import type { User } from "@/domain/User";
+import { MUST_CHANGE_PASSWORD_MESSAGE } from "@/shared/mustChangePassword";
 import { resolveTokenMaxAge } from "../config";
 import { humhubRequest } from "./client";
 import { mapAccount, mapUser, toHumhubAccount, toHumhubProfile } from "./mappers";
@@ -74,15 +79,15 @@ export class HumhubAuthRepository implements AuthRepository {
     update: AccountUpdate,
   ): Promise<Account> {
     const user = await humhubRequest<HumhubUser>({
-      path: `/user/${userId}`,
-      method: "PUT",
+      path: "/nexchat/account-profile/save",
+      method: "POST",
       token,
+      origin: "app",
       body: {
+        userId,
         ...(update.profile ? { profile: toHumhubProfile(update.profile) } : {}),
         ...(update.account ? { account: toHumhubAccount(update.account) } : {}),
-        ...(update.password
-          ? { password: { newPassword: update.password } }
-          : {}),
+        ...(update.password ? { password: update.password } : {}),
       },
     });
 
@@ -103,13 +108,27 @@ export class HumhubAuthRepository implements AuthRepository {
     imageDataUrl: string,
   ): Promise<User> {
     const user = await humhubRequest<HumhubUser>({
-      path: `/user/${userId}`,
-      method: "PUT",
+      path: "/nexchat/account-profile/image",
+      method: "POST",
       token,
-      body: { profile: { image: imageDataUrl } },
+      origin: "app",
+      body: { userId, image: imageDataUrl },
     });
 
     return mapUser(user);
+  }
+
+  async changeOwnPassword(token: string, newPassword: string): Promise<void> {
+    await humhubRequest<unknown>({
+      path: "/nexchat/account-password/change",
+      token,
+      method: "POST",
+      origin: "app",
+      body: {
+        newPassword,
+        newPasswordConfirm: newPassword,
+      },
+    });
   }
 
   private async loadFullDto(token: string): Promise<HumhubUser> {
@@ -131,10 +150,23 @@ export class HumhubAuthRepository implements AuthRepository {
   }
 
   private async loadCurrentDto(token: string): Promise<HumhubUser> {
-    return humhubRequest<HumhubUser>({
-      path: "/auth/current",
-      token,
-    });
+    try {
+      const current = await humhubRequest<HumhubUser>({
+        path: "/auth/current",
+        token,
+      });
+      if (!current.id) {
+        throw new ApplicationError(MUST_CHANGE_PASSWORD_MESSAGE, 403);
+      }
+
+      return current;
+    } catch (error) {
+      if (isForbidden(error)) {
+        throw new ApplicationError(MUST_CHANGE_PASSWORD_MESSAGE, 403);
+      }
+
+      throw error;
+    }
   }
 
   private async canAccessAdministration(token: string): Promise<boolean> {

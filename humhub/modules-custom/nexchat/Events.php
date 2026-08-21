@@ -3,12 +3,35 @@
 namespace humhub\modules\nexchat;
 
 use humhub\helpers\ControllerHelper;
+use humhub\modules\nexchat\components\BearerLogin;
+use humhub\modules\nexchat\components\NexchatPasswordGate;
 use humhub\modules\ui\menu\MenuLink;
 use humhub\widgets\TopMenu;
 use Yii;
 
 class Events
 {
+    public static function onBeforeRequest(): void
+    {
+        $path = Yii::$app->request->pathInfo;
+        if (!str_starts_with(ltrim($path, '/'), 'nexchat')) {
+            return;
+        }
+
+        BearerLogin::authenticate();
+    }
+
+    public static function onGateInit($event): void
+    {
+        $gateClass = 'humhub\\modules\\user\\components\\MustChangePasswordGate';
+        if (!class_exists($gateClass) || !isset($event->manager)) {
+            return;
+        }
+
+        $event->manager->deregister('must-change-password');
+        $event->manager->register(new NexchatPasswordGate());
+    }
+
     public static function onTopMenuInit($event)
     {
         if (Yii::$app->user->isGuest) {

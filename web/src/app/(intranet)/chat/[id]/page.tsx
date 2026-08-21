@@ -2,6 +2,7 @@ import { errorMessage, isNotFound } from "@/application/errors";
 import { ChatComposer } from "@/components/ChatComposer";
 import { ChatMessageHistory } from "@/components/ChatMessageHistory";
 import { ChatShell } from "@/components/ChatShell";
+import { ChatVoiceRoom } from "@/components/ChatVoiceRoom";
 import { LoadError } from "@/components/LoadError";
 import type { ChatMessage } from "@/domain/ChatMessage";
 import type { ChatSidebarSection, ChatWorkspace } from "@/domain/ChatWorkspace";
@@ -82,36 +83,46 @@ export default async function ChatViewPage({
       activeConversationId={conversationId}
       hideNavigationOnMobile
     >
-      <section className="flex min-h-0 flex-1 flex-col">
-        <header className="border-b border-zinc-200 px-4 py-3">
-          <Link
-            href={chatWorkspaceHref(currentWorkspace.id)}
-            className="text-xs font-medium text-teal-700 lg:hidden"
-          >
-            Voltar
-          </Link>
-          <h1 className="text-base font-semibold text-zinc-900">
-            {current.kind === "channel" ? "#" : "@"} {current.name}
-          </h1>
-        </header>
-        <div className="flex flex-1 flex-col justify-end overflow-y-auto">
-          {loadError ? (
-            <div className="p-4">
-              <LoadError message={loadError} />
-            </div>
-          ) : (
-            <ChatMessageHistory messages={messages} />
-          )}
-        </div>
-        <ChatComposer
+      {current.channelType === "voice" && currentUser ? (
+        <ChatVoiceRoom
           conversationId={conversationId}
-          placeholder={
-            current.kind === "channel"
-              ? `Conversar em #${current.name}`
-              : `Conversar em @${current.name}`
-          }
+          channelName={current.name}
+          workspaceId={currentWorkspace.id}
+          workspaceName={currentWorkspace.name}
+          currentUser={currentUser}
         />
-      </section>
+      ) : (
+        <section className="flex min-h-0 flex-1 flex-col">
+          <header className="border-b border-zinc-200 px-4 py-3">
+            <Link
+              href={chatWorkspaceHref(currentWorkspace.id)}
+              className="text-xs font-medium text-teal-700 lg:hidden"
+            >
+              Voltar
+            </Link>
+            <h1 className="text-base font-semibold text-zinc-900">
+              {current.kind === "channel" ? "#" : "@"} {current.name}
+            </h1>
+          </header>
+          <div className="flex flex-1 flex-col justify-end overflow-y-auto">
+            {loadError ? (
+              <div className="p-4">
+                <LoadError message={loadError} />
+              </div>
+            ) : (
+              <ChatMessageHistory messages={messages} />
+            )}
+          </div>
+          <ChatComposer
+            conversationId={conversationId}
+            placeholder={
+              current.kind === "channel"
+                ? `Conversar em #${current.name}`
+                : `Conversar em @${current.name}`
+            }
+          />
+        </section>
+      )}
     </ChatShell>
   );
 }

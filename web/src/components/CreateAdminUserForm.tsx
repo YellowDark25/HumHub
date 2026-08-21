@@ -72,6 +72,7 @@ export function CreateAdminUserForm() {
         name="username"
         value={username}
         required
+        hint="Identificador de login, sem espaços. Ex.: joao.silva"
         onChange={setUsername}
       />
       <AccountField

@@ -51,7 +51,7 @@ export default async function MembrosDoGrupoPage({
         Voltar para Grupos
       </Link>
       <h1 className="mt-3 text-2xl font-semibold text-zinc-900">
-        {group ? `Membros: ${group.name}` : "Membros do grupo"}
+        {group ? `Gerenciar grupo: ${group.name}` : "Gerenciar grupo"}
       </h1>
       <p className="mt-1 mb-6 text-sm text-zinc-500">
         Adicione ou remova pessoas deste grupo. Todo usuário precisa pertencer

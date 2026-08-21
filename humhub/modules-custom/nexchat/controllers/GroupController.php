@@ -3,6 +3,7 @@
 namespace humhub\modules\nexchat\controllers;
 
 use humhub\components\Controller;
+use humhub\libs\BasePermission;
 use humhub\modules\nexchat\components\BearerLogin;
 use humhub\modules\user\models\Group;
 use humhub\modules\user\models\GroupUser;
@@ -188,6 +189,50 @@ class GroupController extends Controller
         return ['members' => $this->membersOf($group)];
     }
 
+    public function actionPermissions()
+    {
+        $group = $this->loadGroup();
+        if (!($group instanceof Group)) {
+            return $group;
+        }
+
+        return ['permissions' => $this->permissionsOf($group)];
+    }
+
+    public function actionSetPermission()
+    {
+        $group = $this->loadGroup();
+        if (!($group instanceof Group)) {
+            return $group;
+        }
+
+        $body = Yii::$app->request->getBodyParams();
+        $permissionId = trim((string) ($body['permissionId'] ?? ''));
+        $moduleId = trim((string) ($body['moduleId'] ?? ''));
+        $state = trim((string) ($body['state'] ?? ''));
+        if ($permissionId === '' || $moduleId === '') {
+            return $this->fail(400, 'Informe a permissão.');
+        }
+
+        if (!in_array($state, ['default', 'allow', 'deny'], true)) {
+            return $this->fail(400, 'Estado de permissão inválido.');
+        }
+
+        $manager = Yii::$app->user->permissionManager;
+        $permission = $manager->getById($permissionId, $moduleId);
+        if ($permission === null) {
+            return $this->fail(404, 'Permissão não encontrada.');
+        }
+
+        if (!$permission->canChangeState($group->id)) {
+            return $this->fail(400, 'Esta permissão não pode ser alterada neste grupo.');
+        }
+
+        $manager->setGroupState($group->id, $permission, $this->fromState($state));
+
+        return ['permissions' => $this->permissionsOf($group)];
+    }
+
     private function loadGroup()
     {
         $denied = $this->requireAdmin();
@@ -245,6 +290,59 @@ class GroupController extends Controller
         }
 
         return $members;
+    }
+
+    private function permissionsOf(Group $group): array
+    {
+        $manager = Yii::$app->user->permissionManager;
+        $permissions = [];
+        foreach ($manager->getPermissions() as $permission) {
+            if (!$permission instanceof BasePermission) {
+                continue;
+            }
+
+            $module = Yii::$app->getModule($permission->getModuleId());
+            $defaultState = $permission->getDefaultState($group->id);
+            $permissions[] = [
+                'id' => (string) $permission->getId(),
+                'moduleId' => (string) $permission->getModuleId(),
+                'moduleName' => $module ? (string) $module->getName() : (string) $permission->getModuleId(),
+                'title' => (string) $permission->getTitle(),
+                'description' => (string) $permission->getDescription(),
+                'state' => $this->toState($manager->getGroupState($group->id, $permission, false)),
+                'defaultLabel' => 'Padrão — ' . $this->stateLabel($defaultState),
+                'canChange' => $permission->canChangeState($group->id),
+            ];
+        }
+
+        return $permissions;
+    }
+
+    private function toState($state): string
+    {
+        if ($state === BasePermission::STATE_ALLOW || $state === 1 || $state === '1') {
+            return 'allow';
+        }
+
+        if ($state === BasePermission::STATE_DENY || $state === 0 || $state === '0') {
+            return 'deny';
+        }
+
+        return 'default';
+    }
+
+    private function fromState(string $state)
+    {
+        return match ($state) {
+            'allow' => BasePermission::STATE_ALLOW,
+            'deny' => BasePermission::STATE_DENY,
+            default => BasePermission::STATE_DEFAULT,
+        };
+    }
+
+    private function stateLabel($state): string
+    {
+        return $this->toState($state) === 'allow' ? 'Permitir' : 'Negar';
     }
 
     private function imageUrl(User $user): string

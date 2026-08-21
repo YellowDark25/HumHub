@@ -219,6 +219,21 @@ export type HumhubAdminGroupMembers = {
   members?: HumhubAdminGroupMember[];
 };
 
+export type HumhubAdminGroupPermission = {
+  id?: string;
+  moduleId?: string;
+  moduleName?: string;
+  title?: string;
+  description?: string;
+  state?: string;
+  defaultLabel?: string;
+  canChange?: boolean;
+};
+
+export type HumhubAdminGroupPermissions = {
+  permissions?: HumhubAdminGroupPermission[];
+};
+
 export type HumhubAdminModule = {
   id?: string;
   name?: string;
@@ -263,4 +278,43 @@ export type HumhubAdminSettings = {
   maintenanceMode?: boolean;
   languages?: HumhubSelectOption[];
   timeZones?: HumhubSelectOption[];
+};
+
+export type HumhubAdminProfileFieldType = {
+  id?: string;
+  label?: string;
+};
+
+export type HumhubAdminProfileField = {
+  id?: number;
+  categoryId?: number;
+  internalName?: string;
+  title?: string;
+  description?: string;
+  kind?: string;
+  kindLabel?: string;
+  sortOrder?: number;
+  isRequired?: boolean;
+  isVisible?: boolean;
+  isEditable?: boolean;
+  isSearchable?: boolean;
+  showAtRegistration?: boolean;
+  isSystem?: boolean;
+  isVirtual?: boolean;
+  canDelete?: boolean;
+};
+
+export type HumhubAdminProfileCategory = {
+  id?: number;
+  title?: string;
+  description?: string;
+  sortOrder?: number;
+  isSystem?: boolean;
+  canDelete?: boolean;
+  fields?: HumhubAdminProfileField[];
+};
+
+export type HumhubAdminProfileCatalog = {
+  categories?: HumhubAdminProfileCategory[];
+  fieldTypes?: HumhubAdminProfileFieldType[];
 };

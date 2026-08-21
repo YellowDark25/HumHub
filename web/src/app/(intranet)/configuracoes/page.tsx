@@ -81,7 +81,7 @@ export default async function ConfiguracoesPage({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <div className="grid items-start gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
       <AccountSidebar section={section} />
       <main className="min-w-0">
         {loadError ? <LoadError message={loadError} /> : null}

@@ -7,6 +7,7 @@ import { chatConversationHref } from "@/shared/chatWorkspace";
 import Link from "next/link";
 import { ChatChannelSettings } from "./ChatChannelSettings";
 import { ChatInviteFriendsModal } from "./ChatInviteFriendsModal";
+import { ChatVoiceOccupants } from "./ChatVoiceOccupancy";
 
 type ChatChannelItemProps = {
   item: ChatSidebarItem;
@@ -35,64 +36,69 @@ export function ChatChannelItem({
   }
 
   return (
-    <div
-      className={`group flex items-center rounded-lg ${
-        isActive ? "bg-zinc-200" : "hover:bg-zinc-100"
-      }`}
-    >
-      <Link
-        href={chatConversationHref(item.conversationId, workspaceId)}
-        className={`flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-sm ${
-          isActive ? "font-medium text-zinc-900" : "text-zinc-600 group-hover:text-zinc-900"
+    <div>
+      <div
+        className={`group flex items-center rounded-lg ${
+          isActive ? "bg-zinc-200" : "hover:bg-zinc-100"
         }`}
       >
-        <span className="w-4 shrink-0 text-zinc-400">
-          <ChannelIcon type={item.channelType} />
-        </span>
-        <span className="truncate">{item.name}</span>
-      </Link>
-      {item.canManage ? (
-        <div
-          className={`mr-1 shrink-0 items-center ${
-            isActive ? "flex" : "hidden group-hover:flex group-focus-within:flex"
+        <Link
+          href={chatConversationHref(item.conversationId, workspaceId)}
+          className={`flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-sm ${
+            isActive ? "font-medium text-zinc-900" : "text-zinc-600 group-hover:text-zinc-900"
           }`}
         >
-          <IconButton
-            label="Criar convite"
-            onClick={() => setInviteOpen(true)}
+          <span className="w-4 shrink-0 text-zinc-400">
+            <ChannelIcon type={item.channelType} />
+          </span>
+          <span className="truncate">{item.name}</span>
+        </Link>
+        {item.canManage ? (
+          <div
+            className={`mr-1 shrink-0 items-center ${
+              isActive ? "flex" : "hidden group-hover:flex group-focus-within:flex"
+            }`}
           >
-            <InviteIcon />
-          </IconButton>
-          <IconButton
-            label="Editar canal"
-            onClick={() => setSettingsTab("overview")}
-          >
-            <GearIcon />
-          </IconButton>
-        </div>
-      ) : null}
-      {inviteOpen && item.conversationId ? (
-        <ChatInviteFriendsModal
-          conversationId={item.conversationId}
-          workspaceId={workspaceId}
-          workspaceName={workspaceName}
-          channelName={item.name}
-          channelType={item.channelType}
-          onClose={() => setInviteOpen(false)}
-          onEditInvites={() => {
-            setInviteOpen(false);
-            setSettingsTab("invites");
-          }}
-        />
-      ) : null}
-      {settingsTab && item.conversationId ? (
-        <ChatChannelSettings
-          conversationId={item.conversationId}
-          workspaceId={workspaceId}
-          categoryName={categoryName}
-          initialTab={settingsTab}
-          onClose={() => setSettingsTab("")}
-        />
+            <IconButton
+              label="Criar convite"
+              onClick={() => setInviteOpen(true)}
+            >
+              <InviteIcon />
+            </IconButton>
+            <IconButton
+              label="Editar canal"
+              onClick={() => setSettingsTab("overview")}
+            >
+              <GearIcon />
+            </IconButton>
+          </div>
+        ) : null}
+        {inviteOpen && item.conversationId ? (
+          <ChatInviteFriendsModal
+            conversationId={item.conversationId}
+            workspaceId={workspaceId}
+            workspaceName={workspaceName}
+            channelName={item.name}
+            channelType={item.channelType}
+            onClose={() => setInviteOpen(false)}
+            onEditInvites={() => {
+              setInviteOpen(false);
+              setSettingsTab("invites");
+            }}
+          />
+        ) : null}
+        {settingsTab && item.conversationId ? (
+          <ChatChannelSettings
+            conversationId={item.conversationId}
+            workspaceId={workspaceId}
+            categoryName={categoryName}
+            initialTab={settingsTab}
+            onClose={() => setSettingsTab("")}
+          />
+        ) : null}
+      </div>
+      {item.channelType === "voice" && item.conversationId ? (
+        <ChatVoiceOccupants conversationId={item.conversationId} />
       ) : null}
     </div>
   );

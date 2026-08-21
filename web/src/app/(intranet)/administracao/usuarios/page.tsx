@@ -1,9 +1,11 @@
 import { errorMessage } from "@/application/errors";
 import { AdminGroupTable } from "@/components/AdminGroupTable";
 import { AdminNote, AdminPanel, AdminTabs } from "@/components/AdminPanel";
+import { AdminProfileCatalogView } from "@/components/AdminProfileCatalog";
 import { AdminUserTable } from "@/components/AdminUserTable";
 import { LoadError } from "@/components/LoadError";
 import type { AdminGroup } from "@/domain/AdminGroup";
+import type { AdminProfileCatalog } from "@/domain/AdminProfile";
 import type { AdminUser } from "@/domain/AdminUser";
 import { app } from "@/infrastructure/composition";
 import {
@@ -24,16 +26,22 @@ export default async function AdminUsuariosPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const token = await requirePageToken();
-  const tab = readAdminUserTab(await searchParams);
+  const params = await searchParams;
+  const tab = readAdminUserTab(params);
 
   let users: AdminUser[] = [];
   let groups: AdminGroup[] = [];
+  let catalog: AdminProfileCatalog | null = null;
   let currentUserId = 0;
+  let selectedCategoryId = 0;
   let loadError = "";
 
   try {
     if (tab === "grupos") {
       groups = await app.listAdminGroups(token);
+    } else if (tab === "perfis") {
+      catalog = await app.listAdminProfileCatalog(token);
+      selectedCategoryId = readCategoryId(params, catalog);
     } else if (tab === "visao") {
       const [listed, current] = await Promise.all([
         app.listAdminUsers(token),
@@ -48,7 +56,9 @@ export default async function AdminUsuariosPage({
       error,
       tab === "grupos"
         ? "Não foi possível carregar os grupos."
-        : "Não foi possível carregar os usuários.",
+        : tab === "perfis"
+          ? "Não foi possível carregar os campos de perfil."
+          : "Não foi possível carregar os usuários.",
     );
   }
 
@@ -69,6 +79,8 @@ export default async function AdminUsuariosPage({
             tab={tab}
             users={users}
             groups={groups}
+            catalog={catalog}
+            selectedCategoryId={selectedCategoryId}
             currentUserId={currentUserId}
           />
         )}
@@ -81,11 +93,15 @@ function UserTabContent({
   tab,
   users,
   groups,
+  catalog,
+  selectedCategoryId,
   currentUserId,
 }: {
   tab: AdminUserTabId;
   users: AdminUser[];
   groups: AdminGroup[];
+  catalog: AdminProfileCatalog | null;
+  selectedCategoryId: number;
   currentUserId: number;
 }) {
   if (tab === "configuracoes") {
@@ -100,11 +116,19 @@ function UserTabContent({
   }
 
   if (tab === "perfis") {
+    if (!catalog) {
+      return (
+        <p className="text-sm text-zinc-500">
+          Não foi possível carregar as categorias de perfil.
+        </p>
+      );
+    }
+
     return (
-      <AdminNote>
-        Aqui você pode criar ou editar categorias e campos de perfil usados
-        na ficha de cada pessoa.
-      </AdminNote>
+      <AdminProfileCatalogView
+        catalog={catalog}
+        selectedCategoryId={selectedCategoryId}
+      />
     );
   }
 
@@ -128,6 +152,10 @@ function UserTabContent({
 function userTabDescription(tab: AdminUserTabId) {
   if (tab === "grupos") {
     return "Os usuários podem pertencer a diferentes grupos (p. ex. equipes, departamentos etc.) com normas específicas de espaço, gerentes de grupo e permissões.";
+  }
+
+  if (tab === "perfis") {
+    return "Aqui você cria e edita as categorias e os campos da ficha de cada pessoa.";
   }
 
   return "Esta visão geral contém uma lista de cada usuário registrado com ações para visualizar, editar e excluir usuários.";
@@ -156,5 +184,29 @@ function userTabAction(tab: AdminUserTabId) {
     );
   }
 
+  if (tab === "perfis") {
+    return (
+      <Link
+        href="/administracao/usuarios/perfis/categorias/novo"
+        className="inline-flex h-10 items-center rounded-xl bg-teal-700 px-4 text-sm font-semibold text-white"
+      >
+        Nova categoria
+      </Link>
+    );
+  }
+
   return null;
+}
+
+function readCategoryId(
+  searchParams: Record<string, string | string[] | undefined>,
+  catalog: AdminProfileCatalog,
+) {
+  const raw = searchParams.categoria;
+  const value = Number(Array.isArray(raw) ? raw[0] : raw);
+  if (catalog.categories.some((category) => category.id === value)) {
+    return value;
+  }
+
+  return catalog.categories[0]?.id ?? 0;
 }

@@ -2,6 +2,7 @@ import type { UpdateAdminUserInput } from "@/domain/AdminUser";
 import { ApplicationError } from "../errors";
 import type { AdminUserRepository } from "../ports/AdminUserRepository";
 import type { AuthRepository } from "../ports/AuthRepository";
+import { readUsername } from "./readUsername";
 import { requireAdminAccess } from "./requireAdminAccess";
 
 export async function updateAdminUser(
@@ -20,7 +21,7 @@ export async function updateAdminUser(
     firstName: requiredText(input.firstName, "Informe o primeiro nome."),
     lastName: requiredText(input.lastName, "Informe o último nome."),
     title: input.title.trim(),
-    username: requiredText(input.username, "Informe o nome de usuário."),
+    username: readUsername(input.username),
     email: readEmail(input.email),
     password: input.password.trim(),
   });

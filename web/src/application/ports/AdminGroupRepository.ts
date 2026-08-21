@@ -2,6 +2,8 @@ import type {
   AdminGroup,
   AdminGroupInput,
   AdminGroupMember,
+  AdminGroupPermission,
+  AdminGroupPermissionState,
 } from "@/domain/AdminGroup";
 
 export interface AdminGroupRepository {
@@ -32,4 +34,12 @@ export interface AdminGroupRepository {
     userId: number,
     isManager: boolean,
   ): Promise<AdminGroupMember[]>;
+  listPermissions(token: string, groupId: number): Promise<AdminGroupPermission[]>;
+  setPermission(
+    token: string,
+    groupId: number,
+    permissionId: string,
+    moduleId: string,
+    state: AdminGroupPermissionState,
+  ): Promise<AdminGroupPermission[]>;
 }

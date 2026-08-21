@@ -4,13 +4,15 @@ import type {
   ChatWorkspace,
 } from "@/domain/ChatWorkspace";
 import type { User } from "@/domain/User";
-import { chatConversationHref } from "@/shared/chatWorkspace";
+import { chatConversationHref, chatWorkspaceHref } from "@/shared/chatWorkspace";
 import Link from "next/link";
 import { ChatChannelItem } from "./ChatChannelItem";
 import { ChatContactButton } from "./ChatContactButton";
 import { ChatCreateChannelButton } from "./ChatCreateChannelButton";
 import { ChatPersonRow } from "./ChatPersonRow";
 import { ChatUserPanel } from "./ChatUserPanel";
+import { ChatVoiceConnectionBar } from "./ChatVoiceConnectionBar";
+import { ChatVoiceOccupancyProvider } from "./ChatVoiceOccupancy";
 
 type ChatChannelSidebarProps = {
   workspace: ChatWorkspace;
@@ -40,24 +42,30 @@ export function ChatChannelSidebar({
           {workspace.name}
         </p>
       </header>
-      <div
-        className={`flex flex-1 flex-col overflow-y-auto p-2 ${
-          isHome ? "gap-1" : "gap-5 p-3"
-        }`}
-      >
-        {sections.map((section) => (
-          <SidebarSection
-            key={section.title}
-            section={section}
-            workspaceId={workspace.id}
-            workspaceName={workspace.name}
-            spaceId={workspace.spaceId}
-            hideTitle={isHome && section.title === workspace.name}
-            activeConversationId={activeConversationId}
-          />
-        ))}
-      </div>
-      {currentUser ? <ChatUserPanel user={currentUser} /> : null}
+      <ChatVoiceOccupancyProvider currentUserId={currentUser?.id ?? null}>
+        <div
+          className={`flex flex-1 flex-col overflow-y-auto p-2 ${
+            isHome ? "gap-1" : "gap-5 p-3"
+          }`}
+        >
+          {sections.map((section) => (
+            <SidebarSection
+              key={section.title}
+              section={section}
+              workspaceId={workspace.id}
+              workspaceName={workspace.name}
+              spaceId={workspace.spaceId}
+              hideTitle={isHome && section.title === workspace.name}
+              activeConversationId={activeConversationId}
+            />
+          ))}
+        </div>
+        <ChatVoiceConnectionBar
+          channelNames={voiceChannelNames(sections)}
+          workspaceHref={chatWorkspaceHref(workspace.id)}
+        />
+        {currentUser ? <ChatUserPanel user={currentUser} /> : null}
+      </ChatVoiceOccupancyProvider>
     </aside>
   );
 }
@@ -173,4 +181,16 @@ function SidebarItem({
 
 function isPersonItem(item: ChatSidebarItem) {
   return item.kind === "dm" || item.kind === "contact" || item.kind === "invite";
+}
+
+function voiceChannelNames(sections: ChatSidebarSection[]) {
+  const names: Record<number, string> = {};
+  for (const section of sections) {
+    for (const item of section.items) {
+      if (item.channelType === "voice" && item.conversationId) {
+        names[item.conversationId] = item.name;
+      }
+    }
+  }
+  return names;
 }

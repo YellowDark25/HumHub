@@ -22,14 +22,21 @@ export function LoginForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-      const payload = (await response.json()) as { message?: string };
+      const payload = (await response.json()) as {
+        message?: string;
+        mustChangePassword?: boolean;
+      };
 
       if (!response.ok) {
         setError(payload.message ?? "Usuário ou senha inválidos.");
         return;
       }
 
-      router.replace(searchParams.get("from") || "/");
+      router.replace(
+        payload.mustChangePassword
+          ? "/trocar-senha"
+          : searchParams.get("from") || "/",
+      );
       router.refresh();
     } catch {
       setError("Não foi possível conectar. Confira se o HumHub está no ar.");

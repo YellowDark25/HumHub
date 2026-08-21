@@ -3,22 +3,37 @@
 use humhub\modules\nexchat\Module;
 use humhub\widgets\TopMenu;
 
+$events = [
+    [
+        'class' => yii\base\Application::class,
+        'event' => yii\base\Application::EVENT_BEFORE_REQUEST,
+        'callback' => ['humhub\\modules\\nexchat\\Events', 'onBeforeRequest'],
+    ],
+    [
+        'class' => TopMenu::class,
+        'event' => TopMenu::EVENT_INIT,
+        'callback' => ['humhub\\modules\\nexchat\\Events', 'onTopMenuInit'],
+    ],
+    [
+        'class' => yii\web\View::class,
+        'event' => yii\web\View::EVENT_BEGIN_PAGE,
+        'callback' => ['humhub\\modules\\nexchat\\Events', 'onPageBegin'],
+    ],
+];
+
+if (class_exists(\humhub\components\gates\GateManager::class)) {
+    $events[] = [
+        'class' => \humhub\components\gates\GateManager::class,
+        'event' => \humhub\components\gates\GateManager::EVENT_INIT_GATES,
+        'callback' => ['humhub\\modules\\nexchat\\Events', 'onGateInit'],
+    ];
+}
+
 return [
     'id' => 'nexchat',
     'class' => Module::class,
     'namespace' => 'humhub\\modules\\nexchat',
-    'events' => [
-        [
-            'class' => TopMenu::class,
-            'event' => TopMenu::EVENT_INIT,
-            'callback' => ['humhub\\modules\\nexchat\\Events', 'onTopMenuInit'],
-        ],
-        [
-            'class' => yii\web\View::class,
-            'event' => yii\web\View::EVENT_BEGIN_PAGE,
-            'callback' => ['humhub\\modules\\nexchat\\Events', 'onPageBegin'],
-        ],
-    ],
+    'events' => $events,
     'urlManagerRules' => [
         'nexchat' => 'nexchat/index/index',
         'nexchat/space-image/upload-image' => 'nexchat/space-image/upload-image',
@@ -28,6 +43,9 @@ return [
         'nexchat/notification-settings/reset' => 'nexchat/notification-settings/reset',
         'nexchat/account-settings' => 'nexchat/account-settings/index',
         'nexchat/account-settings/save' => 'nexchat/account-settings/save',
+        'nexchat/account-password/change' => 'nexchat/account-password/change',
+        'nexchat/account-profile/save' => 'nexchat/account-profile/save',
+        'nexchat/account-profile/image' => 'nexchat/account-profile/image',
         'nexchat/account-modules' => 'nexchat/account-modules/index',
         'nexchat/account-modules/enable' => 'nexchat/account-modules/enable',
         'nexchat/account-modules/disable' => 'nexchat/account-modules/disable',
@@ -46,5 +64,14 @@ return [
         'nexchat/admin/groups/add-member' => 'nexchat/group/add-member',
         'nexchat/admin/groups/remove-member' => 'nexchat/group/remove-member',
         'nexchat/admin/groups/set-manager' => 'nexchat/group/set-manager',
+        'nexchat/admin/groups/permissions' => 'nexchat/group/permissions',
+        'nexchat/admin/groups/set-permission' => 'nexchat/group/set-permission',
+        'nexchat/admin/profile-fields' => 'nexchat/profile/index',
+        'nexchat/admin/profile-fields/category' => 'nexchat/profile/view-category',
+        'nexchat/admin/profile-fields/save-category' => 'nexchat/profile/save-category',
+        'nexchat/admin/profile-fields/delete-category' => 'nexchat/profile/delete-category',
+        'nexchat/admin/profile-fields/field' => 'nexchat/profile/view-field',
+        'nexchat/admin/profile-fields/save-field' => 'nexchat/profile/save-field',
+        'nexchat/admin/profile-fields/delete-field' => 'nexchat/profile/delete-field',
     ],
 ];

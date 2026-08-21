@@ -19,9 +19,16 @@ import type { CreateChannelInput } from "@/application/ports/ChatRepository";
 import { createChannel } from "@/application/usecases/createChannel";
 import { deleteChannel } from "@/application/usecases/deleteChannel";
 import { getChannelSettings } from "@/application/usecases/getChannelSettings";
+import { heartbeatVoiceRoom } from "@/application/usecases/heartbeatVoiceRoom";
 import { inviteChannelMember } from "@/application/usecases/inviteChannelMember";
+import { joinVoiceRoom } from "@/application/usecases/joinVoiceRoom";
+import { leaveVoiceRoom } from "@/application/usecases/leaveVoiceRoom";
+import { listVoiceOccupancy } from "@/application/usecases/listVoiceOccupancy";
+import { listVoiceRoom } from "@/application/usecases/listVoiceRoom";
 import { openDirectMessage } from "@/application/usecases/openDirectMessage";
+import { pullVoiceSignals } from "@/application/usecases/pullVoiceSignals";
 import { removeChannelMember } from "@/application/usecases/removeChannelMember";
+import { sendVoiceSignal } from "@/application/usecases/sendVoiceSignal";
 import { updateChannel } from "@/application/usecases/updateChannel";
 import { listPeople } from "@/application/usecases/listPeople";
 import { listSpaces } from "@/application/usecases/listSpaces";
@@ -40,6 +47,7 @@ import { updateAdminUser } from "@/application/usecases/updateAdminUser";
 import { updateProfileImage } from "@/application/usecases/updateProfileImage";
 import { changeEmail } from "@/application/usecases/changeEmail";
 import { changePassword } from "@/application/usecases/changePassword";
+import { completeRequiredPasswordChange } from "@/application/usecases/completeRequiredPasswordChange";
 import { changeUsername } from "@/application/usecases/changeUsername";
 import { deleteAccount } from "@/application/usecases/deleteAccount";
 import { deleteAdminUser } from "@/application/usecases/deleteAdminUser";
@@ -57,10 +65,21 @@ import { createAdminGroup } from "@/application/usecases/createAdminGroup";
 import { deleteAdminGroup } from "@/application/usecases/deleteAdminGroup";
 import { getAdminGroup } from "@/application/usecases/getAdminGroup";
 import { listAdminGroupMembers } from "@/application/usecases/listAdminGroupMembers";
+import { listAdminGroupPermissions } from "@/application/usecases/listAdminGroupPermissions";
 import { listAdminGroups } from "@/application/usecases/listAdminGroups";
 import { removeAdminGroupMember } from "@/application/usecases/removeAdminGroupMember";
 import { setAdminGroupMemberManager } from "@/application/usecases/setAdminGroupMemberManager";
+import { setAdminGroupPermission } from "@/application/usecases/setAdminGroupPermission";
 import { updateAdminGroup } from "@/application/usecases/updateAdminGroup";
+import { createAdminProfileCategory } from "@/application/usecases/createAdminProfileCategory";
+import { createAdminProfileField } from "@/application/usecases/createAdminProfileField";
+import { deleteAdminProfileCategory } from "@/application/usecases/deleteAdminProfileCategory";
+import { deleteAdminProfileField } from "@/application/usecases/deleteAdminProfileField";
+import { getAdminProfileCategory } from "@/application/usecases/getAdminProfileCategory";
+import { getAdminProfileField } from "@/application/usecases/getAdminProfileField";
+import { listAdminProfileCatalog } from "@/application/usecases/listAdminProfileCatalog";
+import { updateAdminProfileCategory } from "@/application/usecases/updateAdminProfileCategory";
+import { updateAdminProfileField } from "@/application/usecases/updateAdminProfileField";
 import { listAdminModules } from "@/application/usecases/listAdminModules";
 import { listAdminSpaces } from "@/application/usecases/listAdminSpaces";
 import { listAdminUsers } from "@/application/usecases/listAdminUsers";
@@ -69,9 +88,14 @@ import {
   disableAdminModule,
   enableAdminModule,
 } from "@/application/usecases/toggleAdminModule";
+import type { VoiceMediaState } from "@/domain/VoiceRoom";
 import type { AccountProfile } from "@/domain/Account";
 import type { AccountGeneralPatch } from "@/domain/AccountGeneralSettings";
-import type { AdminGroupInput } from "@/domain/AdminGroup";
+import type { AdminGroupInput, AdminGroupPermissionState } from "@/domain/AdminGroup";
+import type {
+  AdminProfileCategoryInput,
+  AdminProfileFieldInput,
+} from "@/domain/AdminProfile";
 import type { AdminSettingsPatch } from "@/domain/AdminSettings";
 import type {
   CreateAdminUserInput,
@@ -85,6 +109,7 @@ import {
 import { HumhubAccountModulesRepository } from "./humhub/HumhubAccountModulesRepository";
 import { HumhubAccountSettingsRepository } from "./humhub/HumhubAccountSettingsRepository";
 import { HumhubAdminGroupRepository } from "./humhub/HumhubAdminGroupRepository";
+import { HumhubAdminProfileRepository } from "./humhub/HumhubAdminProfileRepository";
 import { HumhubAdminSystemRepository } from "./humhub/HumhubAdminSystemRepository";
 import { HumhubAdminUserRepository } from "./humhub/HumhubAdminUserRepository";
 import { HumhubAuthRepository } from "./humhub/HumhubAuthRepository";
@@ -92,17 +117,20 @@ import { HumhubFeedRepository } from "./humhub/HumhubFeedRepository";
 import { HumhubNotificationRepository } from "./humhub/HumhubNotificationRepository";
 import { HumhubSpaceRepository } from "./humhub/HumhubSpaceRepository";
 import { NexchatChatRepository } from "./nexchat/NexchatChatRepository";
+import { InMemoryVoiceRoomRepository } from "./voice/InMemoryVoiceRoomRepository";
 
 const auth = new HumhubAuthRepository();
 const accountSettings = new HumhubAccountSettingsRepository();
 const accountModules = new HumhubAccountModulesRepository();
 const adminUsers = new HumhubAdminUserRepository();
 const adminGroups = new HumhubAdminGroupRepository();
+const adminProfiles = new HumhubAdminProfileRepository();
 const adminSystem = new HumhubAdminSystemRepository();
 const feed = new HumhubFeedRepository();
 const spaces = new HumhubSpaceRepository();
 const notifications = new HumhubNotificationRepository();
 const chat = new NexchatChatRepository();
+const voiceRooms = new InMemoryVoiceRoomRepository();
 
 export const app = {
   login: (username: string, password: string) => login(auth, username, password),
@@ -134,6 +162,17 @@ export const app = {
       auth,
       token,
       currentPassword,
+      newPassword,
+      newPasswordConfirm,
+    ),
+  completeRequiredPasswordChange: (
+    token: string,
+    newPassword: string,
+    newPasswordConfirm: string,
+  ) =>
+    completeRequiredPasswordChange(
+      auth,
+      token,
       newPassword,
       newPasswordConfirm,
     ),
@@ -197,6 +236,51 @@ export const app = {
       userId,
       isManager,
     ),
+  listAdminGroupPermissions: (token: string, groupId: number) =>
+    listAdminGroupPermissions(auth, adminGroups, token, groupId),
+  setAdminGroupPermission: (
+    token: string,
+    groupId: number,
+    permissionId: string,
+    moduleId: string,
+    state: AdminGroupPermissionState,
+  ) =>
+    setAdminGroupPermission(
+      auth,
+      adminGroups,
+      token,
+      groupId,
+      permissionId,
+      moduleId,
+      state,
+    ),
+  listAdminProfileCatalog: (token: string) =>
+    listAdminProfileCatalog(auth, adminProfiles, token),
+  getAdminProfileCategory: (token: string, categoryId: number) =>
+    getAdminProfileCategory(auth, adminProfiles, token, categoryId),
+  createAdminProfileCategory: (
+    token: string,
+    input: AdminProfileCategoryInput,
+  ) => createAdminProfileCategory(auth, adminProfiles, token, input),
+  updateAdminProfileCategory: (
+    token: string,
+    categoryId: number,
+    input: AdminProfileCategoryInput,
+  ) =>
+    updateAdminProfileCategory(auth, adminProfiles, token, categoryId, input),
+  deleteAdminProfileCategory: (token: string, categoryId: number) =>
+    deleteAdminProfileCategory(auth, adminProfiles, token, categoryId),
+  getAdminProfileField: (token: string, fieldId: number) =>
+    getAdminProfileField(auth, adminProfiles, token, fieldId),
+  createAdminProfileField: (token: string, input: AdminProfileFieldInput) =>
+    createAdminProfileField(auth, adminProfiles, token, input),
+  updateAdminProfileField: (
+    token: string,
+    fieldId: number,
+    input: AdminProfileFieldInput,
+  ) => updateAdminProfileField(auth, adminProfiles, token, fieldId, input),
+  deleteAdminProfileField: (token: string, fieldId: number) =>
+    deleteAdminProfileField(auth, adminProfiles, token, fieldId),
   listAdminSpaces: (token: string) => listAdminSpaces(auth, spaces, token),
   listAdminModules: (token: string) => listAdminModules(auth, adminSystem, token),
   enableAdminModule: (token: string, moduleId: string) =>
@@ -283,4 +367,39 @@ export const app = {
     conversationId: number,
     userId: number,
   ) => removeChannelMember(chat, token, conversationId, userId),
+  joinVoiceRoom: (
+    token: string,
+    conversationId: number,
+    media: VoiceMediaState,
+  ) => joinVoiceRoom(chat, auth, voiceRooms, token, conversationId, media),
+  leaveVoiceRoom: (token: string, conversationId: number) =>
+    leaveVoiceRoom(chat, auth, voiceRooms, token, conversationId),
+  heartbeatVoiceRoom: (
+    token: string,
+    conversationId: number,
+    media: VoiceMediaState,
+  ) => heartbeatVoiceRoom(chat, auth, voiceRooms, token, conversationId, media),
+  listVoiceRoom: (token: string, conversationId: number) =>
+    listVoiceRoom(chat, voiceRooms, token, conversationId),
+  listVoiceOccupancy: (token: string) =>
+    listVoiceOccupancy(chat, voiceRooms, token),
+  sendVoiceSignal: (
+    token: string,
+    conversationId: number,
+    toUserId: number,
+    kind: string,
+    payload: Record<string, unknown>,
+  ) =>
+    sendVoiceSignal(
+      chat,
+      auth,
+      voiceRooms,
+      token,
+      conversationId,
+      toUserId,
+      kind,
+      payload,
+    ),
+  pullVoiceSignals: (token: string, conversationId: number) =>
+    pullVoiceSignals(chat, auth, voiceRooms, token, conversationId),
 };

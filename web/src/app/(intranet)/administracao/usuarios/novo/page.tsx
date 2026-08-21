@@ -14,8 +14,8 @@ export default function NovoUsuarioPage() {
         Adicionar novo usuário
       </h1>
       <p className="mt-1 mb-6 text-sm text-zinc-500">
-        Crie uma conta na rede. A pessoa precisará trocar a senha no primeiro
-        acesso.
+        Crie uma conta na rede. A pessoa precisará definir uma senha nova no
+        primeiro acesso.
       </p>
       <CreateAdminUserForm />
     </main>

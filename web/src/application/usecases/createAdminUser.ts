@@ -2,6 +2,7 @@ import type { CreateAdminUserInput } from "@/domain/AdminUser";
 import { ApplicationError } from "../errors";
 import type { AdminUserRepository } from "../ports/AdminUserRepository";
 import type { AuthRepository } from "../ports/AuthRepository";
+import { readUsername } from "./readUsername";
 import { requireAdminAccess } from "./requireAdminAccess";
 
 const MIN_PASSWORD_LENGTH = 5;
@@ -16,7 +17,7 @@ export async function createAdminUser(
   return users.createUser(token, {
     firstName: requiredText(input.firstName, "Informe o primeiro nome."),
     lastName: requiredText(input.lastName, "Informe o último nome."),
-    username: requiredText(input.username, "Informe o nome de usuário."),
+    username: readUsername(input.username),
     email: readEmail(input.email),
     password: readPassword(input.password),
   });

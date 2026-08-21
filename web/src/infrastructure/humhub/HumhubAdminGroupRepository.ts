@@ -1,14 +1,16 @@
 import type { AdminGroupRepository } from "@/application/ports/AdminGroupRepository";
-import type { AdminGroup, AdminGroupInput, AdminGroupMember } from "@/domain/AdminGroup";
+import type { AdminGroup, AdminGroupInput, AdminGroupMember, AdminGroupPermission, AdminGroupPermissionState } from "@/domain/AdminGroup";
 import { humhubRequest } from "./client";
 import {
   mapAdminGroup,
   mapAdminGroupMembers,
+  mapAdminGroupPermissions,
   mapAdminGroups,
 } from "./mappers";
 import type {
   HumhubAdminGroup,
   HumhubAdminGroupMembers,
+  HumhubAdminGroupPermissions,
   HumhubAdminGroups,
 } from "./types";
 
@@ -99,6 +101,42 @@ export class HumhubAdminGroupRepository implements AdminGroupRepository {
       userId,
       isManager,
     });
+  }
+
+  async listPermissions(
+    token: string,
+    groupId: number,
+  ): Promise<AdminGroupPermission[]> {
+    const dto = await humhubRequest<HumhubAdminGroupPermissions>({
+      path: `/nexchat/admin/groups/permissions?id=${groupId}`,
+      token,
+      origin: "app",
+    });
+
+    return mapAdminGroupPermissions(dto);
+  }
+
+  async setPermission(
+    token: string,
+    groupId: number,
+    permissionId: string,
+    moduleId: string,
+    state: AdminGroupPermissionState,
+  ): Promise<AdminGroupPermission[]> {
+    const dto = await humhubRequest<HumhubAdminGroupPermissions>({
+      path: "/nexchat/admin/groups/set-permission",
+      token,
+      origin: "app",
+      method: "POST",
+      body: {
+        id: groupId,
+        permissionId,
+        moduleId,
+        state,
+      },
+    });
+
+    return mapAdminGroupPermissions(dto);
   }
 
   private async saveGroup(

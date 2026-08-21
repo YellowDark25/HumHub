@@ -1,9 +1,6 @@
-import { ApplicationError } from "../errors";
 import type { AuthRepository } from "../ports/AuthRepository";
+import { readUsername } from "./readUsername";
 import { requireCurrentPassword } from "./requireCurrentPassword";
-
-const MIN_USERNAME_LENGTH = 4;
-const MAX_USERNAME_LENGTH = 45;
 
 export async function changeUsername(
   auth: AuthRepository,
@@ -11,21 +8,7 @@ export async function changeUsername(
   username: string,
   currentPassword: string,
 ) {
-  const trimmed = username.trim();
-  if (trimmed.length < MIN_USERNAME_LENGTH) {
-    throw new ApplicationError(
-      "O nome de usuário deve ter pelo menos 4 caracteres.",
-      400,
-    );
-  }
-
-  if (trimmed.length > MAX_USERNAME_LENGTH) {
-    throw new ApplicationError(
-      "O nome de usuário pode ter no máximo 45 caracteres.",
-      400,
-    );
-  }
-
+  const trimmed = readUsername(username);
   const account = await auth.getAccount(token);
   await requireCurrentPassword(auth, account.username, currentPassword);
   return auth.updateUser(token, account.userId, {

@@ -41,7 +41,7 @@ export default async function EditarGrupoPage({
         Voltar para Grupos
       </Link>
       <h1 className="mt-3 text-2xl font-semibold text-zinc-900">
-        {group ? `Editar grupo: ${group.name}` : "Editar grupo"}
+        {group ? `Gerenciar grupo: ${group.name}` : "Gerenciar grupo"}
       </h1>
       <p className="mt-1 mb-6 text-sm text-zinc-500">
         Atualize o nome, a visibilidade e as regras deste grupo.
