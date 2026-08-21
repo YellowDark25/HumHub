@@ -140,7 +140,7 @@ function CreateChannelModal({
         type="button"
         aria-label="Fechar"
         disabled={isSaving}
-        className="absolute inset-0 bg-zinc-900/50"
+        className="absolute inset-0 bg-black/50"
         onClick={onClose}
       />
       <div

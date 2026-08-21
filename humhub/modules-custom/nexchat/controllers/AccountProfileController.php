@@ -4,6 +4,7 @@ namespace humhub\modules\nexchat\controllers;
 
 use humhub\components\Controller;
 use humhub\modules\nexchat\components\BearerLogin;
+use humhub\modules\nexchat\components\CurrentPassword;
 use humhub\modules\nexchat\permissions\EditOtherUsers;
 use humhub\modules\user\models\Password;
 use humhub\modules\user\models\Profile;
@@ -13,7 +14,7 @@ use yii\web\Response;
 
 class AccountProfileController extends Controller
 {
-    public $enableCsrfValidation = false;
+    public $enableCsrfValidation = true;
 
     public $layout = false;
 
@@ -84,7 +85,12 @@ class AccountProfileController extends Controller
 
         $password = $this->readPassword($body);
         if ($password !== '') {
-            $denied = $this->savePassword($target, $password, $isSelf);
+            $denied = $this->savePassword(
+                $target,
+                $password,
+                $this->readCurrentPassword($body),
+                $isSelf,
+            );
             if ($denied !== null) {
                 return $denied;
             }
@@ -216,8 +222,18 @@ class AccountProfileController extends Controller
         return null;
     }
 
-    private function savePassword(User $user, string $newPassword, bool $isSelf)
-    {
+    private function savePassword(
+        User $user,
+        string $newPassword,
+        string $currentPassword,
+        bool $isSelf,
+    ) {
+        if ($isSelf && !CurrentPassword::matches($user, $currentPassword)) {
+            return $this->fail(400, $currentPassword === ''
+                ? 'Informe a senha atual.'
+                : 'Senha atual incorreta.');
+        }
+
         $password = Password::findOne(['user_id' => $user->id]) ?: new Password();
         $password->user_id = $user->id;
         $password->scenario = 'registration';
@@ -248,6 +264,20 @@ class AccountProfileController extends Controller
         }
 
         return trim((string) $password);
+    }
+
+    private function readCurrentPassword(array $body): string
+    {
+        if (isset($body['currentPassword'])) {
+            return trim((string) $body['currentPassword']);
+        }
+
+        $password = $body['password'] ?? '';
+        if (is_array($password)) {
+            return trim((string) ($password['currentPassword'] ?? ''));
+        }
+
+        return '';
     }
 
     private function toUser(User $user): array

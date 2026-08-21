@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #e6ebeb;
   --foreground: #100f13;
@@ -57,4 +59,34 @@ body {
   min-height: 100%;
   background: var(--background);
   color: var(--foreground);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #100f13;
+  --foreground: #f1f5f5;
+  --color-zinc-50: #181a1c;
+  --color-zinc-100: #1e2023;
+  --color-zinc-200: #2c2f33;
+  --color-zinc-300: #3d4146;
+  --color-zinc-400: #7a8086;
+  --color-zinc-500: #9aa0a6;
+  --color-zinc-600: #c4c8cc;
+  --color-zinc-700: #d5d8db;
+  --color-zinc-800: #e6ebeb;
+  --color-zinc-900: #f1f5f5;
+  --color-zinc-950: #ffffff;
+  --color-teal-50: #2a1808;
+  --color-teal-100: #3d220c;
+  --color-teal-800: #ffb066;
+  --color-teal-900: #ffcfa3;
+}
+
+html.dark .bg-white {
+  background-color: var(--color-zinc-50);
+}
+
+html.dark .bg-white\/80,
+html.dark .bg-white\/90 {
+  background-color: rgb(24 26 28 / 0.9);
 }

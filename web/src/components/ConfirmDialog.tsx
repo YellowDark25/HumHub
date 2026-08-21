@@ -69,7 +69,7 @@ export function ConfirmDialog({
         type="button"
         aria-label="Fechar"
         disabled={pending}
-        className="absolute inset-0 bg-zinc-900/50"
+        className="absolute inset-0 bg-black/50"
         onClick={onCancel}
       />
       <div

@@ -1,3 +1,4 @@
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { APP_NAME } from "@/shared/appName";
 import { Suspense } from "react";
 import { LoginForm } from "./LoginForm";
@@ -6,8 +7,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-full bg-zinc-100">
       <header className="border-b border-zinc-200 bg-white">
-        <div className="mx-auto flex h-16 max-w-6xl items-center px-4">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <p className="text-base font-semibold text-zinc-900">{APP_NAME}</p>
+          <ThemeToggle />
         </div>
       </header>
       <main className="mx-auto flex w-full max-w-md flex-col px-5 py-16">

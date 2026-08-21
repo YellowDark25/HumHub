@@ -12,5 +12,8 @@ export async function changePassword(
   const password = readNewPassword(newPassword, newPasswordConfirm);
   const account = await auth.getAccount(token);
   await requireCurrentPassword(auth, account.username, currentPassword);
-  await auth.updateUser(token, account.userId, { password });
+  await auth.updateUser(token, account.userId, {
+    password,
+    currentPassword,
+  });
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MyAreaDropdown } from "./MyAreaDropdown";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { ThemeToggle } from "./ThemeToggle";
 import { UserMenu } from "./UserMenu";
 
 const LINKS = [
@@ -53,7 +54,10 @@ export function AppHeader({
           </div>
         </nav>
         <div className="ml-auto flex items-center gap-3">
-          <NotificationDropdown unseenCount={unseenCount} />
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <NotificationDropdown unseenCount={unseenCount} />
+          </div>
           <UserMenu
             displayName={displayName}
             title={title}

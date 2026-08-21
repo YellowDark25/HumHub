@@ -51,6 +51,7 @@ export type AccountUpdate = {
   profile?: AccountProfile;
   account?: AccountPatch;
   password?: string;
+  currentPassword?: string;
 };
 
 export function emptyAccountProfile(): AccountProfile {

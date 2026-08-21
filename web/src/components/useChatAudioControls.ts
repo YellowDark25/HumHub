@@ -31,6 +31,13 @@ const DEFAULT_PREFS: ChatAudioPrefs = {
 
 export const INPUT_PROFILES = ["Padrão", "Personalizado"] as const;
 
+const listeners = new Set<(prefs: ChatAudioPrefs) => void>();
+
+function publishPrefs(next: ChatAudioPrefs) {
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  listeners.forEach((listen) => listen(next));
+}
+
 export function useChatAudioControls() {
   const [prefs, setPrefs] = useState<ChatAudioPrefs>(DEFAULT_PREFS);
   const [inputs, setInputs] = useState<ChatAudioDevice[]>([]);
@@ -39,11 +46,23 @@ export function useChatAudioControls() {
 
   useEffect(() => {
     setPrefs(readPrefs());
+    listeners.add(setPrefs);
+
+    function syncFromStorage(event: StorageEvent) {
+      if (event.key === STORAGE_KEY) {
+        setPrefs(readPrefs());
+      }
+    }
+
+    window.addEventListener("storage", syncFromStorage);
+    return () => {
+      listeners.delete(setPrefs);
+      window.removeEventListener("storage", syncFromStorage);
+    };
   }, []);
 
   function savePrefs(next: ChatAudioPrefs) {
-    setPrefs(next);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    publishPrefs(next);
   }
 
   function toggleMic() {

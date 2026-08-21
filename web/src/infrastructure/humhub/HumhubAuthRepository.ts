@@ -87,7 +87,12 @@ export class HumhubAuthRepository implements AuthRepository {
         userId,
         ...(update.profile ? { profile: toHumhubProfile(update.profile) } : {}),
         ...(update.account ? { account: toHumhubAccount(update.account) } : {}),
-        ...(update.password ? { password: update.password } : {}),
+        ...(update.password
+          ? {
+              password: update.password,
+              currentPassword: update.currentPassword ?? "",
+            }
+          : {}),
       },
     });
 

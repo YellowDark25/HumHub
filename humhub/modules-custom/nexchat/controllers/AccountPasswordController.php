@@ -12,7 +12,7 @@ use yii\web\Response;
 
 class AccountPasswordController extends Controller
 {
-    public $enableCsrfValidation = false;
+    public $enableCsrfValidation = true;
 
     public $layout = false;
 
@@ -34,6 +34,12 @@ class AccountPasswordController extends Controller
     {
         if (Yii::$app->user->isGuest) {
             return $this->fail(401, 'Não autenticado.');
+        }
+
+        if (!method_exists(Yii::$app->user, 'mustChangePassword')
+            || !Yii::$app->user->mustChangePassword()
+        ) {
+            return $this->fail(403, 'A senha só pode ser redefinida por este caminho quando a troca é obrigatória.');
         }
 
         /** @var User $user */

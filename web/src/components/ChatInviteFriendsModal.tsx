@@ -113,7 +113,7 @@ export function ChatInviteFriendsModal({
       <button
         type="button"
         aria-label="Fechar"
-        className="absolute inset-0 bg-zinc-900/50"
+        className="absolute inset-0 bg-black/50"
         onClick={onClose}
       />
       <div
