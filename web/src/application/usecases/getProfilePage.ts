@@ -1,5 +1,5 @@
 import type { Post } from "@/domain/Post";
-import type { User } from "@/domain/User";
+import type { ReceivedSpaceInvite } from "@/domain/SpaceInvite";
 import { isUnauthorized } from "../errors";
 import type { AuthRepository } from "../ports/AuthRepository";
 import type { FeedRepository } from "../ports/FeedRepository";
@@ -12,36 +12,35 @@ export async function getProfilePage(
   spaces: SpaceRepository,
 ) {
   const sessionUser = await auth.getCurrentUser(token);
-  const [user, posts, spaceList] = await Promise.all([
-    loadProfileUser(auth, token, sessionUser),
+  const [posts, spaceList, invites] = await Promise.all([
     feed.listPosts(token),
     spaces.list(token),
+    loadReceivedInvites(spaces, token),
   ]);
 
   return {
-    user,
-    posts: postsByAuthor(posts, user.id),
+    user: { ...sessionUser, isOnline: true },
+    posts: postsByAuthor(posts, sessionUser.id),
     spaces: spaceList,
+    invites,
   };
 }
 
-async function loadProfileUser(
-  auth: AuthRepository,
+async function loadReceivedInvites(
+  spaces: SpaceRepository,
   token: string,
-  sessionUser: User,
-): Promise<User> {
+): Promise<ReceivedSpaceInvite[]> {
   try {
-    const profile = await auth.getUser(token, sessionUser.id);
-    return { ...profile, isAdmin: sessionUser.isAdmin, isOnline: true };
+    return await spaces.listReceivedInvites(token);
   } catch (error) {
     if (isUnauthorized(error)) {
       throw error;
     }
 
     console.error(
-      `Falha ao carregar o perfil completo: ${error instanceof Error ? error.message : "erro desconhecido"}`,
+      `Falha ao carregar convites do perfil: ${error instanceof Error ? error.message : "erro desconhecido"}`,
     );
-    return { ...sessionUser, isOnline: true };
+    return [];
   }
 }
 

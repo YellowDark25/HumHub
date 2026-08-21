@@ -21,6 +21,11 @@ import { deleteChannel } from "@/application/usecases/deleteChannel";
 import { getChannelSettings } from "@/application/usecases/getChannelSettings";
 import { heartbeatVoiceRoom } from "@/application/usecases/heartbeatVoiceRoom";
 import { inviteChannelMember } from "@/application/usecases/inviteChannelMember";
+import { acceptSpaceInvite } from "@/application/usecases/acceptSpaceInvite";
+import { declineSpaceInvite } from "@/application/usecases/declineSpaceInvite";
+import { inviteSpaceMembers } from "@/application/usecases/inviteSpaceMembers";
+import { listReceivedSpaceInvites } from "@/application/usecases/listReceivedSpaceInvites";
+import { listSpaceInvitees } from "@/application/usecases/listSpaceInvitees";
 import { joinVoiceRoom } from "@/application/usecases/joinVoiceRoom";
 import { leaveVoiceRoom } from "@/application/usecases/leaveVoiceRoom";
 import { listVoiceOccupancy } from "@/application/usecases/listVoiceOccupancy";
@@ -89,6 +94,7 @@ import {
   enableAdminModule,
 } from "@/application/usecases/toggleAdminModule";
 import type { VoiceMediaState } from "@/domain/VoiceRoom";
+import type { SpaceInviteInput } from "@/domain/SpaceInvite";
 import type { AccountProfile } from "@/domain/Account";
 import type { AccountGeneralPatch } from "@/domain/AccountGeneralSettings";
 import type { AdminGroupInput, AdminGroupPermissionState } from "@/domain/AdminGroup";
@@ -179,6 +185,12 @@ export const app = {
   deleteAccount: (token: string, currentPassword: string) =>
     deleteAccount(auth, token, currentPassword),
   getProfilePage: (token: string) => getProfilePage(token, auth, feed, spaces),
+  listReceivedSpaceInvites: (token: string) =>
+    listReceivedSpaceInvites(spaces, token),
+  acceptSpaceInvite: (token: string, spaceId: number) =>
+    acceptSpaceInvite(spaces, token, spaceId),
+  declineSpaceInvite: (token: string, spaceId: number) =>
+    declineSpaceInvite(spaces, token, spaceId),
   getPersonPage: (token: string, userId: number) =>
     getPersonPage(auth, feed, token, userId),
   updateProfileImage: (token: string, imageDataUrl: string) =>
@@ -313,6 +325,13 @@ export const app = {
     kind: SpaceImageKind,
     imageDataUrl: string,
   ) => updateSpaceImage(spaces, token, spaceId, kind, imageDataUrl),
+  listSpaceInvitees: (token: string, spaceId: number) =>
+    listSpaceInvitees(spaces, token, spaceId),
+  inviteSpaceMembers: (
+    token: string,
+    spaceId: number,
+    input: SpaceInviteInput,
+  ) => inviteSpaceMembers(spaces, token, spaceId, input),
   listPeople: (token: string) => listPeople(spaces, token),
   listNotifications: (token: string, query?: NotificationListQuery) =>
     listNotifications(notifications, token, query),

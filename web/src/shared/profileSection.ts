@@ -1,6 +1,7 @@
 export const PROFILE_SECTIONS = [
   { id: "stream", label: "Stream" },
   { id: "sobre", label: "Sobre" },
+  { id: "convites", label: "Convites" },
   { id: "arquivos", label: "Arquivos" },
   { id: "tarefas", label: "Tarefas" },
   { id: "wiki", label: "Wiki" },

@@ -117,6 +117,32 @@ export type HumhubMembership = {
   user?: HumhubUserShort;
 };
 
+export type HumhubSpaceInvitee = {
+  id: number;
+  name: string;
+  username?: string;
+  imageUrl?: string;
+};
+
+export type HumhubSpaceInvitees = {
+  users?: HumhubSpaceInvitee[];
+};
+
+export type HumhubSpaceInviteResult = {
+  ok?: boolean;
+};
+
+export type HumhubReceivedSpaceInvite = {
+  spaceId: number;
+  spaceName: string;
+  spaceImageUrl?: string;
+  invitedByName?: string;
+};
+
+export type HumhubReceivedSpaceInvites = {
+  invites?: HumhubReceivedSpaceInvite[];
+};
+
 export type HumhubSelectOption = {
   value?: string;
   label?: string;

@@ -1,6 +1,11 @@
 import { ApplicationError } from "@/application/errors";
 import type { SpaceRepository } from "@/application/ports/SpaceRepository";
 import type { Space } from "@/domain/Space";
+import type {
+  ReceivedSpaceInvite,
+  SpaceInvitee,
+  SpaceInviteInput,
+} from "@/domain/SpaceInvite";
 import type { SpaceMember } from "@/domain/SpaceMember";
 import { humhubRequest } from "./client";
 import {
@@ -9,8 +14,20 @@ import {
   SPACE_PAGE_LIMIT,
   SPACE_VISIBILITY_REGISTERED,
 } from "./constants";
-import { mapSpace, mapSpaceMember } from "./mappers";
-import type { HumhubMembership, HumhubPage, HumhubSpace } from "./types";
+import {
+  mapReceivedSpaceInvite,
+  mapSpace,
+  mapSpaceInvitee,
+  mapSpaceMember,
+} from "./mappers";
+import type {
+  HumhubMembership,
+  HumhubPage,
+  HumhubReceivedSpaceInvites,
+  HumhubSpace,
+  HumhubSpaceInvitees,
+  HumhubSpaceInviteResult,
+} from "./types";
 
 export class HumhubSpaceRepository implements SpaceRepository {
   async list(token: string): Promise<Space[]> {
@@ -36,6 +53,73 @@ export class HumhubSpaceRepository implements SpaceRepository {
     return (page.results ?? [])
       .map(mapSpaceMember)
       .filter((member): member is SpaceMember => member !== null);
+  }
+
+  async listInvitableUsers(
+    token: string,
+    spaceId: number,
+  ): Promise<SpaceInvitee[]> {
+    const payload = await humhubRequest<HumhubSpaceInvitees>({
+      path: `/nexchat/space-invite/users?id=${spaceId}`,
+      token,
+      origin: "app",
+    });
+
+    return (payload.users ?? [])
+      .map(mapSpaceInvitee)
+      .filter((user): user is SpaceInvitee => user !== null);
+  }
+
+  async inviteMembers(
+    token: string,
+    spaceId: number,
+    input: SpaceInviteInput,
+  ): Promise<void> {
+    await humhubRequest<HumhubSpaceInviteResult>({
+      path: "/nexchat/space-invite/send",
+      token,
+      origin: "app",
+      method: "POST",
+      body: {
+        spaceId,
+        userIds: input.userIds,
+        selectAllRegistered: input.selectAllRegistered,
+        addWithoutInvite: input.addWithoutInvite,
+        addAsDefaultSpace: input.addAsDefaultSpace,
+      },
+    });
+  }
+
+  async listReceivedInvites(token: string): Promise<ReceivedSpaceInvite[]> {
+    const payload = await humhubRequest<HumhubReceivedSpaceInvites>({
+      path: "/nexchat/space-invite/received",
+      token,
+      origin: "app",
+    });
+
+    return (payload.invites ?? [])
+      .map(mapReceivedSpaceInvite)
+      .filter((invite): invite is ReceivedSpaceInvite => invite !== null);
+  }
+
+  async acceptInvite(token: string, spaceId: number): Promise<void> {
+    await humhubRequest<HumhubSpaceInviteResult>({
+      path: "/nexchat/space-invite/accept",
+      token,
+      origin: "app",
+      method: "POST",
+      body: { spaceId },
+    });
+  }
+
+  async declineInvite(token: string, spaceId: number): Promise<void> {
+    await humhubRequest<HumhubSpaceInviteResult>({
+      path: "/nexchat/space-invite/decline",
+      token,
+      origin: "app",
+      method: "POST",
+      body: { spaceId },
+    });
   }
 
   async create(

@@ -166,7 +166,7 @@ function NotificationRow({
   return (
     <li>
       <Link
-        href="/notificacoes"
+        href={notification.href}
         onClick={onNavigate}
         className="flex gap-3 px-4 py-3 hover:bg-zinc-50"
       >

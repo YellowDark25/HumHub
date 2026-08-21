@@ -5,7 +5,9 @@ import { LoadError } from "@/components/LoadError";
 import { ProfileHeader } from "@/components/ProfileHeader";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
+import { ProfileSpaceInvites } from "@/components/ProfileSpaceInvites";
 import type { Post } from "@/domain/Post";
+import type { ReceivedSpaceInvite } from "@/domain/SpaceInvite";
 import type { Space } from "@/domain/Space";
 import type { User } from "@/domain/User";
 import { app } from "@/infrastructure/composition";
@@ -19,7 +21,7 @@ import {
 } from "@/shared/profileSection";
 
 const EMPTY_SECTION_COPY: Record<
-  Exclude<ProfileSectionId, "stream" | "sobre">,
+  Exclude<ProfileSectionId, "stream" | "sobre" | "convites">,
   string
 > = {
   arquivos: "Nenhum arquivo neste perfil.",
@@ -36,6 +38,7 @@ export default async function PerfilPage({
   let user: User | null = null;
   let posts: Post[] = [];
   let spaces: Space[] = [];
+  let invites: ReceivedSpaceInvite[] = [];
   let loadError = "";
 
   try {
@@ -43,6 +46,7 @@ export default async function PerfilPage({
     user = page.user;
     posts = page.posts;
     spaces = page.spaces;
+    invites = page.invites;
   } catch (error) {
     await redirectIfUnauthorized(error);
     loadError = errorMessage(error, "Não foi possível carregar o perfil.");
@@ -60,7 +64,7 @@ export default async function PerfilPage({
     <div className="flex flex-col gap-6">
       <ProfileHeader user={user} spaceCount={spaces.length} />
       <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)_260px]">
-        <ProfileMenu section={section} />
+        <ProfileMenu section={section} inviteCount={invites.length} />
         <main className="flex min-w-0 flex-col gap-4">
           {loadError ? <LoadError message={loadError} /> : null}
           <ProfileSection
@@ -68,6 +72,7 @@ export default async function PerfilPage({
             user={user}
             posts={posts}
             spaces={spaces}
+            invites={invites}
             loadError={loadError}
           />
         </main>
@@ -82,16 +87,22 @@ function ProfileSection({
   user,
   posts,
   spaces,
+  invites,
   loadError,
 }: {
   section: ProfileSectionId;
   user: User;
   posts: Post[];
   spaces: Space[];
+  invites: ReceivedSpaceInvite[];
   loadError: string;
 }) {
   if (section === "sobre") {
     return <AboutSection user={user} />;
+  }
+
+  if (section === "convites") {
+    return <ProfileSpaceInvites invites={invites} />;
   }
 
   if (section !== "stream") {

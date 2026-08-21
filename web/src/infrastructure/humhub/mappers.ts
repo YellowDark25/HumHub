@@ -28,10 +28,12 @@ import type { NotificationPreferences } from "@/domain/NotificationPreferences";
 import type { AccountProfileModule } from "@/domain/AccountProfileModule";
 import type { Post } from "@/domain/Post";
 import type { Space } from "@/domain/Space";
+import type { ReceivedSpaceInvite, SpaceInvitee } from "@/domain/SpaceInvite";
 import type { SpaceMember } from "@/domain/SpaceMember";
 import type { User } from "@/domain/User";
 import { isRecentlyOnline } from "@/shared/onlineStatus";
 import { stripHtml } from "@/shared/format";
+import { notificationHref } from "@/shared/notificationHref";
 import { accountModuleCopy } from "@/shared/accountProfileFields";
 import { getPublicHumhubUrl } from "../config";
 import {
@@ -69,6 +71,8 @@ import type {
   HumhubCustomPage,
   HumhubCustomPages,
   HumhubMembership,
+  HumhubSpaceInvitee,
+  HumhubReceivedSpaceInvite,
   HumhubNotification,
   HumhubNotificationPreferenceCategory,
   HumhubNotificationPreferences,
@@ -398,13 +402,16 @@ export function mapNotification(
   dto: HumhubNotification,
   isUnseen = false,
 ): Notification {
+  const text = stripHtml(dto.output ?? "") || "Nova notificação";
+
   return {
     id: dto.id,
-    text: stripHtml(dto.output ?? "") || "Nova notificação",
+    text,
     originatorName: dto.originator?.display_name ?? null,
     originatorImageUrl: mapUserImage(dto.originator),
     publishedAt: dto.createdAt ?? null,
     isUnseen,
+    href: notificationHref(text),
   };
 }
 
@@ -718,5 +725,33 @@ export function mapSpaceMember(dto: HumhubMembership): SpaceMember | null {
   return {
     user: mapUser(dto.user),
     role: dto.role ?? "",
+  };
+}
+
+export function mapSpaceInvitee(dto: HumhubSpaceInvitee): SpaceInvitee | null {
+  if (!dto.id) {
+    return null;
+  }
+
+  return {
+    id: dto.id,
+    name: dto.name?.trim() || "Usuário",
+    username: dto.username?.trim() ?? "",
+    imageUrl: dto.imageUrl?.trim() ?? "",
+  };
+}
+
+export function mapReceivedSpaceInvite(
+  dto: HumhubReceivedSpaceInvite,
+): ReceivedSpaceInvite | null {
+  if (!dto.spaceId) {
+    return null;
+  }
+
+  return {
+    spaceId: dto.spaceId,
+    spaceName: dto.spaceName?.trim() || "Espaço",
+    spaceImageUrl: dto.spaceImageUrl?.trim() ?? "",
+    invitedByName: dto.invitedByName?.trim() ?? "",
   };
 }

@@ -1,5 +1,5 @@
 import type { SpaceMember } from "@/domain/SpaceMember";
-import { isUnauthorized } from "../errors";
+import { errorMessage, isForbidden, isUnauthorized } from "../errors";
 import type { SpaceRepository } from "../ports/SpaceRepository";
 
 export async function loadSpaceMembers(
@@ -14,7 +14,14 @@ export async function loadSpaceMembers(
       throw error;
     }
 
-    console.error(`Falha ao listar membros do espaço ${spaceId}`, error);
+    // A API REST de membership só aceita quem administra o espaço.
+    if (isForbidden(error)) {
+      return [];
+    }
+
+    console.error(
+      `Falha ao listar membros do espaço ${spaceId}: ${errorMessage(error, "erro desconhecido")}`,
+    );
     return [];
   }
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Space } from "@/domain/Space";
 import { Avatar } from "./Avatar";
+import { SpaceInviteButton } from "./SpaceInviteButton";
 import { useSpaceMedia } from "./useSpaceMedia";
 
 type SpaceHeaderProps = {
@@ -17,7 +18,7 @@ export function SpaceHeader({ space, canManage }: SpaceHeaderProps) {
   return (
     <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
       <SpaceCover banner={banner} canManage={canManage} name={space.name} />
-      <div className="flex flex-wrap items-end gap-4 px-6 pb-5">
+      <div className="flex flex-wrap items-end justify-between gap-4 px-6 pb-5">
         <div className="-mt-10 flex min-w-0 items-end gap-4">
           <SpacePhoto photo={photo} canManage={canManage} name={space.name} />
           <div className="min-w-0 pb-1">
@@ -29,6 +30,11 @@ export function SpaceHeader({ space, canManage }: SpaceHeaderProps) {
             ) : null}
           </div>
         </div>
+        {canManage ? (
+          <div className="pb-1">
+            <SpaceInviteButton spaceId={space.id} />
+          </div>
+        ) : null}
       </div>
       {banner.error || photo.error ? (
         <p className="px-6 pb-4 text-xs text-red-600">

@@ -5,4 +5,5 @@ export type Notification = {
   originatorImageUrl: string;
   publishedAt: string | null;
   isUnseen: boolean;
+  href: string;
 };
