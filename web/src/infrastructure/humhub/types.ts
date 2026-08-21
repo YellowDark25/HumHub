@@ -13,6 +13,8 @@ export type HumhubUser = HumhubUserShort & {
     language?: string;
     time_zone?: string;
     visibility?: number;
+    status?: number;
+    last_login?: string | null;
   };
   profile?: HumhubProfile;
 };
@@ -170,6 +172,95 @@ export type HumhubPage<T> = {
 
 export type HumhubLoginResponse = {
   auth_token?: string;
+  token?: string;
   expired_at?: string | number;
+  expires?: number;
   message?: string;
+};
+
+export type HumhubGroup = {
+  id?: number;
+  name?: string;
+  description?: string;
+  show_at_directory?: boolean;
+  show_at_registration?: boolean;
+};
+
+export type HumhubAdminGroup = {
+  id?: number;
+  name?: string;
+  description?: string;
+  type?: string;
+  memberCount?: number;
+  extraMemberCount?: number;
+  isDefault?: boolean;
+  isProtected?: boolean;
+  isAdminGroup?: boolean;
+  showAtDirectory?: boolean;
+  showAtRegistration?: boolean;
+  notifyUsers?: boolean;
+  sortOrder?: number;
+  canDelete?: boolean;
+};
+
+export type HumhubAdminGroups = {
+  groups?: HumhubAdminGroup[];
+};
+
+export type HumhubAdminGroupMember = {
+  id?: number;
+  name?: string;
+  email?: string;
+  imageUrl?: string;
+  isManager?: boolean;
+};
+
+export type HumhubAdminGroupMembers = {
+  members?: HumhubAdminGroupMember[];
+};
+
+export type HumhubAdminModule = {
+  id?: string;
+  name?: string;
+  version?: string;
+  description?: string;
+  isEnabled?: boolean;
+  canEnable?: boolean;
+  canDisable?: boolean;
+};
+
+export type HumhubAdminModules = {
+  modules?: HumhubAdminModule[];
+};
+
+export type HumhubCustomPage = {
+  id?: number;
+  title?: string;
+  type?: string;
+  target?: string;
+  isAdminOnly?: boolean;
+};
+
+export type HumhubCustomPages = {
+  pages?: HumhubCustomPage[];
+};
+
+export type HumhubAdminInformation = {
+  appName?: string;
+  version?: string;
+  phpVersion?: string;
+  databaseDriver?: string;
+  databaseName?: string;
+  baseUrl?: string;
+  isDebug?: boolean;
+};
+
+export type HumhubAdminSettings = {
+  name?: string;
+  baseUrl?: string;
+  defaultLanguage?: string;
+  timeZone?: string;
+  maintenanceMode?: boolean;
+  languages?: HumhubSelectOption[];
+  timeZones?: HumhubSelectOption[];
 };

@@ -4,20 +4,42 @@ import { jsonError } from "@/infrastructure/http/jsonError";
 import { requireAuthToken } from "@/infrastructure/http/requireAuth";
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => null)) as {
-    conversationId?: number;
-    content?: string;
-  } | null;
-
   try {
     const token = await requireAuthToken();
+    const input = await readSendInput(request);
     const message = await app.sendMessage(
       token,
-      Number(body?.conversationId),
-      body?.content ?? "",
+      input.conversationId,
+      input.content,
+      input.files,
     );
     return NextResponse.json(message);
   } catch (error) {
     return jsonError(error, "Não foi possível enviar a mensagem.");
   }
+}
+
+async function readSendInput(request: Request) {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("multipart/form-data")) {
+    const form = await request.formData();
+    return {
+      conversationId: Number(form.get("conversationId")),
+      content: String(form.get("content") ?? ""),
+      files: form
+        .getAll("files")
+        .filter((item): item is File => item instanceof File && item.size > 0),
+    };
+  }
+
+  const body = (await request.json().catch(() => null)) as {
+    conversationId?: number;
+    content?: string;
+  } | null;
+
+  return {
+    conversationId: Number(body?.conversationId),
+    content: body?.content ?? "",
+    files: [] as File[],
+  };
 }

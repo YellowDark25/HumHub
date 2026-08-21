@@ -32,7 +32,7 @@ async function loadProfileUser(
 ): Promise<User> {
   try {
     const profile = await auth.getUser(token, sessionUser.id);
-    return { ...profile, isAdmin: sessionUser.isAdmin };
+    return { ...profile, isAdmin: sessionUser.isAdmin, isOnline: true };
   } catch (error) {
     if (isUnauthorized(error)) {
       throw error;
@@ -41,7 +41,7 @@ async function loadProfileUser(
     console.error(
       `Falha ao carregar o perfil completo: ${error instanceof Error ? error.message : "erro desconhecido"}`,
     );
-    return sessionUser;
+    return { ...sessionUser, isOnline: true };
   }
 }
 

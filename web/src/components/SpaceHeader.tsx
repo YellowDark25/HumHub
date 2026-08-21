@@ -53,7 +53,7 @@ function SpaceCover({
     Boolean(banner.displayedUrl) && failedUrl !== banner.displayedUrl;
 
   return (
-    <div className="relative h-36 bg-teal-700">
+    <div className="relative h-36 bg-oxford">
       {showImage ? (
         <img
           src={banner.displayedUrl}

@@ -18,6 +18,7 @@ type AppHeaderProps = {
   displayName: string;
   title: string;
   imageUrl: string;
+  isOnline: boolean;
   unseenCount: number;
   isAdmin: boolean;
 };
@@ -26,6 +27,7 @@ export function AppHeader({
   displayName,
   title,
   imageUrl,
+  isOnline,
   unseenCount,
   isAdmin,
 }: AppHeaderProps) {
@@ -33,11 +35,11 @@ export function AppHeader({
 
   return (
     <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4">
+      <div className="flex h-16 items-center gap-3 px-4">
         <Link href="/" className="text-base font-semibold tracking-tight text-zinc-900">
           {APP_NAME}
         </Link>
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-0.5">
           <MyAreaDropdown isAdmin={isAdmin} />
           <div className="hidden items-center gap-1 md:flex">
             {LINKS.map((link) => (
@@ -56,6 +58,7 @@ export function AppHeader({
             displayName={displayName}
             title={title}
             imageUrl={imageUrl}
+            isOnline={isOnline}
             isAdmin={isAdmin}
           />
         </div>

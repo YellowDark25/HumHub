@@ -28,6 +28,28 @@ export class HumhubAuthRepository implements AuthRepository {
     };
   }
 
+  async impersonate(token: string, userId: number): Promise<LoginResult> {
+    const result = await humhubRequest<HumhubLoginResponse>({
+      path: "/auth/impersonate",
+      token,
+      method: "POST",
+      body: { userId },
+    });
+
+    const impersonatedToken = result.auth_token ?? result.token;
+    if (!impersonatedToken) {
+      throw new ApplicationError(
+        result.message ?? "Não foi possível representar este usuário.",
+        400,
+      );
+    }
+
+    return {
+      token: impersonatedToken,
+      expiresInSeconds: resolveTokenMaxAge(result.expired_at ?? result.expires),
+    };
+  }
+
   async getCurrentUser(token: string): Promise<User> {
     const user = await this.loadFullDto(token);
     return mapUser(user, await this.canAccessAdministration(token));

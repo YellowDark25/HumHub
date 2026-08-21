@@ -34,12 +34,16 @@ class Module extends \humhub\components\Module
 
     public static function uploadBasePath(): string
     {
-        $path = '/data/nexchat-uploads';
+        return self::ensureUploadPath() ?? '/data/uploads/nexchat';
+    }
 
-        if (!is_dir($path)) {
-            @mkdir($path, 0775, true);
+    public static function ensureUploadPath(): ?string
+    {
+        $path = '/data/uploads/nexchat';
+        if (!is_dir($path) && !@mkdir($path, 0775, true) && !is_dir($path)) {
+            return null;
         }
 
-        return $path;
+        return is_writable($path) ? $path : null;
     }
 }

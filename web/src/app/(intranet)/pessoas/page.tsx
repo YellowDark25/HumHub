@@ -1,5 +1,6 @@
 import { errorMessage } from "@/application/errors";
 import { Avatar } from "@/components/Avatar";
+import { OnlineStatusBadge } from "@/components/OnlineStatusBadge";
 import { LoadError } from "@/components/LoadError";
 import type { User } from "@/domain/User";
 import { app } from "@/infrastructure/composition";
@@ -38,7 +39,10 @@ export default async function PessoasPage() {
               key={person.id}
               className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4"
             >
-              <Avatar name={person.name} imageUrl={person.imageUrl} />
+              <span className="relative shrink-0">
+                <Avatar name={person.name} imageUrl={person.imageUrl} />
+                <OnlineStatusBadge isOnline={person.isOnline} />
+              </span>
               <p className="font-medium text-zinc-900">{person.name}</p>
             </li>
           ))}

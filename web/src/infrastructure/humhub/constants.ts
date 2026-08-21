@@ -8,6 +8,13 @@ export const COMMENT_PAGE_LIMIT = 50;
 export const NOTIFICATION_PAGE_LIMIT = 30;
 export const UNSEEN_NOTIFICATION_LIMIT = 10;
 export const HUMHUB_MAX_PAGE_LIMIT = 50;
+export const USER_PAGE_LIMIT = 50;
+export const GROUP_PAGE_LIMIT = 50;
+
+export const HUMHUB_USER_STATUS_DISABLED = 0;
+export const HUMHUB_USER_STATUS_ENABLED = 1;
+export const HUMHUB_USER_STATUS_NEED_APPROVAL = 2;
+export const HUMHUB_USER_STATUS_SOFT_DELETED = 3;
 
 export const HUMHUB_EDITOR_RICH_TEXT = 0;
 export const HUMHUB_EDITOR_PLAIN = 1;

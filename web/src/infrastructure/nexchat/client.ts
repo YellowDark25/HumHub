@@ -9,6 +9,10 @@ type NexchatRequest = {
   query?: Record<string, string | number>;
 };
 
+function isFormData(body: unknown): body is FormData {
+  return typeof FormData !== "undefined" && body instanceof FormData;
+}
+
 export async function nexchatRequest<T>({
   path,
   token,
@@ -21,7 +25,7 @@ export async function nexchatRequest<T>({
     Authorization: `Bearer ${token}`,
   };
 
-  if (body !== undefined) {
+  if (body !== undefined && !isFormData(body)) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -38,7 +42,12 @@ export async function nexchatRequest<T>({
     {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body:
+        body === undefined
+          ? undefined
+          : isFormData(body)
+            ? body
+            : JSON.stringify(body),
       cache: "no-store",
     },
   );
@@ -48,4 +57,42 @@ export async function nexchatRequest<T>({
   }
 
   return (await response.json()) as T;
+}
+
+export async function nexchatFileRequest(input: {
+  token: string;
+  fileId: number;
+}): Promise<{ body: ArrayBuffer; contentType: string; fileName: string }> {
+  const response = await fetch(
+    `${getHumhubUrl()}/nexchat/index/file?id=${input.fileId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${input.token}`,
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new ApplicationError(`Chat retornou ${response.status}`, response.status);
+  }
+
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const fileName = readFileName(disposition) || `arquivo-${input.fileId}`;
+
+  return {
+    body: await response.arrayBuffer(),
+    contentType: response.headers.get("content-type") || "application/octet-stream",
+    fileName,
+  };
+}
+
+function readFileName(disposition: string): string {
+  const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utfMatch?.[1]) {
+    return decodeURIComponent(utfMatch[1]);
+  }
+
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  return match?.[1] ?? "";
 }

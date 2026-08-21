@@ -1,3 +1,4 @@
+import { BRAND } from "@/shared/brand";
 import { ImageResponse } from "next/og";
 
 export const size = { width: 192, height: 192 };
@@ -13,7 +14,7 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0f766e",
+          background: BRAND.oxford,
           color: "white",
           fontSize: 88,
           fontWeight: 700,

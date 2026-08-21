@@ -1,5 +1,6 @@
 import type { AuthRepository } from "../ports/AuthRepository";
 
-export function getCurrentUser(auth: AuthRepository, token: string) {
-  return auth.getCurrentUser(token);
+export async function getCurrentUser(auth: AuthRepository, token: string) {
+  const user = await auth.getCurrentUser(token);
+  return { ...user, isOnline: true };
 }

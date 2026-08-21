@@ -1,4 +1,13 @@
 import type { Account, AccountPatch, AccountProfile } from "@/domain/Account";
+import type { AdminGroup, AdminGroupMember } from "@/domain/AdminGroup";
+import type { AdminInformation } from "@/domain/AdminInformation";
+import type { AdminModule } from "@/domain/AdminModule";
+import type {
+  AdminSelectOption,
+  AdminSettings,
+} from "@/domain/AdminSettings";
+import type { AdminUser, AdminUserStatus } from "@/domain/AdminUser";
+import type { CustomPage } from "@/domain/CustomPage";
 import type {
   AccountGeneralPatch,
   AccountGeneralSettings,
@@ -14,12 +23,17 @@ import type { Post } from "@/domain/Post";
 import type { Space } from "@/domain/Space";
 import type { SpaceMember } from "@/domain/SpaceMember";
 import type { User } from "@/domain/User";
+import { isRecentlyOnline } from "@/shared/onlineStatus";
 import { stripHtml } from "@/shared/format";
 import { accountModuleCopy } from "@/shared/accountProfileFields";
 import { getPublicHumhubUrl } from "../config";
 import {
   HUMHUB_EDITOR_PLAIN,
   HUMHUB_EDITOR_RICH_TEXT,
+  HUMHUB_USER_STATUS_DISABLED,
+  HUMHUB_USER_STATUS_ENABLED,
+  HUMHUB_USER_STATUS_NEED_APPROVAL,
+  HUMHUB_USER_STATUS_SOFT_DELETED,
   PROFILE_IMAGE_FOLDER,
   SPACE_BANNER_FOLDER,
   UNKNOWN_AUTHOR,
@@ -29,8 +43,18 @@ import type {
   HumhubAccountProfileModule,
   HumhubAccountSettings,
   HumhubActivity,
+  HumhubAdminGroup,
+  HumhubAdminGroupMember,
+  HumhubAdminGroups,
+  HumhubAdminGroupMembers,
+  HumhubAdminInformation,
+  HumhubAdminModule,
+  HumhubAdminModules,
+  HumhubAdminSettings,
   HumhubBlockedUser,
   HumhubComment,
+  HumhubCustomPage,
+  HumhubCustomPages,
   HumhubMembership,
   HumhubNotification,
   HumhubNotificationPreferenceCategory,
@@ -59,6 +83,7 @@ export function mapUser(
     about: profile?.about?.trim() ?? "",
     tags: readTags(account?.tags),
     imageUrl: mapUserImage(dto),
+    isOnline: isRecentlyOnline(account?.last_login),
     isAdmin,
   };
 }
@@ -397,6 +422,154 @@ export function mapActivity(dto: HumhubActivity): Activity {
     originatorImageUrl: mapUserImage(dto.originator),
     publishedAt: dto.createdAt ?? null,
   };
+}
+
+export function mapAdminUser(dto: HumhubUser | HumhubUserShort): AdminUser {
+  const user = mapUser(dto);
+  const account = "account" in dto ? dto.account : undefined;
+  const profile = "profile" in dto ? dto.profile : undefined;
+
+  return {
+    id: user.id,
+    name: user.name,
+    title: user.title,
+    firstName: profile?.firstname?.trim() ?? "",
+    lastName: profile?.lastname?.trim() ?? "",
+    username: user.username,
+    email: user.email,
+    imageUrl: user.imageUrl,
+    lastLogin: text(account?.last_login ?? "") || null,
+    status: mapUserStatus(account?.status),
+  };
+}
+
+export function mapAdminGroups(dto: HumhubAdminGroups): AdminGroup[] {
+  return (dto.groups ?? [])
+    .map(mapAdminGroup)
+    .filter((group) => group.id > 0);
+}
+
+export function mapAdminGroup(dto: HumhubAdminGroup): AdminGroup {
+  return {
+    id: dto.id ?? 0,
+    name: text(dto.name) || "Grupo",
+    description: text(dto.description),
+    type: dto.type === "subgroup" ? "subgroup" : "normal",
+    memberCount: dto.memberCount ?? 0,
+    extraMemberCount: dto.extraMemberCount ?? 0,
+    isDefault: Boolean(dto.isDefault),
+    isProtected: Boolean(dto.isProtected),
+    isAdminGroup: Boolean(dto.isAdminGroup),
+    showAtDirectory: Boolean(dto.showAtDirectory),
+    showAtRegistration: Boolean(dto.showAtRegistration),
+    notifyUsers: Boolean(dto.notifyUsers),
+    sortOrder: dto.sortOrder ?? 100,
+    canDelete: Boolean(dto.canDelete),
+  };
+}
+
+export function mapAdminGroupMembers(
+  dto: HumhubAdminGroupMembers,
+): AdminGroupMember[] {
+  return (dto.members ?? [])
+    .map(mapAdminGroupMember)
+    .filter((member) => member.id > 0);
+}
+
+function mapAdminGroupMember(dto: HumhubAdminGroupMember): AdminGroupMember {
+  return {
+    id: dto.id ?? 0,
+    name: text(dto.name) || "Usuário",
+    email: text(dto.email),
+    imageUrl: text(dto.imageUrl),
+    isManager: Boolean(dto.isManager),
+  };
+}
+
+export function mapAdminModules(dto: HumhubAdminModules): AdminModule[] {
+  return (dto.modules ?? [])
+    .map(mapAdminModule)
+    .filter((module) => module.id !== "");
+}
+
+function mapAdminModule(dto: HumhubAdminModule): AdminModule {
+  return {
+    id: dto.id?.trim() ?? "",
+    name: text(dto.name) || "Módulo",
+    version: text(dto.version),
+    description: text(dto.description),
+    isEnabled: Boolean(dto.isEnabled),
+    canEnable: Boolean(dto.canEnable),
+    canDisable: Boolean(dto.canDisable),
+  };
+}
+
+export function mapCustomPages(dto: HumhubCustomPages): CustomPage[] {
+  return (dto.pages ?? [])
+    .map(mapCustomPage)
+    .filter((page) => page.id > 0);
+}
+
+function mapCustomPage(dto: HumhubCustomPage): CustomPage {
+  return {
+    id: dto.id ?? 0,
+    title: text(dto.title) || "Página",
+    type: text(dto.type),
+    target: text(dto.target),
+    isAdminOnly: Boolean(dto.isAdminOnly),
+  };
+}
+
+export function mapAdminInformation(
+  dto: HumhubAdminInformation,
+): AdminInformation {
+  return {
+    appName: text(dto.appName) || "NexHub",
+    version: text(dto.version),
+    phpVersion: text(dto.phpVersion),
+    databaseDriver: text(dto.databaseDriver),
+    databaseName: text(dto.databaseName),
+    baseUrl: text(dto.baseUrl),
+    isDebug: Boolean(dto.isDebug),
+  };
+}
+
+export function mapAdminSettings(dto: HumhubAdminSettings): AdminSettings {
+  return {
+    name: text(dto.name),
+    baseUrl: text(dto.baseUrl),
+    defaultLanguage: text(dto.defaultLanguage) || "pt-BR",
+    timeZone: text(dto.timeZone) || "America/Sao_Paulo",
+    maintenanceMode: Boolean(dto.maintenanceMode),
+    languages: mapAdminSelectOptions(dto.languages),
+    timeZones: mapAdminSelectOptions(dto.timeZones),
+  };
+}
+
+function mapAdminSelectOptions(
+  options: HumhubSelectOption[] | undefined,
+): AdminSelectOption[] {
+  return mapSelectOptions(options);
+}
+
+function mapUserStatus(status?: number): AdminUserStatus {
+  if (status === HUMHUB_USER_STATUS_DISABLED) {
+    return "disabled";
+  }
+
+  if (status === HUMHUB_USER_STATUS_NEED_APPROVAL) {
+    return "unapproved";
+  }
+
+  if (status === HUMHUB_USER_STATUS_SOFT_DELETED) {
+    return "deleted";
+  }
+
+  if (status === HUMHUB_USER_STATUS_ENABLED) {
+    return "active";
+  }
+
+  return "active";
 }
 
 export function mapSpaceMember(dto: HumhubMembership): SpaceMember | null {

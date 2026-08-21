@@ -7,5 +7,6 @@ export type User = {
   about: string;
   tags: string[];
   imageUrl: string;
+  isOnline: boolean;
   isAdmin: boolean;
 };

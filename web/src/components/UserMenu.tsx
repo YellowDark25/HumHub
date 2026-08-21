@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Avatar } from "./Avatar";
 import { LogoutButton } from "./LogoutButton";
+import { OnlineStatusBadge } from "./OnlineStatusBadge";
 
 const ITEM_CLASS =
   "flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-zinc-50";
@@ -25,10 +26,17 @@ type UserMenuProps = {
   displayName: string;
   title: string;
   imageUrl: string;
+  isOnline: boolean;
   isAdmin: boolean;
 };
 
-export function UserMenu({ displayName, title, imageUrl, isAdmin }: UserMenuProps) {
+export function UserMenu({
+  displayName,
+  title,
+  imageUrl,
+  isOnline,
+  isAdmin,
+}: UserMenuProps) {
   const pathname = usePathname();
   const rootRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -74,7 +82,10 @@ export function UserMenu({ displayName, title, imageUrl, isAdmin }: UserMenuProp
             <span className="block truncate text-xs text-zinc-500">{title}</span>
           ) : null}
         </span>
-        <Avatar name={displayName} imageUrl={imageUrl} size="sm" />
+        <span className="relative shrink-0">
+          <Avatar name={displayName} imageUrl={imageUrl} size="sm" />
+          <OnlineStatusBadge isOnline={isOnline} />
+        </span>
         <ChevronIcon />
       </button>
       {isOpen ? (

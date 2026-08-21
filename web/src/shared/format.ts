@@ -45,7 +45,60 @@ export function formatRelativeDate(value: string | null | undefined): string {
   return formatDate(value);
 }
 
-function parseDate(value: string | null | undefined): Date | null {
+export function formatChatTimestamp(value: string | null | undefined): string {
+  const date = parseDate(value);
+  if (!date) {
+    return value ?? "";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+export function formatChatDayHeading(value: string | null | undefined): string {
+  const date = parseDate(value);
+  if (!date) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+export function formatChatClock(value: string | null | undefined): string {
+  const date = parseDate(value);
+  if (!date) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+export function formatLastAccess(value: string | null | undefined): string {
+  const date = parseDate(value);
+  if (!date) {
+    return "nunca";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+export function parseDate(value: string | null | undefined): Date | null {
   if (!value) {
     return null;
   }

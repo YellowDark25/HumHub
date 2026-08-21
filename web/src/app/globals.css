@@ -1,8 +1,46 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f4f5;
-  --foreground: #18181b;
+  --background: #f1f5f5;
+  --foreground: #100f13;
+}
+
+@theme {
+  --color-night: #100f13;
+  --color-oxford: #002147;
+  --color-pumpkin: #ff6f00;
+  --color-pear: #c9d921;
+  --color-anti-flash: #f1f5f5;
+  --color-rich-black: #011123;
+  --color-celtic: #246bc2;
+  --color-sandy: #ffa865;
+  --color-mindaro: #dde78b;
+
+  /* Ações e destaques: escala Pumpkin no lugar do teal antigo. */
+  --color-teal-50: #fff6eb;
+  --color-teal-100: #ffe8cc;
+  --color-teal-200: #ffcfa3;
+  --color-teal-300: #ffb066;
+  --color-teal-400: #ff8f2a;
+  --color-teal-500: #ff7a0a;
+  --color-teal-600: #ff6f00;
+  --color-teal-700: #b34e00;
+  --color-teal-800: #8a3c00;
+  --color-teal-900: #5c2800;
+  --color-teal-950: #331600;
+
+  /* Neutros: Anti-flash White → Night. */
+  --color-zinc-50: #f1f5f5;
+  --color-zinc-100: #e6ebeb;
+  --color-zinc-200: #d0d6d7;
+  --color-zinc-300: #b4bbbc;
+  --color-zinc-400: #8e9597;
+  --color-zinc-500: #6d7476;
+  --color-zinc-600: #52585a;
+  --color-zinc-700: #3a3e41;
+  --color-zinc-800: #24262a;
+  --color-zinc-900: #100f13;
+  --color-zinc-950: #0b0a0d;
 }
 
 @theme inline {

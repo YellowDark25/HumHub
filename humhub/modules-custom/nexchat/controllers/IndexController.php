@@ -12,8 +12,10 @@ use humhub\modules\nexchat\models\Conversation;
 use humhub\modules\nexchat\models\Membership;
 use humhub\modules\nexchat\models\Message;
 use humhub\modules\nexchat\models\Reaction;
+use humhub\modules\nexchat\models\SpaceServer;
 use humhub\modules\nexchat\notifications\ChannelInvite;
 use humhub\modules\nexchat\notifications\NewDmMessage;
+use humhub\modules\space\models\Space;
 use humhub\modules\user\models\User;
 use Yii;
 use yii\web\ForbiddenHttpException;
@@ -51,20 +53,28 @@ class IndexController extends Controller
 
         $data = $this->buildPageData();
 
-        $toItem = static function (Conversation $conversation) {
-            return [
-                'id' => (int) $conversation->id,
-                'type' => $conversation->type,
-                'name' => $conversation->getDisplayName(),
-            ];
-        };
-
         return [
             'success' => true,
-            'channels' => array_map($toItem, $data['channelConversations']),
-            'dms' => array_map($toItem, $data['dmConversations']),
-            'pendingInvites' => array_map($toItem, $data['pendingInvites']),
+            'channels' => array_map([$this, 'conversationToItem'], $data['channelConversations']),
+            'dms' => array_map([$this, 'conversationToItem'], $data['dmConversations']),
+            'pendingInvites' => array_map([$this, 'conversationToItem'], $data['pendingInvites']),
+            'contacts' => $this->listContacts((int) Yii::$app->user->id),
+            'spaceServerIds' => $this->spaceServerIds(),
         ];
+    }
+
+    public function actionEnableSpaceServer()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $spaceId = (int) Yii::$app->request->post('space_id', 0);
+        if ($spaceId <= 0 || !$this->canCreateChannelInSpace($spaceId)) {
+            return ['success' => false, 'error' => 'Você não pode criar servidor neste espaço.'];
+        }
+
+        SpaceServer::enable($spaceId);
+
+        return ['success' => true, 'spaceId' => $spaceId];
     }
 
     public function actionView($id)
@@ -97,15 +107,229 @@ class IndexController extends Controller
     public function actionCreateChannel()
     {
         $name = trim((string) Yii::$app->request->post('name', ''));
-        if ($name === '') {
-            Yii::$app->session->setFlash('error', 'Informe o nome do canal.');
-            return $this->redirect(['index']);
+        $channelKind = (string) Yii::$app->request->post('channel_kind', Conversation::KIND_TEXT);
+        $spaceId = (int) Yii::$app->request->post('space_id', 0);
+        $isPrivate = filter_var(
+            Yii::$app->request->post('is_private', false),
+            FILTER_VALIDATE_BOOLEAN,
+        );
+        $asJson = BearerLogin::hasBearer();
+
+        if ($asJson) {
+            Yii::$app->response->format = Response::FORMAT_JSON;
         }
 
-        $conversation = Conversation::createChannel($name, (int) Yii::$app->user->id);
+        if ($name === '') {
+            return $this->createChannelFailure($asJson, 'Informe o nome do canal.');
+        }
+
+        if (!in_array($channelKind, Conversation::channelKinds(), true)) {
+            return $this->createChannelFailure($asJson, 'Tipo de canal inválido.');
+        }
+
+        if ($spaceId > 0 && !$this->canCreateChannelInSpace($spaceId)) {
+            return $this->createChannelFailure($asJson, 'Você não pode criar canal neste espaço.');
+        }
+
+        $conversation = Conversation::createChannel(
+            $name,
+            (int) Yii::$app->user->id,
+            $spaceId > 0 ? $spaceId : null,
+            $channelKind,
+            $isPrivate,
+        );
+
+        if ($asJson) {
+            return [
+                'success' => true,
+                'conversation' => $this->conversationToItem($conversation),
+            ];
+        }
+
         Yii::$app->session->setFlash('success', 'Canal criado com sucesso.');
 
         return $this->redirect(['view', 'id' => $conversation->id]);
+    }
+
+    private function createChannelFailure(bool $asJson, string $message)
+    {
+        if ($asJson) {
+            return ['success' => false, 'error' => $message];
+        }
+
+        Yii::$app->session->setFlash('error', $message);
+
+        return $this->redirect(['index']);
+    }
+
+    /**
+     * @return int[]
+     */
+    private function spaceServerIds(): array
+    {
+        if (Yii::$app->db->getTableSchema(SpaceServer::tableName(), true) === null) {
+            return array_map('intval', Space::find()->select('id')->column());
+        }
+
+        return SpaceServer::spaceIds();
+    }
+
+    private function canCreateChannelInSpace(int $spaceId): bool
+    {
+        $space = Space::findOne(['id' => $spaceId]);
+        if ($space === null) {
+            return false;
+        }
+
+        $identity = Yii::$app->user->identity;
+        $isSystemAdmin = $identity && method_exists($identity, 'isSystemAdmin')
+            ? $identity->isSystemAdmin()
+            : false;
+
+        return $isSystemAdmin || $space->isMember();
+    }
+
+    private function readOptionalInt(Conversation $conversation, string $attribute): ?int
+    {
+        if (!$conversation->hasAttribute($attribute) || $conversation->$attribute === null) {
+            return null;
+        }
+
+        return (int) $conversation->$attribute;
+    }
+
+    private function readOptionalString(Conversation $conversation, string $attribute): ?string
+    {
+        if (!$conversation->hasAttribute($attribute) || $conversation->$attribute === null) {
+            return null;
+        }
+
+        return (string) $conversation->$attribute;
+    }
+
+    /**
+     * @return array{id: int, type: string, name: string, spaceId: int|null, channelKind: string|null, isPrivate: bool}
+     */
+    private function conversationToItem(Conversation $conversation): array
+    {
+        $isChannel = $conversation->type === Conversation::TYPE_CHANNEL;
+
+        return [
+            'id' => (int) $conversation->id,
+            'type' => $conversation->type,
+            'name' => $conversation->getDisplayName(),
+            'spaceId' => $this->readOptionalInt($conversation, 'space_id'),
+            'channelKind' => $isChannel
+                ? ($this->readOptionalString($conversation, 'channel_kind') ?: Conversation::KIND_TEXT)
+                : null,
+            'isPrivate' => (bool) $this->readOptionalInt($conversation, 'is_private'),
+            'topic' => $this->readOptionalString($conversation, 'topic') ?? '',
+            'slowModeSeconds' => $this->readOptionalInt($conversation, 'slow_mode_seconds') ?? 0,
+            'isAdmin' => $isChannel && $conversation->isAdmin((int) Yii::$app->user->id),
+        ];
+    }
+
+    public function actionChannelSettings()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $conversation = $this->findConversation((int) Yii::$app->request->get('id', 0));
+        $this->assertChannelAdmin($conversation);
+
+        return [
+            'success' => true,
+            'conversation' => $this->conversationToItem($conversation),
+            'members' => $this->channelMembers($conversation, Membership::STATUS_ACTIVE),
+            'pendingInvites' => $this->channelMembers($conversation, Membership::STATUS_PENDING),
+            'invitableUsers' => $this->invitableUsers($conversation),
+        ];
+    }
+
+    public function actionUpdateChannel()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $conversation = $this->findConversation((int) Yii::$app->request->post('conversation_id', 0));
+        $this->assertChannelAdmin($conversation);
+
+        $name = trim((string) Yii::$app->request->post('name', $conversation->name));
+        $topic = trim((string) Yii::$app->request->post('topic', ''));
+        $slowMode = (int) Yii::$app->request->post('slow_mode_seconds', 0);
+
+        if ($name === '' || mb_strlen($name) > 100) {
+            return ['success' => false, 'error' => 'Informe um nome válido (até 100 caracteres).'];
+        }
+
+        if (mb_strlen($topic) > 1024) {
+            return ['success' => false, 'error' => 'O assunto do canal pode ter no máximo 1024 caracteres.'];
+        }
+
+        if ($slowMode < 0) {
+            return ['success' => false, 'error' => 'Modo lento inválido.'];
+        }
+
+        $conversation->name = $name;
+        if ($conversation->hasAttribute('topic')) {
+            $conversation->topic = $topic === '' ? null : $topic;
+        }
+        if ($conversation->hasAttribute('slow_mode_seconds')) {
+            $conversation->slow_mode_seconds = $slowMode;
+        }
+
+        if (!$conversation->save()) {
+            return ['success' => false, 'error' => 'Não foi possível salvar o canal.'];
+        }
+
+        return [
+            'success' => true,
+            'conversation' => $this->conversationToItem($conversation),
+        ];
+    }
+
+    /**
+     * @return array<int, array{userId: int, name: string, isAdmin: bool}>
+     */
+    private function channelMembers(Conversation $conversation, string $status): array
+    {
+        $rows = [];
+        $memberships = Membership::find()
+            ->where(['conversation_id' => $conversation->id, 'status' => $status])
+            ->with('user')
+            ->all();
+
+        foreach ($memberships as $membership) {
+            $rows[] = [
+                'userId' => (int) $membership->user_id,
+                'name' => $membership->user->displayName ?? 'Usuário',
+                'isAdmin' => $membership->role === Membership::ROLE_ADMIN,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return array<int, array{userId: int, name: string}>
+     */
+    private function invitableUsers(Conversation $conversation): array
+    {
+        $linkedUserIds = Membership::find()
+            ->select('user_id')
+            ->where(['conversation_id' => $conversation->id])
+            ->column();
+
+        $users = User::find()
+            ->where(['!=', 'id', (int) Yii::$app->user->id])
+            ->andFilterWhere(['not in', 'id', $linkedUserIds ?: [0]])
+            ->orderBy(['username' => SORT_ASC])
+            ->all();
+
+        return array_map(static fn(User $user) => [
+            'userId' => (int) $user->id,
+            'name' => $user->getDisplayName(),
+            'username' => (string) $user->username,
+            'guid' => (string) $user->guid,
+        ], $users);
     }
 
     public function actionStartDm()
@@ -135,6 +359,11 @@ class IndexController extends Controller
         return [
             'success' => true,
             'url' => \yii\helpers\Url::to(['/nexchat/index/view', 'id' => $conversation->id]),
+            'conversation' => [
+                'id' => (int) $conversation->id,
+                'type' => $conversation->type,
+                'name' => $conversation->getDisplayName(),
+            ],
         ];
     }
 
@@ -244,11 +473,21 @@ class IndexController extends Controller
             return 'Tipo de arquivo não permitido: "' . $uploadedFile->name . '".';
         }
 
+        $basePath = Module::ensureUploadPath();
+        if ($basePath === null) {
+            return 'Pasta de anexos do chat indisponível.';
+        }
+
         $mime = (string) ($uploadedFile->type ?: 'application/octet-stream');
         $storedName = bin2hex(random_bytes(16)) . '.' . $extension;
-        $targetPath = Module::uploadBasePath() . DIRECTORY_SEPARATOR . $storedName;
+        $targetPath = $basePath . DIRECTORY_SEPARATOR . $storedName;
 
-        if (!$uploadedFile->saveAs($targetPath)) {
+        try {
+            if (!$uploadedFile->saveAs($targetPath)) {
+                return 'Não foi possível salvar "' . $uploadedFile->name . '".';
+            }
+        } catch (\Throwable $e) {
+            Yii::error($e, 'nexchat');
             return 'Não foi possível salvar "' . $uploadedFile->name . '".';
         }
 
@@ -291,7 +530,9 @@ class IndexController extends Controller
             throw new NotFoundHttpException('Arquivo indisponível.');
         }
 
-        $inline = $attachment->is_image || $attachment->mime === 'application/pdf';
+        $inline = $attachment->is_image
+            || $attachment->mime === 'application/pdf'
+            || str_starts_with((string) $attachment->mime, 'audio/');
 
         return Yii::$app->response->sendFile($path, $attachment->file_name, [
             'mimeType' => $attachment->mime ?: 'application/octet-stream',
@@ -646,7 +887,8 @@ class IndexController extends Controller
         $conversation = $this->findConversation($conversationId);
         $this->assertChannelAdmin($conversation);
 
-        if ($userId <= 0 || !$conversation->isMember($userId)) {
+        $membership = $conversation->getMembership($userId);
+        if ($userId <= 0 || !$membership) {
             return ['success' => false, 'error' => 'Membro não encontrado.'];
         }
 
@@ -755,6 +997,82 @@ class IndexController extends Controller
                 ->orderBy(['username' => SORT_ASC])
                 ->all(),
         ];
+    }
+
+    /**
+     * @return array<int, array{id: int, name: string, guid: string, title: string, lastPreview: string, isOnline: bool, conversationId: int|null}>
+     */
+    protected function listContacts(int $userId): array
+    {
+        $directMessages = [];
+        foreach (Conversation::findForUser($userId) as $conversation) {
+            if ($conversation->type === Conversation::TYPE_DM && $conversation->dm_key) {
+                $directMessages[$conversation->dm_key] = $conversation;
+            }
+        }
+
+        $previews = $this->lastMessagePreviews(array_map(
+            static fn(Conversation $conversation) => (int) $conversation->id,
+            $directMessages,
+        ));
+
+        $contacts = [];
+        foreach (User::find()->where(['!=', 'id', $userId])->with('profile')->orderBy(['username' => SORT_ASC])->all() as $user) {
+            $existing = $directMessages[Conversation::buildDmKey($userId, (int) $user->id)] ?? null;
+            $contacts[] = [
+                'id' => (int) $user->id,
+                'name' => $user->getDisplayName(),
+                'guid' => (string) $user->guid,
+                'title' => trim((string) ($user->profile->title ?? '')),
+                'lastPreview' => $existing ? ($previews[(int) $existing->id] ?? '') : '',
+                'isOnline' => $this->isUserOnline($user),
+                'conversationId' => $existing ? (int) $existing->id : null,
+            ];
+        }
+
+        return $contacts;
+    }
+
+    /**
+     * @param int[] $conversationIds
+     * @return array<int, string>
+     */
+    protected function lastMessagePreviews(array $conversationIds): array
+    {
+        if ($conversationIds === []) {
+            return [];
+        }
+
+        $rows = (new \yii\db\Query())
+            ->select(['conversation_id', 'MAX(id) AS max_id'])
+            ->from(Message::tableName())
+            ->where(['conversation_id' => $conversationIds])
+            ->groupBy('conversation_id')
+            ->all();
+
+        $lastIds = array_map(static fn(array $row) => (int) $row['max_id'], $rows);
+        if ($lastIds === []) {
+            return [];
+        }
+
+        $previews = [];
+        foreach (Message::find()->where(['id' => $lastIds])->all() as $message) {
+            $previews[(int) $message->conversation_id] = $message->getPreview(48);
+        }
+
+        return $previews;
+    }
+
+    protected function isUserOnline(User $user): bool
+    {
+        $lastLogin = $user->hasAttribute("last_login")
+            ? $user->getAttribute("last_login")
+            : null;
+        if (!$lastLogin) {
+            return false;
+        }
+
+        return strtotime((string) $lastLogin) >= time() - 300;
     }
 
     protected function registerChatAssets(?int $activeConversationId = null): void

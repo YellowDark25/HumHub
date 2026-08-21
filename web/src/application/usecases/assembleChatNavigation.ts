@@ -1,0 +1,190 @@
+import type { ChatContact } from "@/domain/ChatContact";
+import type { Conversation } from "@/domain/Conversation";
+import {
+  CHANNELS_WORKSPACE_ID,
+  HOME_WORKSPACE_ID,
+  type ChatSidebarItem,
+  type ChatSidebarSection,
+  type ChatWorkspace,
+} from "@/domain/ChatWorkspace";
+import type { Space } from "@/domain/Space";
+import type { ConversationLists } from "../ports/ChatRepository";
+
+export function assembleChatNavigation(
+  lists: ConversationLists,
+  spaces: Space[],
+  requestedId: string,
+  conversation?: Conversation,
+) {
+  const workspaces = buildChatWorkspaces(spaces, lists.spaceServerIds);
+  const currentWorkspace = resolveChatWorkspace({
+    workspaces,
+    requestedId,
+    conversation,
+  });
+
+  return {
+    lists,
+    workspaces,
+    currentWorkspace,
+    sections: chatSidebarSections(lists, currentWorkspace),
+  };
+}
+
+function homeWorkspace(): ChatWorkspace {
+  return {
+    id: HOME_WORKSPACE_ID,
+    kind: "home",
+    name: "Mensagens diretas",
+    imageUrl: "",
+    spaceId: null,
+  };
+}
+
+export function buildChatWorkspaces(
+  spaces: Space[],
+  spaceServerIds: number[],
+): ChatWorkspace[] {
+  const home = homeWorkspace();
+  const servers = spaces.filter((space) => spaceServerIds.includes(space.id));
+
+  if (servers.length === 0) {
+    return [
+      home,
+      {
+        id: CHANNELS_WORKSPACE_ID,
+        kind: "channels",
+        name: "Canais",
+        imageUrl: "",
+        spaceId: null,
+      },
+    ];
+  }
+
+  return [
+    home,
+    ...servers.map((space) => ({
+      id: String(space.id),
+      kind: "space" as const,
+      name: space.name,
+      imageUrl: space.imageUrl,
+      spaceId: space.id,
+    })),
+  ];
+}
+
+export function resolveChatWorkspace(input: {
+  workspaces: ChatWorkspace[];
+  requestedId: string;
+  conversation?: Conversation;
+}): ChatWorkspace {
+  const home = input.workspaces[0] ?? homeWorkspace();
+
+  const requested = input.workspaces.find(
+    (workspace) => workspace.id === input.requestedId,
+  );
+  const firstServer =
+    input.workspaces.find((workspace) => workspace.kind !== "home") ?? home;
+
+  if (input.conversation?.kind === "dm" || input.conversation?.kind === "invite") {
+    return home;
+  }
+
+  if (input.conversation?.kind === "channel") {
+    if (requested && requested.kind !== "home") {
+      return requested;
+    }
+
+    return firstServer;
+  }
+
+  return requested ?? home;
+}
+
+export function chatSidebarSections(
+  lists: ConversationLists,
+  workspace: ChatWorkspace,
+): ChatSidebarSection[] {
+  if (workspace.kind === "home") {
+    const sections: ChatSidebarSection[] = [];
+
+    if (lists.pendingInvites.length > 0) {
+      sections.push({
+        title: "Convites",
+        items: conversationItems(lists.pendingInvites),
+      });
+    }
+
+    sections.push({
+      title: "Mensagens diretas",
+      items:
+        lists.contacts.length > 0
+          ? contactItems(lists.contacts)
+          : conversationItems(lists.dms),
+    });
+    return sections;
+  }
+
+  const channels = channelsForWorkspace(lists.channels, workspace);
+
+  return [
+    {
+      title: "Canais de texto",
+      createChannelType: "text",
+      items: conversationItems(
+        channels.filter((channel) => channel.channelType !== "voice"),
+      ),
+    },
+    {
+      title: "Canais de voz",
+      createChannelType: "voice",
+      items: conversationItems(
+        channels.filter((channel) => channel.channelType === "voice"),
+      ),
+    },
+  ];
+}
+
+function channelsForWorkspace(
+  channels: Conversation[],
+  workspace: ChatWorkspace,
+): Conversation[] {
+  if (workspace.kind === "channels" || workspace.spaceId === null) {
+    return channels;
+  }
+
+  return channels.filter(
+    (channel) =>
+      channel.spaceId === workspace.spaceId || channel.spaceId === null,
+  );
+}
+
+function conversationItems(conversations: Conversation[]): ChatSidebarItem[] {
+  return conversations.map((conversation) => ({
+    key: `${conversation.kind}-${conversation.id}`,
+    name: conversation.name,
+    kind: conversation.kind,
+    conversationId: conversation.id,
+    userId: null,
+    imageUrl: "",
+    subtitle: "",
+    isOnline: false,
+    channelType: conversation.channelType,
+    canManage: conversation.canManage,
+  }));
+}
+
+function contactItems(contacts: ChatContact[]): ChatSidebarItem[] {
+  return contacts.map((contact) => ({
+    key: `contact-${contact.userId}`,
+    name: contact.name,
+    kind: contact.conversationId ? "dm" : "contact",
+    conversationId: contact.conversationId,
+    userId: contact.userId,
+    imageUrl: contact.imageUrl,
+    subtitle: contact.subtitle,
+    isOnline: contact.isOnline,
+    channelType: null,
+    canManage: false,
+  }));
+}

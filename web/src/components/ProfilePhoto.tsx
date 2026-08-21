@@ -1,14 +1,22 @@
 "use client";
 
 import { Avatar } from "./Avatar";
+import { OnlineStatusBadge } from "./OnlineStatusBadge";
 import { useProfilePhoto } from "./useProfilePhoto";
 
 type ProfilePhotoProps = {
   name: string;
   imageUrl: string;
+  isOnline?: boolean;
+  canEdit?: boolean;
 };
 
-export function ProfilePhoto({ name, imageUrl }: ProfilePhotoProps) {
+export function ProfilePhoto({
+  name,
+  imageUrl,
+  isOnline = false,
+  canEdit = true,
+}: ProfilePhotoProps) {
   const photo = useProfilePhoto(imageUrl);
 
   return (
@@ -20,26 +28,31 @@ export function ProfilePhoto({ name, imageUrl }: ProfilePhotoProps) {
           size="xl"
           shape="square"
         />
-        <input
-          ref={photo.fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
-          className="sr-only"
-          onChange={(event) => {
-            void photo.onFileSelected(event.target.files?.[0]);
-            event.target.value = "";
-          }}
-        />
-        <button
-          type="button"
-          onClick={photo.openFilePicker}
-          disabled={photo.isSaving}
-          title="Alterar foto"
-          aria-label="Alterar foto do perfil"
-          className="absolute right-1 bottom-1 flex h-8 w-8 items-center justify-center rounded-md bg-teal-700 text-white shadow hover:bg-teal-800 disabled:opacity-60"
-        >
-          <CameraIcon />
-        </button>
+        <OnlineStatusBadge isOnline={isOnline} size="md" ringClass="ring-white" />
+        {canEdit ? (
+          <>
+            <input
+              ref={photo.fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="sr-only"
+              onChange={(event) => {
+                void photo.onFileSelected(event.target.files?.[0]);
+                event.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={photo.openFilePicker}
+              disabled={photo.isSaving}
+              title="Alterar foto"
+              aria-label="Alterar foto do perfil"
+              className="absolute bottom-1 left-1 flex h-8 w-8 items-center justify-center rounded-md bg-teal-700 text-white shadow hover:bg-teal-800 disabled:opacity-60"
+            >
+              <CameraIcon />
+            </button>
+          </>
+        ) : null}
       </div>
       {photo.error ? (
         <p className="mt-2 max-w-32 text-xs text-red-600">{photo.error}</p>

@@ -1,16 +1,28 @@
 import type { NotificationListQuery } from "@/application/NotificationListQuery";
 import { addComment } from "@/application/usecases/addComment";
 import { countUnseenNotifications } from "@/application/usecases/countUnseenNotifications";
+import { createAdminUser } from "@/application/usecases/createAdminUser";
 import { createSpace } from "@/application/usecases/createSpace";
+import { getChatFile } from "@/application/usecases/getChatFile";
+import { getChatHomePage } from "@/application/usecases/getChatHomePage";
 import { getConversationPage } from "@/application/usecases/getConversationPage";
 import { getCurrentUser } from "@/application/usecases/getCurrentUser";
 import { getNotificationPreferences } from "@/application/usecases/getNotificationPreferences";
+import { getPersonPage } from "@/application/usecases/getPersonPage";
 import { getProfilePage } from "@/application/usecases/getProfilePage";
 import { getSpacePage } from "@/application/usecases/getSpacePage";
 import { listComments } from "@/application/usecases/listComments";
 import { listConversations } from "@/application/usecases/listConversations";
 import { listFeed } from "@/application/usecases/listFeed";
 import { listNotifications } from "@/application/usecases/listNotifications";
+import type { CreateChannelInput } from "@/application/ports/ChatRepository";
+import { createChannel } from "@/application/usecases/createChannel";
+import { deleteChannel } from "@/application/usecases/deleteChannel";
+import { getChannelSettings } from "@/application/usecases/getChannelSettings";
+import { inviteChannelMember } from "@/application/usecases/inviteChannelMember";
+import { openDirectMessage } from "@/application/usecases/openDirectMessage";
+import { removeChannelMember } from "@/application/usecases/removeChannelMember";
+import { updateChannel } from "@/application/usecases/updateChannel";
 import { listPeople } from "@/application/usecases/listPeople";
 import { listSpaces } from "@/application/usecases/listSpaces";
 import { login } from "@/application/usecases/login";
@@ -18,22 +30,53 @@ import { markAllNotificationsAsSeen } from "@/application/usecases/markAllNotifi
 import { publishPost } from "@/application/usecases/publishPost";
 import { requireAdminAccess } from "@/application/usecases/requireAdminAccess";
 import { resetNotificationPreferences } from "@/application/usecases/resetNotificationPreferences";
+import { saveAdminSettings } from "@/application/usecases/saveAdminSettings";
 import { saveNotificationPreferences } from "@/application/usecases/saveNotificationPreferences";
 import { sendMessage } from "@/application/usecases/sendMessage";
+import { setAdminUserStatus } from "@/application/usecases/setAdminUserStatus";
 import { updateAccountGeneral } from "@/application/usecases/updateAccountGeneral";
 import { updateAccountProfile } from "@/application/usecases/updateAccountProfile";
+import { updateAdminUser } from "@/application/usecases/updateAdminUser";
 import { updateProfileImage } from "@/application/usecases/updateProfileImage";
 import { changeEmail } from "@/application/usecases/changeEmail";
 import { changePassword } from "@/application/usecases/changePassword";
 import { changeUsername } from "@/application/usecases/changeUsername";
 import { deleteAccount } from "@/application/usecases/deleteAccount";
+import { deleteAdminUser } from "@/application/usecases/deleteAdminUser";
 import { disableAccountModule } from "@/application/usecases/disableAccountModule";
 import { enableAccountModule } from "@/application/usecases/enableAccountModule";
 import { getAccount } from "@/application/usecases/getAccount";
 import { getAccountGeneralSettings } from "@/application/usecases/getAccountGeneralSettings";
+import { getAdminInformation } from "@/application/usecases/getAdminInformation";
+import { getAdminSettings } from "@/application/usecases/getAdminSettings";
+import { getAdminUser } from "@/application/usecases/getAdminUser";
+import { impersonateAdminUser } from "@/application/usecases/impersonateAdminUser";
 import { listAccountModules } from "@/application/usecases/listAccountModules";
+import { addAdminGroupMember } from "@/application/usecases/addAdminGroupMember";
+import { createAdminGroup } from "@/application/usecases/createAdminGroup";
+import { deleteAdminGroup } from "@/application/usecases/deleteAdminGroup";
+import { getAdminGroup } from "@/application/usecases/getAdminGroup";
+import { listAdminGroupMembers } from "@/application/usecases/listAdminGroupMembers";
+import { listAdminGroups } from "@/application/usecases/listAdminGroups";
+import { removeAdminGroupMember } from "@/application/usecases/removeAdminGroupMember";
+import { setAdminGroupMemberManager } from "@/application/usecases/setAdminGroupMemberManager";
+import { updateAdminGroup } from "@/application/usecases/updateAdminGroup";
+import { listAdminModules } from "@/application/usecases/listAdminModules";
+import { listAdminSpaces } from "@/application/usecases/listAdminSpaces";
+import { listAdminUsers } from "@/application/usecases/listAdminUsers";
+import { listCustomPages } from "@/application/usecases/listCustomPages";
+import {
+  disableAdminModule,
+  enableAdminModule,
+} from "@/application/usecases/toggleAdminModule";
 import type { AccountProfile } from "@/domain/Account";
 import type { AccountGeneralPatch } from "@/domain/AccountGeneralSettings";
+import type { AdminGroupInput } from "@/domain/AdminGroup";
+import type { AdminSettingsPatch } from "@/domain/AdminSettings";
+import type {
+  CreateAdminUserInput,
+  UpdateAdminUserInput,
+} from "@/domain/AdminUser";
 import type { NotificationPreferencePatch } from "@/domain/NotificationPreferences";
 import {
   updateSpaceImage,
@@ -41,6 +84,9 @@ import {
 } from "@/application/usecases/updateSpaceImage";
 import { HumhubAccountModulesRepository } from "./humhub/HumhubAccountModulesRepository";
 import { HumhubAccountSettingsRepository } from "./humhub/HumhubAccountSettingsRepository";
+import { HumhubAdminGroupRepository } from "./humhub/HumhubAdminGroupRepository";
+import { HumhubAdminSystemRepository } from "./humhub/HumhubAdminSystemRepository";
+import { HumhubAdminUserRepository } from "./humhub/HumhubAdminUserRepository";
 import { HumhubAuthRepository } from "./humhub/HumhubAuthRepository";
 import { HumhubFeedRepository } from "./humhub/HumhubFeedRepository";
 import { HumhubNotificationRepository } from "./humhub/HumhubNotificationRepository";
@@ -50,6 +96,9 @@ import { NexchatChatRepository } from "./nexchat/NexchatChatRepository";
 const auth = new HumhubAuthRepository();
 const accountSettings = new HumhubAccountSettingsRepository();
 const accountModules = new HumhubAccountModulesRepository();
+const adminUsers = new HumhubAdminUserRepository();
+const adminGroups = new HumhubAdminGroupRepository();
+const adminSystem = new HumhubAdminSystemRepository();
 const feed = new HumhubFeedRepository();
 const spaces = new HumhubSpaceRepository();
 const notifications = new HumhubNotificationRepository();
@@ -91,9 +140,75 @@ export const app = {
   deleteAccount: (token: string, currentPassword: string) =>
     deleteAccount(auth, token, currentPassword),
   getProfilePage: (token: string) => getProfilePage(token, auth, feed, spaces),
+  getPersonPage: (token: string, userId: number) =>
+    getPersonPage(auth, feed, token, userId),
   updateProfileImage: (token: string, imageDataUrl: string) =>
     updateProfileImage(auth, token, imageDataUrl),
   requireAdminAccess: (token: string) => requireAdminAccess(auth, token),
+  listAdminUsers: (token: string) => listAdminUsers(auth, adminUsers, token),
+  getAdminUser: (token: string, userId: number) =>
+    getAdminUser(auth, adminUsers, token, userId),
+  createAdminUser: (token: string, input: CreateAdminUserInput) =>
+    createAdminUser(auth, adminUsers, token, input),
+  updateAdminUser: (
+    token: string,
+    userId: number,
+    input: UpdateAdminUserInput,
+  ) => updateAdminUser(auth, adminUsers, token, userId, input),
+  setAdminUserStatus: (
+    token: string,
+    userId: number,
+    status: "active" | "disabled",
+  ) => setAdminUserStatus(auth, adminUsers, token, userId, status),
+  deleteAdminUser: (token: string, userId: number) =>
+    deleteAdminUser(auth, adminUsers, token, userId),
+  impersonateAdminUser: (token: string, userId: number) =>
+    impersonateAdminUser(auth, token, userId),
+  listAdminGroups: (token: string) => listAdminGroups(auth, adminGroups, token),
+  getAdminGroup: (token: string, groupId: number) =>
+    getAdminGroup(auth, adminGroups, token, groupId),
+  createAdminGroup: (token: string, input: AdminGroupInput) =>
+    createAdminGroup(auth, adminGroups, token, input),
+  updateAdminGroup: (token: string, groupId: number, input: AdminGroupInput) =>
+    updateAdminGroup(auth, adminGroups, token, groupId, input),
+  deleteAdminGroup: (token: string, groupId: number) =>
+    deleteAdminGroup(auth, adminGroups, token, groupId),
+  listAdminGroupMembers: (token: string, groupId: number) =>
+    listAdminGroupMembers(auth, adminGroups, token, groupId),
+  addAdminGroupMember: (
+    token: string,
+    groupId: number,
+    userId: number,
+    isManager: boolean,
+  ) => addAdminGroupMember(auth, adminGroups, token, groupId, userId, isManager),
+  removeAdminGroupMember: (token: string, groupId: number, userId: number) =>
+    removeAdminGroupMember(auth, adminGroups, token, groupId, userId),
+  setAdminGroupMemberManager: (
+    token: string,
+    groupId: number,
+    userId: number,
+    isManager: boolean,
+  ) =>
+    setAdminGroupMemberManager(
+      auth,
+      adminGroups,
+      token,
+      groupId,
+      userId,
+      isManager,
+    ),
+  listAdminSpaces: (token: string) => listAdminSpaces(auth, spaces, token),
+  listAdminModules: (token: string) => listAdminModules(auth, adminSystem, token),
+  enableAdminModule: (token: string, moduleId: string) =>
+    enableAdminModule(auth, adminSystem, token, moduleId),
+  disableAdminModule: (token: string, moduleId: string) =>
+    disableAdminModule(auth, adminSystem, token, moduleId),
+  listCustomPages: (token: string) => listCustomPages(auth, adminSystem, token),
+  getAdminInformation: (token: string) =>
+    getAdminInformation(auth, adminSystem, token),
+  getAdminSettings: (token: string) => getAdminSettings(auth, adminSystem, token),
+  saveAdminSettings: (token: string, patch: AdminSettingsPatch) =>
+    saveAdminSettings(auth, adminSystem, token, patch),
   listFeed: (token: string) => listFeed(token, feed, spaces),
   publishPost: (token: string, spaceId: number, message: string) =>
     publishPost(feed, token, spaceId, message),
@@ -102,8 +217,10 @@ export const app = {
   addComment: (token: string, postId: number, message: string) =>
     addComment(feed, token, postId, message),
   listSpaces: (token: string) => listSpaces(spaces, token),
-  createSpace: (token: string, name: string, description: string) =>
-    createSpace(auth, spaces, token, name, description),
+  createSpace: (
+    token: string,
+    input: { name: string; description: string; createServer: boolean },
+  ) => createSpace(auth, spaces, chat, token, input),
   getSpacePage: (token: string, spaceId: number) =>
     getSpacePage(token, spaceId, spaces, feed, auth),
   updateSpaceImage: (
@@ -128,8 +245,42 @@ export const app = {
   markAllNotificationsAsSeen: (token: string) =>
     markAllNotificationsAsSeen(notifications, token),
   listConversations: (token: string) => listConversations(chat, token),
-  getConversationPage: (token: string, conversationId: number) =>
-    getConversationPage(chat, token, conversationId),
-  sendMessage: (token: string, conversationId: number, content: string) =>
-    sendMessage(chat, token, conversationId, content),
+  getChatHomePage: (token: string, workspaceId: string) =>
+    getChatHomePage(chat, spaces, auth, token, workspaceId),
+  getConversationPage: (
+    token: string,
+    conversationId: number,
+    workspaceId: string,
+  ) =>
+    getConversationPage(chat, spaces, auth, token, conversationId, workspaceId),
+  sendMessage: (
+    token: string,
+    conversationId: number,
+    content: string,
+    files?: File[],
+  ) => sendMessage(chat, token, conversationId, content, files ?? []),
+  getChatFile: (token: string, fileId: number) => getChatFile(chat, token, fileId),
+  openDirectMessage: (token: string, userId: number) =>
+    openDirectMessage(chat, token, userId),
+  createChannel: (token: string, input: CreateChannelInput) =>
+    createChannel(chat, token, input),
+  getChannelSettings: (token: string, conversationId: number) =>
+    getChannelSettings(chat, token, conversationId),
+  updateChannel: (
+    token: string,
+    conversationId: number,
+    input: { name: string; topic: string; slowModeSeconds: number },
+  ) => updateChannel(chat, token, conversationId, input),
+  deleteChannel: (token: string, conversationId: number) =>
+    deleteChannel(chat, token, conversationId),
+  inviteChannelMember: (
+    token: string,
+    conversationId: number,
+    userId: number,
+  ) => inviteChannelMember(chat, token, conversationId, userId),
+  removeChannelMember: (
+    token: string,
+    conversationId: number,
+    userId: number,
+  ) => removeChannelMember(chat, token, conversationId, userId),
 };

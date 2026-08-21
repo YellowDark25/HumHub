@@ -1,4 +1,5 @@
 import { APP_NAME } from "@/shared/appName";
+import { BRAND } from "@/shared/brand";
 import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
@@ -8,8 +9,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: `App mobile do ${APP_NAME}`,
     start_url: "/",
     display: "standalone",
-    background_color: "#fafafa",
-    theme_color: "#0f766e",
+    background_color: BRAND.antiFlash,
+    theme_color: BRAND.oxford,
     lang: "pt-BR",
     icons: [
       {

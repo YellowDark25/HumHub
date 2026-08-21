@@ -6,9 +6,10 @@ export function sendMessage(
   token: string,
   conversationId: number,
   content: string,
+  files: File[] = [],
 ) {
   const trimmed = content.trim();
-  if (!trimmed) {
+  if (!trimmed && files.length === 0) {
     throw new ApplicationError("A mensagem não pode ficar vazia.", 400);
   }
 
@@ -16,5 +17,5 @@ export function sendMessage(
     throw new ApplicationError("Conversa inválida.", 400);
   }
 
-  return chat.sendMessage(token, conversationId, trimmed);
+  return chat.sendMessage(token, conversationId, trimmed, files);
 }

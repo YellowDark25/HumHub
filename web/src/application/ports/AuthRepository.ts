@@ -8,6 +8,7 @@ export type LoginResult = {
 
 export interface AuthRepository {
   login(username: string, password: string): Promise<LoginResult>;
+  impersonate(token: string, userId: number): Promise<LoginResult>;
   getCurrentUser(token: string): Promise<User>;
   getUser(token: string, userId: number): Promise<User>;
   getAccount(token: string): Promise<Account>;

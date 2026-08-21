@@ -12,6 +12,7 @@ export function CreateSpaceForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [createServer, setCreateServer] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,6 +33,7 @@ export function CreateSpaceForm() {
         body: JSON.stringify({
           name: trimmedName,
           description: description.trim(),
+          createServer,
         }),
       });
 
@@ -75,6 +77,20 @@ export function CreateSpaceForm() {
           placeholder="O que acontece neste espaço?"
           className="resize-none rounded-xl border border-zinc-200 bg-white px-3 py-3 text-base text-zinc-900 outline-none focus:border-teal-600"
         />
+      </label>
+      <label className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-700">
+        <input
+          type="checkbox"
+          checked={createServer}
+          onChange={(event) => setCreateServer(event.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-teal-700"
+        />
+        <span>
+          <span className="font-medium text-zinc-900">Criar servidor no chat</span>
+          <span className="mt-0.5 block text-zinc-500">
+            Inclui este espaço na barra de servidores, com canais de texto e voz.
+          </span>
+        </span>
       </label>
       {error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

@@ -1,6 +1,8 @@
 import { ApplicationError } from "../errors";
 import type { AuthRepository } from "../ports/AuthRepository";
+import type { ChatRepository } from "../ports/ChatRepository";
 import type { SpaceRepository } from "../ports/SpaceRepository";
+import { enableSpaceServer } from "./enableSpaceServer";
 import { getCurrentUser } from "./getCurrentUser";
 
 const MIN_SPACE_NAME_LENGTH = 2;
@@ -10,16 +12,22 @@ const MAX_SPACE_DESCRIPTION_LENGTH = 100;
 export async function createSpace(
   auth: AuthRepository,
   spaces: SpaceRepository,
+  chat: ChatRepository,
   token: string,
-  name: string,
-  description: string,
+  input: { name: string; description: string; createServer: boolean },
 ) {
   await requireSpaceAdmin(auth, token);
-  return spaces.create(
+  const space = await spaces.create(
     token,
-    readSpaceName(name),
-    readSpaceDescription(description),
+    readSpaceName(input.name),
+    readSpaceDescription(input.description),
   );
+
+  if (input.createServer) {
+    await enableSpaceServer(chat, token, space.id);
+  }
+
+  return space;
 }
 
 async function requireSpaceAdmin(auth: AuthRepository, token: string) {

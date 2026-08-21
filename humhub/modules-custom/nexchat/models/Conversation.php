@@ -10,6 +10,11 @@ use Yii;
  * @property int $id
  * @property string $type dm|channel
  * @property string|null $name
+ * @property int|null $space_id
+ * @property string|null $channel_kind text|voice|forum
+ * @property int $is_private
+ * @property string|null $topic
+ * @property int $slow_mode_seconds
  * @property string|null $dm_key
  * @property string|null $last_message_at
  * @property string|null $created_at
@@ -25,6 +30,9 @@ class Conversation extends ActiveRecord
 {
     public const TYPE_DM = 'dm';
     public const TYPE_CHANNEL = 'channel';
+    public const KIND_TEXT = 'text';
+    public const KIND_VOICE = 'voice';
+    public const KIND_FORUM = 'forum';
 
     public static function tableName()
     {
@@ -36,7 +44,12 @@ class Conversation extends ActiveRecord
         return [
             [['type'], 'required'],
             [['type'], 'in', 'range' => [self::TYPE_DM, self::TYPE_CHANNEL]],
+            [['channel_kind'], 'in', 'range' => self::channelKinds()],
+            [['space_id'], 'integer'],
+            [['is_private'], 'boolean'],
+            [['slow_mode_seconds'], 'integer', 'min' => 0],
             [['name'], 'string', 'max' => 100],
+            [['topic'], 'string', 'max' => 1024],
             [['dm_key'], 'string', 'max' => 50],
             [['name'], 'required', 'when' => fn(self $model) => $model->type === self::TYPE_CHANNEL],
             [['last_message_at'], 'safe'],
@@ -105,11 +118,29 @@ class Conversation extends ActiveRecord
         return $conversation;
     }
 
-    public static function createChannel(string $name, int $creatorId): Conversation
+    /**
+     * @return string[]
+     */
+    public static function channelKinds(): array
     {
+        return [self::KIND_TEXT, self::KIND_VOICE, self::KIND_FORUM];
+    }
+
+    public static function createChannel(
+        string $name,
+        int $creatorId,
+        ?int $spaceId = null,
+        string $channelKind = self::KIND_TEXT,
+        bool $isPrivate = false,
+    ): Conversation {
         $conversation = new self([
             'type' => self::TYPE_CHANNEL,
             'name' => trim($name),
+            'space_id' => $spaceId,
+            'channel_kind' => in_array($channelKind, self::channelKinds(), true)
+                ? $channelKind
+                : self::KIND_TEXT,
+            'is_private' => $isPrivate ? 1 : 0,
         ]);
         $conversation->save();
 

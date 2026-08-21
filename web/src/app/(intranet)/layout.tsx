@@ -1,3 +1,4 @@
+import { AppContent } from "@/components/AppContent";
 import { AppHeader } from "@/components/AppHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { isUnauthorized } from "@/application/errors";
@@ -16,6 +17,7 @@ export default async function AppLayout({
   let displayName = "Você";
   let title = "";
   let imageUrl = "";
+  let isOnline = false;
   let unseenCount = 0;
   let isAdmin = false;
 
@@ -24,6 +26,7 @@ export default async function AppLayout({
     displayName = user.name;
     title = user.title;
     imageUrl = user.imageUrl;
+    isOnline = user.isOnline;
     isAdmin = user.isAdmin;
     unseenCount = await loadUnseenCount(token);
   } catch (error) {
@@ -36,15 +39,16 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="flex min-h-full flex-col bg-zinc-100">
+    <div className="flex h-full flex-col bg-zinc-100">
       <AppHeader
         displayName={displayName}
         title={title}
         imageUrl={imageUrl}
+        isOnline={isOnline}
         unseenCount={unseenCount}
         isAdmin={isAdmin}
       />
-      <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</div>
+      <AppContent>{children}</AppContent>
       <MobileNav />
     </div>
   );

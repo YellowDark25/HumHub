@@ -6,6 +6,7 @@ const SIZE_CLASS = {
   xs: "h-6 w-6 text-[10px]",
   sm: "h-8 w-8 text-xs",
   md: "h-10 w-10 text-sm",
+  server: "h-12 w-12 text-sm",
   lg: "h-16 w-16 text-lg",
   card: "h-20 w-20 text-xl",
   xl: "h-32 w-32 text-2xl",
