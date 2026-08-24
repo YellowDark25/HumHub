@@ -12,6 +12,7 @@ use Yii;
  * @property string $type dm|channel
  * @property string|null $name
  * @property int|null $space_id
+ * @property int|null $parent_id
  * @property string|null $channel_kind text|voice|forum
  * @property int $is_private
  * @property string|null $topic
@@ -46,7 +47,7 @@ class Conversation extends ActiveRecord
             [['type'], 'required'],
             [['type'], 'in', 'range' => [self::TYPE_DM, self::TYPE_CHANNEL]],
             [['channel_kind'], 'in', 'range' => self::channelKinds()],
-            [['space_id'], 'integer'],
+            [['space_id', 'parent_id'], 'integer'],
             [['is_private'], 'boolean'],
             [['slow_mode_seconds'], 'integer', 'min' => 0],
             [['name'], 'string', 'max' => 100],
@@ -148,6 +149,50 @@ class Conversation extends ActiveRecord
         Membership::addMember($conversation->id, $creatorId, Membership::ROLE_ADMIN);
 
         return $conversation;
+    }
+
+    public static function createTopic(
+        self $parent,
+        string $name,
+        int $creatorId,
+        bool $isPrivate = false,
+    ): Conversation {
+        $conversation = new self([
+            'type' => self::TYPE_CHANNEL,
+            'name' => trim($name),
+            'space_id' => $parent->space_id,
+            'parent_id' => (int) $parent->id,
+            'channel_kind' => self::KIND_TEXT,
+            'is_private' => $isPrivate ? 1 : 0,
+        ]);
+        $conversation->save();
+
+        Membership::addMember($conversation->id, $creatorId, Membership::ROLE_ADMIN);
+
+        return $conversation;
+    }
+
+    /**
+     * @return Conversation[]
+     */
+    public static function findTopics(int $parentId): array
+    {
+        if (!(new self())->hasAttribute('parent_id')) {
+            return [];
+        }
+
+        return self::find()
+            ->where([
+                'parent_id' => $parentId,
+                'type' => self::TYPE_CHANNEL,
+            ])
+            ->orderBy(['last_message_at' => SORT_DESC, 'id' => SORT_DESC])
+            ->all();
+    }
+
+    public function isTopic(): bool
+    {
+        return $this->hasAttribute('parent_id') && (int) ($this->parent_id ?: 0) > 0;
     }
 
     public function isMember(int $userId): bool

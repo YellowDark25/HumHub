@@ -8,7 +8,7 @@ import { chatWorkspaceHref } from "@/shared/chatWorkspace";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChatInviteFriendsModal } from "./ChatInviteFriendsModal";
-import { ChatServerNotificationMenu } from "./ChatServerNotificationMenu";
+import { ChatServerHeaderActions } from "./ChatServerHeaderActions";
 import { ChatVoiceCardControls } from "./ChatVoiceCardControls";
 import { ChatVoiceControls } from "./ChatVoiceControls";
 import { ChatVoiceTile } from "./ChatVoiceTile";
@@ -133,11 +133,12 @@ export function ChatVoiceRoom({
                 ? `${call.room?.participants.length ?? 1} em chamada`
                 : "Entrando..."}
             </p>
-            {notificationPreference ? (
-              <ChatServerNotificationMenu
-                initialPreference={notificationPreference}
-              />
-            ) : null}
+            <ChatServerHeaderActions
+              conversationId={conversationId}
+              conversationName={channelName}
+              workspaceId={workspaceId}
+              notificationPreference={notificationPreference}
+            />
           </div>
         </header>
 

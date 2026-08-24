@@ -7,17 +7,22 @@ import { readApiError } from "@/shared/readApiError";
 import { ChatComposerAttachments } from "./ChatComposerAttachments";
 import { ChatComposerPanels } from "./ChatComposerPanels";
 import { ChatComposerToolbar } from "./ChatComposerToolbar";
+import { ChatTopicsModal } from "./ChatTopicsModal";
 import { useChatTyping } from "./useChatTyping";
 import { useChatVoiceRecorder } from "./useChatVoiceRecorder";
 
 type ChatComposerProps = {
   conversationId: number;
+  workspaceId?: string;
+  conversationName?: string;
   placeholder: string;
   onSent?: (message: ChatMessage) => void;
 };
 
 export function ChatComposer({
   conversationId,
+  workspaceId,
+  conversationName,
   placeholder,
   onSent,
 }: ChatComposerProps) {
@@ -25,6 +30,7 @@ export function ChatComposer({
   const [content, setContent] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [panel, setPanel] = useState<ComposerPanel>("");
+  const [topicsOpen, setTopicsOpen] = useState(false);
   const [error, setError] = useState("");
   const [isSending, setIsSending] = useState(false);
   const recorder = useChatVoiceRecorder();
@@ -151,7 +157,24 @@ export function ChatComposer({
         onSelectFile={openFilePicker}
         onOpenPanel={setPanel}
         onInsertEmoji={insertEmoji}
+        onCreateTopic={
+          workspaceId
+            ? () => {
+                setPanel("");
+                setTopicsOpen(true);
+              }
+            : undefined
+        }
       />
+      {topicsOpen && workspaceId ? (
+        <ChatTopicsModal
+          conversationId={conversationId}
+          conversationName={conversationName ?? ""}
+          workspaceId={workspaceId}
+          initialView="create"
+          onClose={() => setTopicsOpen(false)}
+        />
+      ) : null}
       <form
         onSubmit={handleSubmit}
         className="overflow-hidden rounded-2xl bg-zinc-100"

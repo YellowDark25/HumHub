@@ -20,7 +20,9 @@ export type ChatSidebarItem = {
   name: string;
   kind: ChatSidebarItemKind;
   conversationId: number | null;
+  parentConversationId: number | null;
   userId: number | null;
+  children: ChatSidebarItem[];
   imageUrl: string;
   subtitle: string;
   isOnline: boolean;

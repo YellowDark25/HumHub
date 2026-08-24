@@ -1,7 +1,8 @@
 import { errorMessage, isNotFound } from "@/application/errors";
 import { ChatConversationPane } from "@/components/ChatConversationPane";
-import { ChatServerNotificationMenu } from "@/components/ChatServerNotificationMenu";
+import { ChatServerHeaderActions } from "@/components/ChatServerHeaderActions";
 import { ChatShell } from "@/components/ChatShell";
+import { ChatTopicIcon } from "@/components/ChatTopicIcon";
 import { ChatVoiceRoom } from "@/components/ChatVoiceRoom";
 import { LoadError } from "@/components/LoadError";
 import type { ChatMessage } from "@/domain/ChatMessage";
@@ -15,6 +16,7 @@ import {
   redirectIfUnauthorized,
   requirePageToken,
 } from "@/infrastructure/pageSession";
+import { isChatTopic, topicParentId } from "@/shared/chatTopic";
 import { chatWorkspaceHref, readChatWorkspaceId } from "@/shared/chatWorkspace";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -45,6 +47,7 @@ export default async function ChatViewPage({
   let spacesWithoutServer: Space[] = [];
   let notificationPreference: ChatNotificationPreference | null = null;
   let messages: ChatMessage[] = [];
+  let channels: Conversation[] = [];
   let loadError = "";
 
   try {
@@ -61,6 +64,7 @@ export default async function ChatViewPage({
     spacesWithoutServer = page.spacesWithoutServer;
     notificationPreference = page.notificationPreference;
     messages = page.messages;
+    channels = page.lists.channels;
   } catch (error) {
     await redirectIfUnauthorized(error);
     if (isNotFound(error)) {
@@ -79,6 +83,20 @@ export default async function ChatViewPage({
     }
     notFound();
   }
+
+  const parentChannel = channels.find(
+    (channel) => channel.id === current.parentConversationId,
+  );
+  const topicsConversationId = topicParentId(current);
+  const topicsConversationName = parentChannel?.name ?? current.name;
+  const headerActions = (
+    <ChatServerHeaderActions
+      conversationId={topicsConversationId}
+      conversationName={topicsConversationName}
+      workspaceId={currentWorkspace.id}
+      notificationPreference={notificationPreference}
+    />
+  );
 
   return (
     <ChatShell
@@ -104,6 +122,8 @@ export default async function ChatViewPage({
           key={conversationId}
           conversationId={conversationId}
           currentUserId={currentUser?.id ?? 0}
+          workspaceId={currentWorkspace.id}
+          conversationName={topicsConversationName}
           title={
             <>
               <Link
@@ -112,26 +132,50 @@ export default async function ChatViewPage({
               >
                 Voltar
               </Link>
-              <h1 className="truncate">
-                {current.kind === "channel" ? "#" : "@"} {current.name}
-              </h1>
+              <ConversationTitle
+                conversation={current}
+                parentName={parentChannel?.name ?? null}
+              />
             </>
           }
-          trailing={
-            notificationPreference ? (
-              <ChatServerNotificationMenu
-                initialPreference={notificationPreference}
-              />
-            ) : null
-          }
+          trailing={headerActions}
           placeholder={
-            current.kind === "channel"
-              ? `Conversar em #${current.name}`
-              : `Conversar em @${current.name}`
+            isChatTopic(current)
+              ? `Conversar em '${current.name}'`
+              : current.kind === "channel"
+                ? `Conversar em #${current.name}`
+                : `Conversar em @${current.name}`
           }
           initialMessages={messages}
         />
       )}
     </ChatShell>
+  );
+}
+
+function ConversationTitle({
+  conversation,
+  parentName,
+}: {
+  conversation: Conversation;
+  parentName: string | null;
+}) {
+  if (parentName && isChatTopic(conversation)) {
+    return (
+      <h1 className="flex min-w-0 items-center gap-2 truncate">
+        <span className="truncate text-zinc-500"># {parentName}</span>
+        <span className="text-zinc-300" aria-hidden="true">
+          ›
+        </span>
+        <ChatTopicIcon className="h-4 w-4 shrink-0 text-zinc-500" />
+        <span className="truncate">{conversation.name}</span>
+      </h1>
+    );
+  }
+
+  return (
+    <h1 className="truncate">
+      {conversation.kind === "channel" ? "#" : "@"} {conversation.name}
+    </h1>
   );
 }

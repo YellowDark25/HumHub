@@ -17,6 +17,8 @@ import { useChatTypers } from "./useChatTypers";
 type ChatConversationPaneProps = {
   conversationId: number;
   currentUserId: number;
+  workspaceId?: string;
+  conversationName?: string;
   title: ReactNode;
   trailing?: ReactNode;
   placeholder: string;
@@ -26,6 +28,8 @@ type ChatConversationPaneProps = {
 export function ChatConversationPane({
   conversationId,
   currentUserId,
+  workspaceId,
+  conversationName,
   title,
   trailing,
   placeholder,
@@ -63,6 +67,8 @@ export function ChatConversationPane({
       <ChatTypingIndicator label={typers.label} />
       <ChatComposer
         conversationId={conversationId}
+        workspaceId={workspaceId}
+        conversationName={conversationName}
         placeholder={placeholder}
         onSent={(message) =>
           setMessages((current) => upsertChatMessage(current, message))

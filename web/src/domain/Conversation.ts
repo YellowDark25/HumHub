@@ -7,6 +7,7 @@ export type Conversation = {
   kind: ConversationKind;
   name: string;
   spaceId: number | null;
+  parentConversationId: number | null;
   channelType: ChatChannelType | null;
   isPrivate: boolean;
   topic: string;

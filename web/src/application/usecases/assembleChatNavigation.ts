@@ -129,23 +129,43 @@ export function chatSidebarSections(
   }
 
   const channels = channelsForWorkspace(lists.channels, workspace);
+  const topLevel = channels.filter((channel) => !channel.parentConversationId);
+  const childrenByParent = topicsByParent(channels);
 
   return [
     {
       title: "Canais de texto",
       createChannelType: "text",
       items: conversationItems(
-        channels.filter((channel) => channel.channelType !== "voice"),
+        topLevel.filter((channel) => channel.channelType !== "voice"),
+        childrenByParent,
       ),
     },
     {
       title: "Canais de voz",
       createChannelType: "voice",
       items: conversationItems(
-        channels.filter((channel) => channel.channelType === "voice"),
+        topLevel.filter((channel) => channel.channelType === "voice"),
+        childrenByParent,
       ),
     },
   ];
+}
+
+function topicsByParent(channels: Conversation[]) {
+  const childrenByParent = new Map<number, Conversation[]>();
+
+  for (const channel of channels) {
+    if (!channel.parentConversationId) {
+      continue;
+    }
+
+    const siblings = childrenByParent.get(channel.parentConversationId) ?? [];
+    siblings.push(channel);
+    childrenByParent.set(channel.parentConversationId, siblings);
+  }
+
+  return childrenByParent;
 }
 
 function channelsForWorkspace(
@@ -162,18 +182,23 @@ function channelsForWorkspace(
   );
 }
 
-function conversationItems(conversations: Conversation[]): ChatSidebarItem[] {
+function conversationItems(
+  conversations: Conversation[],
+  childrenByParent: Map<number, Conversation[]> = new Map(),
+): ChatSidebarItem[] {
   return conversations.map((conversation) => ({
     key: `${conversation.kind}-${conversation.id}`,
     name: conversation.name,
     kind: conversation.kind,
     conversationId: conversation.id,
+    parentConversationId: conversation.parentConversationId,
     userId: null,
     imageUrl: "",
     subtitle: "",
     isOnline: false,
     channelType: conversation.channelType,
     canManage: conversation.canManage,
+    children: conversationItems(childrenByParent.get(conversation.id) ?? []),
   }));
 }
 
@@ -183,11 +208,13 @@ function contactItems(contacts: ChatContact[]): ChatSidebarItem[] {
     name: contact.name,
     kind: contact.conversationId ? "dm" : "contact",
     conversationId: contact.conversationId,
+    parentConversationId: null,
     userId: contact.userId,
     imageUrl: contact.imageUrl,
     subtitle: contact.subtitle,
     isOnline: contact.isOnline,
     channelType: null,
     canManage: false,
+    children: [],
   }));
 }

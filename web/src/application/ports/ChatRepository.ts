@@ -10,6 +10,7 @@ import type {
   ChatNotificationPreference,
   ChatNotificationPreferencePatch,
 } from "@/domain/ChatNotificationPreference";
+import type { ChatTopic } from "@/domain/ChatTopic";
 import type { ChatChannelType, Conversation } from "@/domain/Conversation";
 
 export type ConversationLists = {
@@ -81,6 +82,8 @@ export interface ChatRepository {
     token: string,
     patch: ChatNotificationPreferencePatch,
   ): Promise<ChatNotificationPreference>;
+  listTopics(token: string, conversationId: number): Promise<ChatTopic[]>;
+  createTopic(token: string, input: CreateTopicInput): Promise<Conversation>;
 }
 
 export type CreateChannelInput = {
@@ -94,4 +97,11 @@ export type UpdateChannelInput = {
   name: string;
   topic: string;
   slowModeSeconds: number;
+};
+
+export type CreateTopicInput = {
+  conversationId: number;
+  name: string;
+  isPrivate: boolean;
+  message: string;
 };

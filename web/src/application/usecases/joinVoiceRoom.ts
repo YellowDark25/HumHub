@@ -14,9 +14,11 @@ export async function joinVoiceRoom(
   conversationId: number,
   media: VoiceMediaState,
 ) {
-  await requireVoiceChannel(chat, token, conversationId);
-  const user = await getCurrentUser(auth, token);
-  const room = await voice.list(conversationId);
+  const [user, room] = await Promise.all([
+    getCurrentUser(auth, token),
+    voice.list(conversationId),
+    requireVoiceChannel(chat, token, conversationId),
+  ]);
   const alreadyInRoom = room.participants.some(
     (participant) => participant.userId === user.id,
   );

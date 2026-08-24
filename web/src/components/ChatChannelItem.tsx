@@ -8,6 +8,7 @@ import Link from "next/link";
 import { ChatChannelSettings } from "./ChatChannelSettings";
 import { ChatInviteFriendsModal } from "./ChatInviteFriendsModal";
 import { ChatVoiceOccupants, useVoiceCallDuration } from "./ChatVoiceOccupancy";
+import { useVoiceCall } from "./useVoiceCall";
 
 type ChatChannelItemProps = {
   item: ChatSidebarItem;
@@ -15,6 +16,7 @@ type ChatChannelItemProps = {
   workspaceName: string;
   categoryName: string;
   isActive: boolean;
+  activeConversationId?: number;
 };
 
 export function ChatChannelItem({
@@ -23,9 +25,11 @@ export function ChatChannelItem({
   workspaceName,
   categoryName,
   isActive,
+  activeConversationId,
 }: ChatChannelItemProps) {
   const [settingsTab, setSettingsTab] = useState<"overview" | "invites" | "">("");
   const [inviteOpen, setInviteOpen] = useState(false);
+  const call = useVoiceCall();
   const callDuration = useVoiceCallDuration(
     item.channelType === "voice" ? item.conversationId : null,
   );
@@ -47,6 +51,16 @@ export function ChatChannelItem({
       >
         <Link
           href={chatConversationHref(item.conversationId, workspaceId)}
+          onClick={() => {
+            if (item.channelType !== "voice" || !item.conversationId) {
+              return;
+            }
+            void call.join({
+              conversationId: item.conversationId,
+              channelName: item.name,
+              workspaceId,
+            });
+          }}
           className={`flex min-w-0 flex-1 items-center gap-2.5 px-2 py-2 text-[15px] ${
             isActive ? "font-medium text-zinc-900" : "text-zinc-600 group-hover:text-zinc-900"
           }`}
@@ -113,7 +127,68 @@ export function ChatChannelItem({
       {item.channelType === "voice" && item.conversationId ? (
         <ChatVoiceOccupants conversationId={item.conversationId} />
       ) : null}
+      {item.children.length > 0 ? (
+        <ChannelTopicList
+          topics={item.children}
+          workspaceId={workspaceId}
+          activeConversationId={activeConversationId}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function ChannelTopicList({
+  topics,
+  workspaceId,
+  activeConversationId,
+}: {
+  topics: ChatSidebarItem[];
+  workspaceId: string;
+  activeConversationId?: number;
+}) {
+  return (
+    <ul>
+      {topics.map((topic, index) => {
+        const isActive = topic.conversationId === activeConversationId;
+
+        return (
+          <li key={topic.key} className="relative flex min-h-8 items-center">
+            <TopicBranch
+              isFirst={index === 0}
+              isLast={index === topics.length - 1}
+            />
+            {topic.conversationId ? (
+              <Link
+                href={chatConversationHref(topic.conversationId, workspaceId)}
+                className={`min-w-0 flex-1 truncate rounded-md px-1.5 py-1 text-[13px] ${
+                  isActive
+                    ? "bg-zinc-200 font-medium text-zinc-900"
+                    : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+                }`}
+              >
+                {topic.name}
+              </Link>
+            ) : (
+              <span className="px-1.5 text-[13px] text-zinc-400">{topic.name}</span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function TopicBranch({ isFirst, isLast }: { isFirst: boolean; isLast: boolean }) {
+  return (
+    <span className="relative w-9 shrink-0 self-stretch" aria-hidden="true">
+      <span
+        className={`absolute left-4.5 w-px bg-zinc-300 ${
+          isFirst ? "-top-1.5" : "top-0"
+        } ${isLast ? "bottom-1/2" : "bottom-0"}`}
+      />
+      <span className="absolute top-1/2 left-4.5 h-2.5 w-2.5 -translate-y-full rounded-bl-sm border-b border-l border-zinc-300" />
+    </span>
   );
 }
 

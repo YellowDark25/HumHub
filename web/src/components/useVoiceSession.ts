@@ -10,6 +10,8 @@ export function useVoiceSession() {
   const [isJoining, setJoining] = useState(false);
   const sessionRef = useRef<VoiceSession | null>(null);
   const joinGeneration = useRef(0);
+  const pendingJoin = useRef<Promise<VoiceSession | null> | null>(null);
+  const pendingConversationId = useRef(0);
   sessionRef.current = session;
 
   const join = useCallback(async (conversationId: number, media: VoiceMediaState) => {
@@ -19,38 +21,52 @@ export function useVoiceSession() {
       return current;
     }
 
+    if (pendingConversationId.current === conversationId && pendingJoin.current) {
+      return pendingJoin.current;
+    }
+
     const generation = ++joinGeneration.current;
     setJoining(true);
     setError("");
 
-    try {
-      const next = await joinVoiceRoomApi(conversationId, media);
-      if (joinGeneration.current !== generation) {
+    const request = (async () => {
+      try {
+        const next = await joinVoiceRoomApi(conversationId, media);
+        if (joinGeneration.current !== generation) {
+          return null;
+        }
+
+        const previousId = current?.room.conversationId;
+        if (previousId && previousId !== conversationId) {
+          await leaveRoom(previousId);
+        }
+
+        sessionRef.current = next;
+        setSession(next);
+        return next;
+      } catch (caught) {
+        if (joinGeneration.current === generation) {
+          setError(errorText(caught, "Não foi possível entrar na sala de voz."));
+        }
         return null;
+      } finally {
+        if (joinGeneration.current === generation) {
+          setJoining(false);
+          pendingJoin.current = null;
+          pendingConversationId.current = 0;
+        }
       }
+    })();
 
-      const previousId = current?.room.conversationId;
-      if (previousId && previousId !== conversationId) {
-        await leaveRoom(previousId);
-      }
-
-      sessionRef.current = next;
-      setSession(next);
-      return next;
-    } catch (caught) {
-      if (joinGeneration.current === generation) {
-        setError(errorText(caught, "Não foi possível entrar na sala de voz."));
-      }
-      return null;
-    } finally {
-      if (joinGeneration.current === generation) {
-        setJoining(false);
-      }
-    }
+    pendingConversationId.current = conversationId;
+    pendingJoin.current = request;
+    return request;
   }, []);
 
   const leave = useCallback(async () => {
     joinGeneration.current += 1;
+    pendingJoin.current = null;
+    pendingConversationId.current = 0;
     const current = sessionRef.current;
     sessionRef.current = null;
     setSession(null);

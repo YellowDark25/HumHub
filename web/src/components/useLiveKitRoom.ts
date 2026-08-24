@@ -62,6 +62,11 @@ export function useLiveKitRoom(
 
   useEffect(() => {
     if (!session) {
+      setRoom(null);
+      setLocalStream(null);
+      setRemoteStreams({});
+      setSpeakingIds([]);
+      setReady(false);
       return;
     }
 
@@ -138,6 +143,10 @@ export function useLiveKitRoom(
     return () => {
       cancelled = true;
       setReady(false);
+      setRoom(null);
+      setLocalStream(null);
+      setRemoteStreams({});
+      setSpeakingIds([]);
       roomRef.current = null;
       live.disconnect();
     };

@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { VoiceParticipant, VoiceRoom } from "@/domain/VoiceRoom";
 import { formatCallDuration } from "@/shared/format";
 import { Avatar } from "./Avatar";
+import { useVoiceCall } from "./useVoiceCall";
 
 type OccupancyValue = {
   occupantsByChannel: Record<number, VoiceParticipant[]>;
@@ -27,6 +28,8 @@ export function ChatVoiceOccupancyProvider({
   children: ReactNode;
 }) {
   const [rooms, setRooms] = useState<VoiceRoom[]>([]);
+  const call = useVoiceCall();
+  const liveConversationId = call.channel?.conversationId ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -52,19 +55,29 @@ export function ChatVoiceOccupancyProvider({
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [liveConversationId]);
 
   const value = useMemo<OccupancyValue>(() => {
     const occupantsByChannel = Object.fromEntries(
       rooms.map((room) => [room.conversationId, room.participants]),
     );
-    const connectedRoom =
-      rooms.find((room) =>
-        room.participants.some((item) => item.userId === currentUserId),
-      ) ?? null;
+    const liveRoom = call.channel ? call.room : null;
+    if (liveRoom) {
+      occupantsByChannel[liveRoom.conversationId] = mergeOccupants(
+        occupantsByChannel[liveRoom.conversationId] ?? [],
+        liveRoom.participants,
+      );
+    } else if (currentUserId) {
+      for (const conversationId of Object.keys(occupantsByChannel)) {
+        occupantsByChannel[Number(conversationId)] = occupantsByChannel[
+          Number(conversationId)
+        ].filter((person) => person.userId !== currentUserId);
+      }
+    }
+    const connectedRoom = liveRoom;
     const selfJoinedAt = joinedAtOf(connectedRoom, currentUserId);
     return { occupantsByChannel, connectedRoom, selfJoinedAt };
-  }, [currentUserId, rooms]);
+  }, [call.channel, call.room, currentUserId, rooms]);
 
   return (
     <OccupancyContext.Provider value={value}>{children}</OccupancyContext.Provider>
@@ -97,6 +110,17 @@ export function useVoiceCallDuration(conversationId: number | null): string | nu
   }
 
   return formatCallDuration(Math.floor((now - startedAt) / 1000));
+}
+
+function mergeOccupants(
+  polled: VoiceParticipant[],
+  live: VoiceParticipant[],
+): VoiceParticipant[] {
+  const byId = new Map(polled.map((person) => [person.userId, person]));
+  for (const person of live) {
+    byId.set(person.userId, person);
+  }
+  return [...byId.values()];
 }
 
 function joinedAtOf(room: VoiceRoom | null, userId: number | null): number | null {

@@ -27,6 +27,8 @@ import { listFeed } from "@/application/usecases/listFeed";
 import { listNotifications } from "@/application/usecases/listNotifications";
 import type { CreateChannelInput } from "@/application/ports/ChatRepository";
 import { createChannel } from "@/application/usecases/createChannel";
+import { createTopic } from "@/application/usecases/createTopic";
+import { listTopics } from "@/application/usecases/listTopics";
 import { deleteChannel } from "@/application/usecases/deleteChannel";
 import { getChannelSettings } from "@/application/usecases/getChannelSettings";
 import { inviteChannelMember } from "@/application/usecases/inviteChannelMember";
@@ -402,6 +404,17 @@ export const app = {
     openDirectMessage(chat, token, userId),
   createChannel: (token: string, input: CreateChannelInput) =>
     createChannel(chat, token, input),
+  listTopics: (token: string, conversationId: number) =>
+    listTopics(chat, token, conversationId),
+  createTopic: (
+    token: string,
+    input: {
+      conversationId: number;
+      name: string;
+      isPrivate: boolean;
+      message: string;
+    },
+  ) => createTopic(chat, token, input),
   getChannelSettings: (token: string, conversationId: number) =>
     getChannelSettings(chat, token, conversationId),
   updateChannel: (

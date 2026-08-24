@@ -3,6 +3,7 @@ import type {
   ChatRepository,
   ConversationLists,
   CreateChannelInput,
+  CreateTopicInput,
   UpdateChannelInput,
 } from "@/application/ports/ChatRepository";
 import type { ChannelSettings } from "@/domain/ChannelSettings";
@@ -18,6 +19,7 @@ import type {
   ChatNotificationPreference,
   ChatNotificationPreferencePatch,
 } from "@/domain/ChatNotificationPreference";
+import type { ChatTopic } from "@/domain/ChatTopic";
 import type { Conversation } from "@/domain/Conversation";
 import { nexchatFileRequest, nexchatRequest } from "./client";
 import {
@@ -25,6 +27,7 @@ import {
   mapChatContact,
   mapChatLiveSubscription,
   mapChatMessage,
+  mapChatTopic,
   mapConversation,
   mapServerNotificationPreference,
 } from "./mappers";
@@ -37,6 +40,7 @@ import type {
   NexchatSendResult,
   NexchatServerNotificationPreference,
   NexchatSubscribeToken,
+  NexchatTopic,
 } from "./types";
 
 export class NexchatChatRepository implements ChatRepository {
@@ -372,6 +376,53 @@ export class NexchatChatRepository implements ChatRepository {
     }
 
     return mapServerNotificationPreference(result, patch.spaceId);
+  }
+
+  async listTopics(token: string, conversationId: number): Promise<ChatTopic[]> {
+    const result = await nexchatRequest<{
+      success: boolean;
+      error?: string;
+      topics?: NexchatTopic[];
+    }>({
+      path: "list-topics",
+      token,
+      query: { conversation_id: conversationId },
+    });
+
+    if (!result.success) {
+      throw new ApplicationError(
+        result.error || "Não foi possível carregar os tópicos.",
+        400,
+      );
+    }
+
+    return (result.topics ?? []).map(mapChatTopic);
+  }
+
+  async createTopic(
+    token: string,
+    input: CreateTopicInput,
+  ): Promise<Conversation> {
+    const result = await nexchatRequest<NexchatCreateChannelResult>({
+      path: "create-topic",
+      token,
+      method: "POST",
+      body: {
+        conversation_id: input.conversationId,
+        name: input.name,
+        is_private: input.isPrivate,
+        message: input.message,
+      },
+    });
+
+    if (!result.success || !result.conversation) {
+      throw new ApplicationError(
+        result.error || "Não foi possível criar o tópico.",
+        400,
+      );
+    }
+
+    return mapConversation(result.conversation, "channel");
   }
 }
 

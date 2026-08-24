@@ -7,6 +7,7 @@ import type {
   ChatNotificationLevel,
   ChatNotificationPreference,
 } from "@/domain/ChatNotificationPreference";
+import type { ChatTopic } from "@/domain/ChatTopic";
 import type {
   ChatChannelType,
   Conversation,
@@ -21,6 +22,7 @@ import type {
   NexchatMessage,
   NexchatServerNotificationPreference,
   NexchatSubscribeToken,
+  NexchatTopic,
 } from "./types";
 
 export function mapConversation(
@@ -32,6 +34,7 @@ export function mapConversation(
     kind,
     name: dto.name,
     spaceId: dto.spaceId ?? null,
+    parentConversationId: dto.parentId ?? null,
     channelType: kind === "channel" ? readChannelType(dto.channelKind) : null,
     isPrivate: Boolean(dto.isPrivate),
     topic: dto.topic ?? "",
@@ -73,6 +76,21 @@ function mapChannelMember(person: {
     userId: person.userId,
     name: person.name,
     isAdmin: Boolean(person.isAdmin),
+  };
+}
+
+export function mapChatTopic(dto: NexchatTopic): ChatTopic {
+  return {
+    id: dto.id,
+    parentConversationId: dto.parentConversationId,
+    name: dto.name,
+    isPrivate: Boolean(dto.isPrivate),
+    lastPreview: dto.lastPreview ?? "",
+    lastActivityAt: dto.lastActivityAt ?? null,
+    messageCount: dto.messageCount ?? 0,
+    starterName: dto.starterName ?? "",
+    starterImageUrl: toBrowserMediaUrl(dto.starterImageUrl ?? ""),
+    isJoined: Boolean(dto.isJoined),
   };
 }
 

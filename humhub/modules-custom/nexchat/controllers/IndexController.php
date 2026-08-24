@@ -297,7 +297,75 @@ class IndexController extends Controller
             'isPrivate' => (bool) $this->readOptionalInt($conversation, 'is_private'),
             'topic' => $this->readOptionalString($conversation, 'topic') ?? '',
             'slowModeSeconds' => $this->readOptionalInt($conversation, 'slow_mode_seconds') ?? 0,
+            'parentId' => $this->readOptionalInt($conversation, 'parent_id'),
             'isAdmin' => $isChannel && $conversation->isAdmin((int) Yii::$app->user->id),
+        ];
+    }
+
+    public function actionListTopics()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $parent = $this->topicRoot(
+            $this->findConversation((int) Yii::$app->request->get('conversation_id', 0)),
+        );
+
+        if (!$this->conversationHasParentColumn()) {
+            return ['success' => true, 'topics' => []];
+        }
+
+        $userId = (int) Yii::$app->user->id;
+        $topics = [];
+        foreach (Conversation::findTopics((int) $parent->id) as $topic) {
+            if ($topic->canAccess($userId)) {
+                $topics[] = $this->topicToItem($topic);
+            }
+        }
+
+        return ['success' => true, 'topics' => $topics];
+    }
+
+    public function actionCreateTopic()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        if (!$this->conversationHasParentColumn()) {
+            return ['success' => false, 'error' => 'Tópicos ainda não estão disponíveis.'];
+        }
+
+        $body = Yii::$app->request->getBodyParams();
+        $conversationId = (int) ($body['conversation_id'] ?? Yii::$app->request->post('conversation_id', 0));
+        $parent = $this->topicRoot($this->findConversation($conversationId));
+        if ($parent->type !== Conversation::TYPE_CHANNEL) {
+            return ['success' => false, 'error' => 'Tópicos só podem ser criados em canais.'];
+        }
+
+        $name = trim((string) ($body['name'] ?? Yii::$app->request->post('name', '')));
+        if ($name === '' || mb_strlen($name) > 100) {
+            return ['success' => false, 'error' => 'Informe um nome válido (até 100 caracteres).'];
+        }
+
+        $isPrivate = filter_var(
+            $body['is_private'] ?? Yii::$app->request->post('is_private', false),
+            FILTER_VALIDATE_BOOLEAN,
+        );
+        $conversation = Conversation::createTopic(
+            $parent,
+            $name,
+            (int) Yii::$app->user->id,
+            $isPrivate,
+        );
+
+        $message = trim((string) ($body['message'] ?? Yii::$app->request->post('message', '')));
+        if ($message !== '') {
+            $this->saveTopicMessage($conversation, $message);
+            $conversation->refresh();
+        }
+
+        return [
+            'success' => true,
+            'conversation' => $this->conversationToItem($conversation),
+            'topic' => $this->topicToItem($conversation),
         ];
     }
 
@@ -1120,6 +1188,12 @@ class IndexController extends Controller
         $conversation = $this->findConversation($conversationId);
         $this->assertChannelAdmin($conversation);
 
+        if ($this->conversationHasParentColumn()) {
+            foreach (Conversation::findTopics((int) $conversation->id) as $topic) {
+                $topic->delete();
+            }
+        }
+
         $messageIds = Message::find()
             ->select('id')
             ->where(['conversation_id' => $conversation->id])
@@ -1294,5 +1368,79 @@ class IndexController extends Controller
         }
 
         return $conversation;
+    }
+
+    private function conversationHasParentColumn(): bool
+    {
+        $schema = Yii::$app->db->getTableSchema(Conversation::tableName(), true);
+
+        return $schema !== null && $schema->getColumn('parent_id') !== null;
+    }
+
+    private function topicRoot(Conversation $conversation): Conversation
+    {
+        if (!$conversation->isTopic()) {
+            return $conversation;
+        }
+
+        $parent = Conversation::findOne((int) $conversation->parent_id);
+
+        return $parent ?: $conversation;
+    }
+
+    /**
+     * @return array{
+     *   id: int,
+     *   parentConversationId: int,
+     *   name: string,
+     *   isPrivate: bool,
+     *   lastPreview: string,
+     *   lastActivityAt: string|null,
+     *   messageCount: int,
+     *   starterName: string,
+     *   starterImageUrl: string,
+     *   isJoined: bool
+     * }
+     */
+    private function topicToItem(Conversation $topic): array
+    {
+        $userId = (int) Yii::$app->user->id;
+        $last = Message::find()
+            ->where(['conversation_id' => $topic->id])
+            ->orderBy(['id' => SORT_DESC])
+            ->one();
+        $starter = $topic->created_by ? User::findOne((int) $topic->created_by) : null;
+
+        return [
+            'id' => (int) $topic->id,
+            'parentConversationId' => (int) ($topic->parent_id ?: 0),
+            'name' => $topic->getDisplayName(),
+            'isPrivate' => (bool) $this->readOptionalInt($topic, 'is_private'),
+            'lastPreview' => $last ? $last->getPreview(80) : '',
+            'lastActivityAt' => $topic->last_message_at ?: $topic->created_at,
+            'messageCount' => (int) Message::find()->where(['conversation_id' => $topic->id])->count(),
+            'starterName' => $starter ? $starter->getDisplayName() : '',
+            'starterImageUrl' => $starter ? Message::resolveAvatarUrl($starter) : '',
+            'isJoined' => $topic->isMember($userId) || $topic->canAccess($userId),
+        ];
+    }
+
+    private function saveTopicMessage(Conversation $conversation, string $content): void
+    {
+        $message = new Message([
+            'conversation_id' => $conversation->id,
+            'user_id' => (int) Yii::$app->user->id,
+            'content' => $content,
+        ]);
+
+        if (!$message->save()) {
+            return;
+        }
+
+        try {
+            NexchatMercure::publishNewMessage($message);
+        } catch (\Throwable $error) {
+            Yii::error($error, 'nexchat');
+        }
     }
 }

@@ -1,11 +1,13 @@
 const JOIN_NOTES_HZ = [587, 784] as const;
+const LEAVE_NOTES_HZ = [698, 523] as const;
 const NOTE_GAP_SECONDS = 0.11;
 const NOTE_DURATION_SECONDS = 0.22;
 const ATTACK_SECONDS = 0.018;
 const PEAK_GAIN = 0.16;
 const CHIME_COOLDOWN_MS = 700;
 
-let lastPlayedAt = 0;
+let lastJoinPlayedAt = 0;
+let lastLeavePlayedAt = 0;
 let sharedContext: AudioContext | null = null;
 
 export function unlockVoiceChimes() {
@@ -14,11 +16,24 @@ export function unlockVoiceChimes() {
 }
 
 export function playVoiceJoinChime() {
+  playChime(JOIN_NOTES_HZ, "join");
+}
+
+export function playVoiceLeaveChime() {
+  playChime(LEAVE_NOTES_HZ, "leave");
+}
+
+function playChime(notes: readonly number[], kind: "join" | "leave") {
   const now = Date.now();
+  const lastPlayedAt = kind === "join" ? lastJoinPlayedAt : lastLeavePlayedAt;
   if (now - lastPlayedAt < CHIME_COOLDOWN_MS) {
     return;
   }
-  lastPlayedAt = now;
+  if (kind === "join") {
+    lastJoinPlayedAt = now;
+  } else {
+    lastLeavePlayedAt = now;
+  }
 
   unlockVoiceChimes();
   const context = sharedContext;
@@ -27,7 +42,7 @@ export function playVoiceJoinChime() {
   }
 
   const startedAt = context.currentTime;
-  JOIN_NOTES_HZ.forEach((frequency, index) => {
+  notes.forEach((frequency, index) => {
     playNote(context, frequency, startedAt + index * NOTE_GAP_SECONDS);
   });
 }

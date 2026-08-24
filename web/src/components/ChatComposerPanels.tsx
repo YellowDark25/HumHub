@@ -6,6 +6,7 @@ type ChatComposerPanelsProps = {
   onSelectFile: () => void;
   onOpenPanel: (panel: ComposerPanel) => void;
   onInsertEmoji: (emoji: string) => void;
+  onCreateTopic?: () => void;
 };
 
 export function ChatComposerPanels({
@@ -13,6 +14,7 @@ export function ChatComposerPanels({
   onSelectFile,
   onOpenPanel,
   onInsertEmoji,
+  onCreateTopic,
 }: ChatComposerPanelsProps) {
   if (panel === "plus") {
     return (
@@ -28,7 +30,7 @@ export function ChatComposerPanels({
         <MenuItem
           label="Criar tópico"
           icon={<ThreadIcon />}
-          onClick={() => onOpenPanel("thread")}
+          onClick={() => (onCreateTopic ? onCreateTopic() : onOpenPanel("thread"))}
         />
         <MenuItem
           label="Criar enquete"

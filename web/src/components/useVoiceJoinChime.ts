@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { playVoiceJoinChime } from "./playVoiceChime";
+import { playVoiceJoinChime, playVoiceLeaveChime } from "./playVoiceChime";
 
 export function useVoiceJoinChime(isConnected: boolean, otherUserIds: number[]) {
   const wasConnected = useRef(false);
@@ -13,6 +13,9 @@ export function useVoiceJoinChime(isConnected: boolean, otherUserIds: number[]) 
   useEffect(() => {
     const others = othersRef.current;
     if (!isConnected) {
+      if (wasConnected.current) {
+        playVoiceLeaveChime();
+      }
       wasConnected.current = false;
       knownIds.current = new Set();
       return;

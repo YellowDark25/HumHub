@@ -7,7 +7,21 @@ export type NexchatConversation = {
   isPrivate?: boolean;
   topic?: string;
   slowModeSeconds?: number;
+  parentId?: number | null;
   isAdmin?: boolean;
+};
+
+export type NexchatTopic = {
+  id: number;
+  parentConversationId: number;
+  name: string;
+  isPrivate?: boolean;
+  lastPreview?: string;
+  lastActivityAt?: string | null;
+  messageCount?: number;
+  starterName?: string;
+  starterImageUrl?: string;
+  isJoined?: boolean;
 };
 
 export type NexchatChannelPerson = {

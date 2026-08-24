@@ -108,6 +108,7 @@ function SidebarSection({
                 workspaceName={workspaceName}
                 categoryName={section.title}
                 isActive={item.conversationId === activeConversationId}
+                activeConversationId={activeConversationId}
               />
             </li>
           ))}
@@ -123,12 +124,14 @@ function SidebarItem({
   workspaceName,
   categoryName,
   isActive,
+  activeConversationId,
 }: {
   item: ChatSidebarItem;
   workspaceId: string;
   workspaceName: string;
   categoryName: string;
   isActive: boolean;
+  activeConversationId?: number;
 }) {
   if (isPersonItem(item)) {
     if (!item.conversationId && item.userId) {
@@ -169,6 +172,7 @@ function SidebarItem({
       workspaceName={workspaceName}
       categoryName={categoryName}
       isActive={isActive}
+      activeConversationId={activeConversationId}
     />
   );
 }
