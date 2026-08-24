@@ -7,14 +7,26 @@ import type {
 } from "@/application/ports/ChatRepository";
 import type { ChannelSettings } from "@/domain/ChannelSettings";
 import type { ChatFile } from "@/domain/ChatFile";
+import type {
+  ChatLiveStream,
+  ChatLiveSubscription,
+} from "@/domain/ChatLive";
 import type { ChatMessage } from "@/domain/ChatMessage";
+import { notificationLiveHubUrl } from "@/shared/notificationLive";
+import { getHumhubUrl } from "../config";
+import type {
+  ChatNotificationPreference,
+  ChatNotificationPreferencePatch,
+} from "@/domain/ChatNotificationPreference";
 import type { Conversation } from "@/domain/Conversation";
 import { nexchatFileRequest, nexchatRequest } from "./client";
 import {
   mapChannelSettings,
   mapChatContact,
+  mapChatLiveSubscription,
   mapChatMessage,
   mapConversation,
+  mapServerNotificationPreference,
 } from "./mappers";
 import type {
   NexchatBootstrap,
@@ -23,6 +35,8 @@ import type {
   NexchatOpenDmResult,
   NexchatPoll,
   NexchatSendResult,
+  NexchatServerNotificationPreference,
+  NexchatSubscribeToken,
 } from "./types";
 
 export class NexchatChatRepository implements ChatRepository {
@@ -48,14 +62,59 @@ export class NexchatChatRepository implements ChatRepository {
   async listMessages(
     token: string,
     conversationId: number,
+    since = 0,
   ): Promise<ChatMessage[]> {
     const poll = await nexchatRequest<NexchatPoll>({
       path: "poll",
       token,
-      query: { id: conversationId, since: 0 },
+      query: { id: conversationId, since },
     });
 
     return (poll.messages ?? []).map(mapChatMessage);
+  }
+
+  async getLiveSubscription(
+    token: string,
+    conversationId: number,
+  ): Promise<ChatLiveSubscription | null> {
+    const dto = await nexchatRequest<NexchatSubscribeToken>({
+      path: "subscribe-token",
+      token,
+      query: { id: conversationId },
+    });
+
+    return mapChatLiveSubscription(dto);
+  }
+
+  async openLiveStream(
+    token: string,
+    conversationId: number,
+  ): Promise<ChatLiveStream | null> {
+    const subscription = await this.getLiveSubscription(token, conversationId);
+    if (!subscription) {
+      return null;
+    }
+
+    const response = await fetch(internalMercureUrl(subscription), {
+      headers: {
+        Accept: "text/event-stream",
+        Authorization: `Bearer ${subscription.token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok || !response.body) {
+      throw new ApplicationError(
+        "Não foi possível abrir o canal do chat.",
+        response.status === 404 ? 404 : 502,
+      );
+    }
+
+    return {
+      body: response.body,
+      contentType:
+        response.headers.get("content-type") ?? "text/event-stream",
+    };
   }
 
   async sendMessage(
@@ -76,6 +135,26 @@ export class NexchatChatRepository implements ChatRepository {
     }
 
     return mapChatMessage(result.message);
+  }
+
+  async sendTyping(
+    token: string,
+    conversationId: number,
+    isTyping: boolean,
+  ): Promise<void> {
+    const result = await nexchatRequest<{ success: boolean; error?: string }>({
+      path: "typing",
+      token,
+      method: "POST",
+      body: { conversation_id: conversationId, is_typing: isTyping },
+    });
+
+    if (!result.success) {
+      throw new ApplicationError(
+        result.error || "Não foi possível avisar que você está digitando.",
+        400,
+      );
+    }
   }
 
   async getChatFile(token: string, fileId: number): Promise<ChatFile> {
@@ -249,6 +328,59 @@ export class NexchatChatRepository implements ChatRepository {
       );
     }
   }
+
+  async getServerNotificationPreference(
+    token: string,
+    spaceId: number,
+  ): Promise<ChatNotificationPreference> {
+    const result = await nexchatRequest<NexchatServerNotificationPreference>({
+      path: "notification-preference",
+      token,
+      query: { space_id: spaceId },
+    });
+
+    if (!result.success) {
+      throw new ApplicationError(
+        result.error || "Não foi possível carregar as preferências.",
+        400,
+      );
+    }
+
+    return mapServerNotificationPreference(result, spaceId);
+  }
+
+  async saveServerNotificationPreference(
+    token: string,
+    patch: ChatNotificationPreferencePatch,
+  ): Promise<ChatNotificationPreference> {
+    const result = await nexchatRequest<NexchatServerNotificationPreference>({
+      path: "save-notification-preference",
+      token,
+      method: "POST",
+      body: {
+        spaceId: patch.spaceId,
+        level: patch.level,
+        muteDuration: patch.muteDuration,
+      },
+    });
+
+    if (!result.success) {
+      throw new ApplicationError(
+        result.error || "Não foi possível salvar as preferências.",
+        400,
+      );
+    }
+
+    return mapServerNotificationPreference(result, patch.spaceId);
+  }
+}
+
+function internalMercureUrl(subscription: ChatLiveSubscription): string {
+  const publicHub = new URL(notificationLiveHubUrl(subscription));
+  const internal = new URL(getHumhubUrl());
+  publicHub.protocol = internal.protocol;
+  publicHub.host = internal.host;
+  return publicHub.toString();
 }
 
 function sendBody(conversationId: number, content: string, files: File[]) {

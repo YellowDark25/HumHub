@@ -3,6 +3,7 @@ import { ChatShell } from "@/components/ChatShell";
 import { ChatWelcome } from "@/components/ChatWelcome";
 import { LoadError } from "@/components/LoadError";
 import type { ChatSidebarSection, ChatWorkspace } from "@/domain/ChatWorkspace";
+import type { Space } from "@/domain/Space";
 import type { User } from "@/domain/User";
 import { app } from "@/infrastructure/composition";
 import {
@@ -23,6 +24,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   let currentWorkspace: ChatWorkspace | null = null;
   let sections: ChatSidebarSection[] = [];
   let currentUser: User | null = null;
+  let spacesWithoutServer: Space[] = [];
   let error = "";
 
   try {
@@ -31,6 +33,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
     currentWorkspace = page.currentWorkspace;
     sections = page.sections;
     currentUser = page.currentUser;
+    spacesWithoutServer = page.spacesWithoutServer;
   } catch (caught) {
     await redirectIfUnauthorized(caught);
     error = errorMessage(caught, "Não foi possível carregar o chat.");
@@ -50,6 +53,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
       currentWorkspace={currentWorkspace}
       sections={sections}
       currentUser={currentUser}
+      spacesWithoutServer={spacesWithoutServer}
     >
       {error ? (
         <div className="p-4">

@@ -1,0 +1,17 @@
+{
+	auto_https disable_redirects
+	default_sni {$LAN_HOST}
+	servers {
+		protocols h1 h2
+	}
+}
+
+https://{$LAN_HOST}:3443, https://localhost:3443, https://127.0.0.1:3443 {
+	tls internal
+	handle /rtc* {
+		reverse_proxy host.docker.internal:7880
+	}
+	handle {
+		reverse_proxy host.docker.internal:3001
+	}
+}

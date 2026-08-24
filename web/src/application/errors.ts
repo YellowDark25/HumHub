@@ -9,15 +9,23 @@ export class ApplicationError extends Error {
 }
 
 export function isUnauthorized(error: unknown): boolean {
-  return error instanceof ApplicationError && error.status === 401;
+  return errorStatus(error) === 401;
 }
 
 export function isForbidden(error: unknown): boolean {
-  return error instanceof ApplicationError && error.status === 403;
+  return errorStatus(error) === 403;
 }
 
 export function isNotFound(error: unknown): boolean {
-  return error instanceof ApplicationError && error.status === 404;
+  return errorStatus(error) === 404;
+}
+
+function errorStatus(error: unknown): number | null {
+  if (typeof error !== "object" || error === null || !("status" in error)) {
+    return null;
+  }
+
+  return typeof error.status === "number" ? error.status : null;
 }
 
 export function errorMessage(error: unknown, fallback: string): string {

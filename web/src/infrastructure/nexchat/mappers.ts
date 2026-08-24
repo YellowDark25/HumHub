@@ -1,19 +1,26 @@
 import type { ChannelMember, ChannelSettings } from "@/domain/ChannelSettings";
 import type { ChatAttachment } from "@/domain/ChatAttachment";
 import type { ChatContact } from "@/domain/ChatContact";
+import type { ChatLiveSubscription } from "@/domain/ChatLive";
 import type { ChatMessage } from "@/domain/ChatMessage";
+import type {
+  ChatNotificationLevel,
+  ChatNotificationPreference,
+} from "@/domain/ChatNotificationPreference";
 import type {
   ChatChannelType,
   Conversation,
   ConversationKind,
 } from "@/domain/Conversation";
-import { getPublicHumhubUrl } from "../config";
-import { PROFILE_IMAGE_FOLDER } from "../humhub/constants";
+import { isChatNotificationLevel } from "@/shared/chatNotification";
+import { mediaUrlFromGuid, toBrowserMediaUrl } from "../humhub/publicMediaUrl";
 import type {
   NexchatAttachment,
   NexchatContact,
   NexchatConversation,
   NexchatMessage,
+  NexchatServerNotificationPreference,
+  NexchatSubscribeToken,
 } from "./types";
 
 export function mapConversation(
@@ -89,12 +96,20 @@ export function mapChatContact(dto: NexchatContact): ChatContact {
 }
 
 function contactImageUrl(guid?: string): string {
-  const trimmed = guid?.trim() ?? "";
-  if (!trimmed) {
-    return "";
+  return mediaUrlFromGuid(guid ?? "");
+}
+
+export function mapChatLiveSubscription(
+  dto: NexchatSubscribeToken,
+): ChatLiveSubscription | null {
+  const hubUrl = dto.hubUrl?.trim() ?? "";
+  const topic = dto.topic?.trim() || dto.topics?.[0]?.trim() || "";
+  const token = dto.jwt?.trim() ?? "";
+  if (!hubUrl || !topic || !token) {
+    return null;
   }
 
-  return `${getPublicHumhubUrl()}/${PROFILE_IMAGE_FOLDER}/${trimmed}.jpg`;
+  return { hubUrl, topic, token };
 }
 
 export function mapChatMessage(dto: NexchatMessage): ChatMessage {
@@ -102,7 +117,7 @@ export function mapChatMessage(dto: NexchatMessage): ChatMessage {
     id: dto.id,
     authorId: dto.userId ?? 0,
     authorName: dto.authorName,
-    authorImageUrl: publicImageUrl(dto.avatarUrl),
+    authorImageUrl: toBrowserMediaUrl(dto.avatarUrl),
     content: dto.content,
     publishedAt: dto.createdAt ?? null,
     isDeleted: Boolean(dto.deleted),
@@ -123,24 +138,23 @@ function mapChatAttachment(dto: NexchatAttachment): ChatAttachment {
   };
 }
 
+export function mapServerNotificationPreference(
+  dto: NexchatServerNotificationPreference,
+  spaceId: number,
+): ChatNotificationPreference {
+  return {
+    spaceId: dto.spaceId ?? spaceId,
+    level: readNotificationLevel(dto.level),
+    mutedUntil: dto.mutedUntil ?? null,
+    isMuted: Boolean(dto.isMuted),
+  };
+}
+
+function readNotificationLevel(value?: string): ChatNotificationLevel {
+  return isChatNotificationLevel(value) ? value : "mentions";
+}
+
 function isAudioName(name: string): boolean {
   return /\.(webm|ogg|mp3|wav|m4a)$/i.test(name);
 }
 
-function publicImageUrl(imageUrl?: string): string {
-  const trimmed = imageUrl?.trim() ?? "";
-  if (!trimmed) {
-    return "";
-  }
-
-  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
-    return `${getPublicHumhubUrl()}${trimmed.startsWith("/") ? trimmed : `/${trimmed}`}`;
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    return `${getPublicHumhubUrl()}${parsed.pathname}${parsed.search}`;
-  } catch {
-    return trimmed;
-  }
-}

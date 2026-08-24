@@ -1,20 +1,18 @@
 import type {
-  VoiceMediaState,
   VoiceParticipant,
   VoiceRoom,
-  VoiceSignal,
+  VoiceSession,
 } from "@/domain/VoiceRoom";
 
 export interface VoiceRoomRepository {
-  join(conversationId: number, participant: VoiceParticipant): VoiceRoom;
-  leave(conversationId: number, userId: number): VoiceRoom;
-  heartbeat(
+  createSession(
+    conversationId: number,
+    participant: VoiceParticipant,
+  ): Promise<VoiceSession>;
+  list(conversationId: number): Promise<VoiceRoom>;
+  listAll(): Promise<VoiceRoom[]>;
+  removeParticipant(
     conversationId: number,
     userId: number,
-    media: VoiceMediaState,
-  ): VoiceRoom;
-  list(conversationId: number): VoiceRoom;
-  listAll(): VoiceRoom[];
-  enqueueSignal(signal: Omit<VoiceSignal, "id">): VoiceSignal;
-  pullSignals(conversationId: number, userId: number): VoiceSignal[];
+  ): Promise<VoiceRoom>;
 }

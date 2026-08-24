@@ -27,6 +27,9 @@ export function assembleChatNavigation(
     lists,
     workspaces,
     currentWorkspace,
+    spacesWithoutServer: spaces.filter(
+      (space) => !lists.spaceServerIds.includes(space.id),
+    ),
     sections: chatSidebarSections(lists, currentWorkspace),
   };
 }

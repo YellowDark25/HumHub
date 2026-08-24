@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { browserMediaBlockedMessage, canCaptureBrowserMedia } from "@/shared/browserMedia";
 
 const STORAGE_KEY = "nexhub-chat-audio";
 
@@ -105,6 +106,11 @@ export function useChatAudioControls() {
 
   async function loadDevices() {
     setDeviceError("");
+
+    if (!canCaptureBrowserMedia()) {
+      setDeviceError(browserMediaBlockedMessage());
+      return;
+    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });

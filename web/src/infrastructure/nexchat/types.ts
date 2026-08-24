@@ -82,7 +82,25 @@ export type NexchatPoll = {
   messages: NexchatMessage[];
 };
 
+export type NexchatSubscribeToken = {
+  success?: boolean;
+  hubUrl?: string;
+  topic?: string;
+  topics?: string[];
+  jwt?: string;
+  error?: string;
+};
+
 export type NexchatSendResult = {
   success: boolean;
   message?: NexchatMessage;
+};
+
+export type NexchatServerNotificationPreference = {
+  success: boolean;
+  error?: string;
+  spaceId?: number;
+  level?: string;
+  mutedUntil?: string | null;
+  isMuted?: boolean;
 };

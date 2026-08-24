@@ -1,7 +1,8 @@
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { APP_NAME } from "@/shared/appName";
-import { THEME_BOOTSTRAP } from "@/shared/theme";
+import { isDarkTheme, THEME_STORAGE_KEY } from "@/shared/theme";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Geist } from "next/font/google";
 import "./globals.css";
 
@@ -21,20 +22,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const theme = (await cookies()).get(THEME_STORAGE_KEY)?.value;
+
   return (
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className={`${geistSans.variable} h-full antialiased`}
+      className={`${geistSans.variable} h-full antialiased${isDarkTheme(theme) ? " dark" : ""}`}
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
-      </head>
       <body className="min-h-full bg-zinc-100 font-sans text-zinc-900">
         <ThemeProvider>{children}</ThemeProvider>
       </body>

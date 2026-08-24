@@ -13,5 +13,7 @@ export async function listVoiceOccupancy(
       .map((channel) => channel.id),
   );
 
-  return voice.listAll().filter((room) => allowed.has(room.conversationId));
+  return (await voice.listAll()).filter((room) =>
+    allowed.has(room.conversationId),
+  );
 }

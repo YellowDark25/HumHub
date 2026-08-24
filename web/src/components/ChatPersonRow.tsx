@@ -25,7 +25,7 @@ export function ChatPersonRow({
         />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm text-zinc-800">{name}</span>
+        <span className="block truncate text-[15px] text-zinc-800">{name}</span>
         {subtitle ? (
           <span className="block truncate text-xs text-zinc-500">{subtitle}</span>
         ) : null}

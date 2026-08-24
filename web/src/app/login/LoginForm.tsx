@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { readSafeInternalPath } from "@/shared/safeInternalPath";
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const from = readSafeInternalPath(searchParams.get("from"));
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(searchParams.get("erro") ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -32,11 +34,7 @@ export function LoginForm() {
         return;
       }
 
-      router.replace(
-        payload.mustChangePassword
-          ? "/trocar-senha"
-          : searchParams.get("from") || "/",
-      );
+      router.replace(payload.mustChangePassword ? "/trocar-senha" : from);
       router.refresh();
     } catch {
       setError("Não foi possível conectar. Confira se o HumHub está no ar.");
@@ -46,7 +44,13 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form
+      method="post"
+      action="/api/auth/login"
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-4"
+    >
+      <input type="hidden" name="from" value={from} />
       <label className="flex flex-col gap-1 text-sm font-medium text-zinc-700">
         Usuário ou e-mail
         <input

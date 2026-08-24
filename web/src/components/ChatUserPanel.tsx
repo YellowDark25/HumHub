@@ -49,7 +49,7 @@ export function ChatUserPanel({ user }: ChatUserPanelProps) {
   }
 
   return (
-    <div ref={rootRef} className="relative border-t border-zinc-200 bg-zinc-200/80 px-1.5 py-1.5">
+    <div ref={rootRef} className="relative border-t border-zinc-200 bg-zinc-200/80 px-2 py-2">
       <div className="flex items-center gap-1">
         <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-0.5">
           <span className="relative shrink-0">
@@ -61,10 +61,10 @@ export function ChatUserPanel({ user }: ChatUserPanelProps) {
             />
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-[13px] font-semibold leading-4 text-zinc-900">
+            <span className="block truncate text-sm font-semibold leading-5 text-zinc-900">
               {user.name}
             </span>
-            <span className="block truncate text-[11px] leading-4 text-zinc-500">
+            <span className="block truncate text-xs leading-4 text-zinc-500">
               {user.username ? `@${user.username}` : statusLabel(audio.isDeafened, audio.isMicMuted, user)}
             </span>
           </span>
@@ -99,7 +99,7 @@ export function ChatUserPanel({ user }: ChatUserPanelProps) {
           href="/configuracoes"
           title="Configurações"
           aria-label="Configurações"
-          className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-300/70"
+          className="flex h-9 w-9 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-300/70"
         >
           <GearIcon />
         </Link>
@@ -331,7 +331,7 @@ function IconButton({
       title={label}
       aria-label={label}
       onClick={onClick}
-      className={`flex h-8 w-8 items-center justify-center rounded-md ${
+      className={`flex h-9 w-9 items-center justify-center rounded-md ${
         isOff ? "text-red-600" : "text-zinc-700"
       }`}
     >
@@ -354,7 +354,7 @@ function ChevronButton({
       aria-label="Ajustes de voz"
       aria-expanded={open}
       onClick={onClick}
-      className="flex h-8 w-4 items-center justify-center text-zinc-500"
+      className="flex h-9 w-4 items-center justify-center text-zinc-500"
     >
       <ChevronIcon up={open} />
     </button>
@@ -391,7 +391,7 @@ function statusLabel(
 
 function MicIcon({ muted }: { muted: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="9" y="3" width="6" height="11" rx="3" />
       <path d="M5 11a7 7 0 0 0 14 0" />
       <path d="M12 18v3" />
@@ -402,7 +402,7 @@ function MicIcon({ muted }: { muted: boolean }) {
 
 function HeadphoneIcon({ deafened }: { deafened: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 13v3a2 2 0 0 0 2 2h1v-7H6a2 2 0 0 0-2 2Z" />
       <path d="M20 13v3a2 2 0 0 1-2 2h-1v-7h1a2 2 0 0 1 2 2Z" />
       <path d="M4 13a8 8 0 0 1 16 0" />
@@ -413,7 +413,7 @@ function HeadphoneIcon({ deafened }: { deafened: boolean }) {
 
 function GearIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.7.9 1.2 1.6 1.3H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.4 1.1Z" />
     </svg>

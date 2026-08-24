@@ -31,6 +31,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = readStoredTheme();
     setTheme(stored);
+    storeTheme(stored);
     applyThemeClass(stored);
   }, []);
 

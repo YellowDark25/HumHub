@@ -1,21 +1,26 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import type { ChatMessage } from "@/domain/ChatMessage";
 import { CHAT_FILE_ACCEPT, type ComposerPanel } from "@/shared/chatComposer";
 import { readApiError } from "@/shared/readApiError";
 import { ChatComposerAttachments } from "./ChatComposerAttachments";
 import { ChatComposerPanels } from "./ChatComposerPanels";
 import { ChatComposerToolbar } from "./ChatComposerToolbar";
+import { useChatTyping } from "./useChatTyping";
 import { useChatVoiceRecorder } from "./useChatVoiceRecorder";
 
 type ChatComposerProps = {
   conversationId: number;
   placeholder: string;
+  onSent?: (message: ChatMessage) => void;
 };
 
-export function ChatComposer({ conversationId, placeholder }: ChatComposerProps) {
-  const router = useRouter();
+export function ChatComposer({
+  conversationId,
+  placeholder,
+  onSent,
+}: ChatComposerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [content, setContent] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -23,6 +28,7 @@ export function ChatComposer({ conversationId, placeholder }: ChatComposerProps)
   const [error, setError] = useState("");
   const [isSending, setIsSending] = useState(false);
   const recorder = useChatVoiceRecorder();
+  const typing = useChatTyping(conversationId);
   const recordingRef = useRef(recorder);
   recordingRef.current = recorder;
 
@@ -70,10 +76,12 @@ export function ChatComposer({ conversationId, placeholder }: ChatComposerProps)
         return;
       }
 
+      const sent = (await response.json()) as ChatMessage;
+      typing.notify(false);
       setContent("");
       setFiles([]);
       setPanel("");
-      router.refresh();
+      onSent?.(sent);
     } catch {
       setError("Falha de rede ao enviar.");
     } finally {
@@ -137,7 +145,7 @@ export function ChatComposer({ conversationId, placeholder }: ChatComposerProps)
   }
 
   return (
-    <div ref={rootRef} className="relative px-4 pb-4">
+    <div ref={rootRef} className="relative shrink-0 px-5 pb-5">
       <ChatComposerPanels
         panel={panel}
         onSelectFile={openFilePicker}
@@ -154,12 +162,12 @@ export function ChatComposer({ conversationId, placeholder }: ChatComposerProps)
             setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))
           }
         />
-        <div className="flex items-end gap-1 px-2 py-1.5">
+        <div className="flex items-end gap-1 px-2 py-2">
           <button
             type="button"
             disabled={recorder.isRecording}
             onClick={() => setPanel(panel === "plus" ? "" : "plus")}
-            className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-200 hover:text-zinc-800 disabled:opacity-40"
+            className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-200 hover:text-zinc-800 disabled:opacity-40"
             aria-expanded={panel === "plus"}
             aria-haspopup="menu"
             title="Abrir opções"
@@ -181,11 +189,15 @@ export function ChatComposer({ conversationId, placeholder }: ChatComposerProps)
           ) : (
             <textarea
               value={content}
-              onChange={(event) => setContent(event.target.value)}
+              onChange={(event) => {
+                const next = event.target.value;
+                setContent(next);
+                typing.notify(next.trim().length > 0);
+              }}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               rows={1}
-              className="max-h-32 min-h-9 flex-1 resize-none bg-transparent py-2 text-sm text-zinc-800 outline-none placeholder:text-zinc-400"
+              className="max-h-32 min-h-10 flex-1 resize-none bg-transparent py-2 text-[15px] text-zinc-800 outline-none placeholder:text-zinc-400"
             />
           )}
           <ChatComposerToolbar
@@ -208,7 +220,7 @@ export function ChatComposer({ conversationId, placeholder }: ChatComposerProps)
 
 function PlusIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
       <path d="M12 5v14" />
       <path d="M5 12h14" />
     </svg>

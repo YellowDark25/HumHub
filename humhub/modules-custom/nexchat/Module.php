@@ -20,6 +20,7 @@ class Module extends \humhub\components\Module
     {
         return [
             \humhub\modules\nexchat\notifications\NewDmMessage::class,
+            \humhub\modules\nexchat\notifications\NewChannelMessage::class,
             \humhub\modules\nexchat\notifications\ChannelInvite::class,
             \humhub\modules\nexchat\notifications\SpaceInviteNotification::class,
         ];

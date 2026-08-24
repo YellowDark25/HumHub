@@ -1,17 +1,24 @@
 import type { ChatWorkspace } from "@/domain/ChatWorkspace";
+import type { Space } from "@/domain/Space";
+import type { User } from "@/domain/User";
 import { chatWorkspaceHref } from "@/shared/chatWorkspace";
 import Link from "next/link";
 import { Avatar } from "./Avatar";
+import { ChatCreateServerButton } from "./ChatCreateServerButton";
 
 type ChatServerRailProps = {
   workspaces: ChatWorkspace[];
   currentWorkspaceId: string;
+  currentUser: User | null;
+  spacesWithoutServer: Space[];
   hiddenOnMobile?: boolean;
 };
 
 export function ChatServerRail({
   workspaces,
   currentWorkspaceId,
+  currentUser,
+  spacesWithoutServer,
   hiddenOnMobile = false,
 }: ChatServerRailProps) {
   const home = workspaces[0];
@@ -21,7 +28,7 @@ export function ChatServerRail({
     <aside
       className={`${
         hiddenOnMobile ? "hidden lg:flex" : "flex"
-      } shrink-0 gap-2 overflow-x-auto border-b border-zinc-200 bg-zinc-100 p-2 lg:w-18 lg:flex-col lg:items-center lg:overflow-y-auto lg:border-r lg:border-b-0 lg:py-3`}
+      } shrink-0 gap-2.5 overflow-x-auto border-b border-zinc-200 bg-zinc-100 p-2.5 lg:w-20 lg:flex-col lg:items-center lg:overflow-y-auto lg:border-r lg:border-b-0 lg:py-3`}
     >
       {home ? (
         <ServerButton
@@ -39,6 +46,11 @@ export function ChatServerRail({
           isActive={workspace.id === currentWorkspaceId}
         />
       ))}
+      <ChatCreateServerButton
+        canCreateNew={Boolean(currentUser?.isAdmin)}
+        currentUserName={currentUser?.name ?? ""}
+        spacesWithoutServer={spacesWithoutServer}
+      />
     </aside>
   );
 }
@@ -106,7 +118,7 @@ function HomeIcon() {
     <svg
       viewBox="0 0 24 24"
       aria-hidden="true"
-      className="h-6 w-6"
+      className="h-7 w-7"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"

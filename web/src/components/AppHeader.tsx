@@ -35,7 +35,7 @@ export function AppHeader({
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white">
+    <header className="sticky top-0 z-20 shrink-0 border-b border-zinc-200 bg-white">
       <div className="flex h-16 items-center gap-3 px-4">
         <Link href="/" className="text-base font-semibold tracking-tight text-zinc-900">
           {APP_NAME}

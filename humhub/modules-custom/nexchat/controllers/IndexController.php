@@ -3,6 +3,7 @@
 namespace humhub\modules\nexchat\controllers;
 
 use humhub\components\Controller;
+use humhub\modules\notification\components\BaseNotification;
 use humhub\modules\nexchat\assets\NexchatAsset;
 use humhub\modules\nexchat\components\BearerLogin;
 use humhub\modules\nexchat\components\NexchatMercure;
@@ -12,9 +13,12 @@ use humhub\modules\nexchat\models\Conversation;
 use humhub\modules\nexchat\models\Membership;
 use humhub\modules\nexchat\models\Message;
 use humhub\modules\nexchat\models\Reaction;
+use humhub\modules\nexchat\models\ServerNotificationPreference;
 use humhub\modules\nexchat\models\SpaceServer;
 use humhub\modules\nexchat\notifications\ChannelInvite;
+use humhub\modules\nexchat\notifications\NewChannelMessage;
 use humhub\modules\nexchat\notifications\NewDmMessage;
+use humhub\modules\space\models\Membership as SpaceMembership;
 use humhub\modules\space\models\Space;
 use humhub\modules\user\models\User;
 use Yii;
@@ -75,6 +79,52 @@ class IndexController extends Controller
         SpaceServer::enable($spaceId);
 
         return ['success' => true, 'spaceId' => $spaceId];
+    }
+
+    public function actionNotificationPreference()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $spaceId = $this->readPreferenceSpaceId((int) Yii::$app->request->get('space_id', 0));
+        if ($spaceId === null) {
+            return ['success' => false, 'error' => 'Servidor inválido.'];
+        }
+
+        if (!ServerNotificationPreference::tableExists()) {
+            return array_merge(
+                ['success' => true],
+                ServerNotificationPreference::emptyPayload($spaceId),
+            );
+        }
+
+        return array_merge(
+            ['success' => true],
+            ServerNotificationPreference::forUser((int) Yii::$app->user->id, $spaceId)->toPayload(),
+        );
+    }
+
+    public function actionSaveNotificationPreference()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $body = Yii::$app->request->getBodyParams();
+        $spaceId = $this->readPreferenceSpaceId((int) ($body['space_id'] ?? $body['spaceId'] ?? -1));
+        if ($spaceId === null) {
+            return ['success' => false, 'error' => 'Servidor inválido.'];
+        }
+
+        $preference = ServerNotificationPreference::forUser((int) Yii::$app->user->id, $spaceId);
+        $preference->applyLevel(isset($body['level']) ? (string) $body['level'] : null);
+        $preference->applyMute(
+            array_key_exists('muteDuration', $body) ? ($body['muteDuration'] !== null ? (string) $body['muteDuration'] : null) : null,
+            array_key_exists('muteDuration', $body),
+        );
+
+        if (!$preference->persist()) {
+            return ['success' => false, 'error' => 'Não foi possível salvar as preferências.'];
+        }
+
+        return array_merge(['success' => true], $preference->toPayload());
     }
 
     public function actionView($id)
@@ -167,11 +217,33 @@ class IndexController extends Controller
      */
     private function spaceServerIds(): array
     {
-        if (Yii::$app->db->getTableSchema(SpaceServer::tableName(), true) === null) {
-            return array_map('intval', Space::find()->select('id')->column());
+        $memberSpaceIds = $this->memberSpaceIds();
+        if ($memberSpaceIds === []) {
+            return [];
         }
 
-        return SpaceServer::spaceIds();
+        if (Yii::$app->db->getTableSchema(SpaceServer::tableName(), true) === null) {
+            return $memberSpaceIds;
+        }
+
+        return array_values(array_intersect($memberSpaceIds, SpaceServer::spaceIds()));
+    }
+
+    /**
+     * @return int[]
+     */
+    private function memberSpaceIds(): array
+    {
+        return array_map(
+            'intval',
+            SpaceMembership::find()
+                ->select('space_id')
+                ->where([
+                    'user_id' => (int) Yii::$app->user->id,
+                    'status' => SpaceMembership::STATUS_MEMBER,
+                ])
+                ->column(),
+        );
     }
 
     private function canCreateChannelInSpace(int $spaceId): bool
@@ -431,31 +503,147 @@ class IndexController extends Controller
         ];
     }
 
-    protected function notifyRecipients(Conversation $conversation, Message $message): void
+    public function actionTyping()
     {
-        if ($conversation->type !== Conversation::TYPE_DM) {
-            return;
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        if (Yii::$app->user->isGuest) {
+            return ['success' => false, 'error' => 'Não autenticado.'];
         }
 
+        $conversationId = (int) Yii::$app->request->post('conversation_id', 0);
+        $isTyping = filter_var(Yii::$app->request->post('is_typing', false), FILTER_VALIDATE_BOOLEAN);
+        $conversation = $this->findConversation($conversationId);
+        $author = Yii::$app->user->identity;
+
+        try {
+            NexchatMercure::publishTyping(
+                (int) $conversation->id,
+                (int) Yii::$app->user->id,
+                $author?->displayName ?: 'Alguém',
+                $isTyping,
+            );
+        } catch (\Throwable $e) {
+            Yii::error($e, 'nexchat');
+        }
+
+        return ['success' => true];
+    }
+
+    protected function notifyRecipients(Conversation $conversation, Message $message): void
+    {
         $author = Yii::$app->user->identity;
         if (!$author) {
             return;
         }
 
+        if ($conversation->type === Conversation::TYPE_DM) {
+            $this->notifyDirectMessage($conversation, $message, $author);
+            return;
+        }
+
+        if ($conversation->type === Conversation::TYPE_CHANNEL) {
+            $this->notifyChannelMessage($conversation, $message, $author);
+        }
+    }
+
+    private function notifyDirectMessage(Conversation $conversation, Message $message, User $author): void
+    {
         foreach ($conversation->members as $member) {
             if ((int) $member->id === (int) $author->id) {
                 continue;
             }
 
-            try {
-                NewDmMessage::instance()
-                    ->from($author)
-                    ->about($message)
-                    ->send($member);
-            } catch (\Throwable $e) {
-                Yii::error($e, 'nexchat');
+            $this->sendChatNotice(NewDmMessage::instance(), $author, $message, $member);
+        }
+    }
+
+    private function notifyChannelMessage(Conversation $conversation, Message $message, User $author): void
+    {
+        $spaceId = (int) ($conversation->space_id ?: 0);
+        $content = (string) $message->content;
+
+        $hasPreferenceTable = ServerNotificationPreference::tableExists();
+
+        foreach ($this->activeChannelUsers($conversation) as $member) {
+            if ((int) $member->id === (int) $author->id) {
+                continue;
+            }
+
+            $isMentioned = ServerNotificationPreference::mentionsUser($content, $member);
+            $shouldNotify = $hasPreferenceTable
+                ? ServerNotificationPreference::forUser((int) $member->id, $spaceId)->shouldNotify($isMentioned)
+                : $isMentioned;
+            if (!$shouldNotify) {
+                continue;
+            }
+
+            $this->sendChatNotice(NewChannelMessage::instance(), $author, $message, $member);
+        }
+    }
+
+    /**
+     * @return User[]
+     */
+    private function activeChannelUsers(Conversation $conversation): array
+    {
+        $usersById = [];
+        $memberships = Membership::find()
+            ->where([
+                'conversation_id' => $conversation->id,
+                'status' => Membership::STATUS_ACTIVE,
+            ])
+            ->with('user')
+            ->all();
+
+        foreach ($memberships as $membership) {
+            if ($membership->user) {
+                $usersById[(int) $membership->user->id] = $membership->user;
             }
         }
+
+        if ($conversation->isOpenSpaceChannel()) {
+            $spaceMemberships = SpaceMembership::find()
+                ->where([
+                    'space_id' => (int) $conversation->space_id,
+                    'status' => SpaceMembership::STATUS_MEMBER,
+                ])
+                ->with('user')
+                ->all();
+
+            foreach ($spaceMemberships as $spaceMembership) {
+                if ($spaceMembership->user) {
+                    $usersById[(int) $spaceMembership->user->id] = $spaceMembership->user;
+                }
+            }
+        }
+
+        return array_values($usersById);
+    }
+
+    private function sendChatNotice(BaseNotification $notification, User $author, Message $message, User $member): void
+    {
+        try {
+            $notification
+                ->from($author)
+                ->about($message)
+                ->send($member);
+        } catch (\Throwable $error) {
+            Yii::error($error, 'nexchat');
+        }
+    }
+
+    private function readPreferenceSpaceId(int $spaceId): ?int
+    {
+        if ($spaceId < 0) {
+            return null;
+        }
+
+        if ($spaceId === 0) {
+            return 0;
+        }
+
+        return $this->canCreateChannelInSpace($spaceId) ? $spaceId : null;
     }
 
     protected function storeAttachment(Message $message, UploadedFile $uploadedFile): ?string
@@ -521,7 +709,7 @@ class IndexController extends Controller
         }
 
         $conversation = Conversation::findOne((int) $message->conversation_id);
-        if (!$conversation || !$conversation->isMember((int) Yii::$app->user->id)) {
+        if (!$conversation || !$conversation->canAccess((int) Yii::$app->user->id)) {
             throw new ForbiddenHttpException('Você não tem acesso a este arquivo.');
         }
 
@@ -1101,7 +1289,7 @@ class IndexController extends Controller
             throw new NotFoundHttpException('Conversa não encontrada.');
         }
 
-        if (!$conversation->isMember((int) Yii::$app->user->id)) {
+        if (!$conversation->canAccess((int) Yii::$app->user->id)) {
             throw new ForbiddenHttpException('Você não participa desta conversa.');
         }
 

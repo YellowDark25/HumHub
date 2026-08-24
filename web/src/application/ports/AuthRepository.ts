@@ -11,6 +11,7 @@ export interface AuthRepository {
   impersonate(token: string, userId: number): Promise<LoginResult>;
   getCurrentUser(token: string): Promise<User>;
   getUser(token: string, userId: number): Promise<User>;
+  listPeople(token: string): Promise<User[]>;
   getAccount(token: string): Promise<Account>;
   updateUser(
     token: string,

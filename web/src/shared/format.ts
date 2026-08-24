@@ -85,6 +85,21 @@ export function formatChatClock(value: string | null | undefined): string {
   }).format(date);
 }
 
+export function formatCallDuration(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const seconds = safe % 60;
+  const paddedMinutes = String(minutes).padStart(2, "0");
+  const paddedSeconds = String(seconds).padStart(2, "0");
+
+  if (hours > 0) {
+    return `${hours}:${paddedMinutes}:${paddedSeconds}`;
+  }
+
+  return `${paddedMinutes}:${paddedSeconds}`;
+}
+
 export function formatLastAccess(value: string | null | undefined): string {
   const date = parseDate(value);
   if (!date) {

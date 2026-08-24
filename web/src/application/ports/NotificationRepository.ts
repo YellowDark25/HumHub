@@ -1,5 +1,9 @@
 import type { Notification } from "@/domain/Notification";
 import type {
+  NotificationLiveStream,
+  NotificationLiveSubscription,
+} from "@/domain/NotificationLive";
+import type {
   NotificationPreferencePatch,
   NotificationPreferences,
 } from "@/domain/NotificationPreferences";
@@ -19,4 +23,6 @@ export interface NotificationRepository {
     patch: NotificationPreferencePatch,
   ): Promise<NotificationPreferences>;
   resetPreferences(token: string): Promise<NotificationPreferences>;
+  getLiveSubscription(token: string): Promise<NotificationLiveSubscription | null>;
+  openLiveStream(token: string): Promise<NotificationLiveStream | null>;
 }

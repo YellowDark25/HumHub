@@ -13,5 +13,5 @@ export async function leaveVoiceRoom(
 ) {
   await requireVoiceChannel(chat, token, conversationId);
   const user = await getCurrentUser(auth, token);
-  return voice.leave(conversationId, user.id);
+  return voice.removeParticipant(conversationId, user.id);
 }

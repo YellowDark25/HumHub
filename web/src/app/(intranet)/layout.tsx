@@ -1,7 +1,10 @@
 import { AppContent } from "@/components/AppContent";
 import { AppHeader } from "@/components/AppHeader";
 import { MobileNav } from "@/components/MobileNav";
+import { VoiceCallDock } from "@/components/VoiceCallDock";
+import { VoiceCallProvider } from "@/components/VoiceCallProvider";
 import { isForbidden, isUnauthorized } from "@/application/errors";
+import type { User } from "@/domain/User";
 import { app } from "@/infrastructure/composition";
 import {
   redirectToClearSession,
@@ -16,21 +19,10 @@ export default async function AppLayout({
 }) {
   const token = await requirePageToken();
 
-  let displayName = "Você";
-  let title = "";
-  let imageUrl = "";
-  let isOnline = false;
-  let unseenCount = 0;
-  let isAdmin = false;
-
   try {
     const user = await app.getCurrentUser(token);
-    displayName = user.name;
-    title = user.title;
-    imageUrl = user.imageUrl;
-    isOnline = user.isOnline;
-    isAdmin = user.isAdmin;
-    unseenCount = await loadUnseenCount(token);
+    const unseenCount = await loadUnseenCount(token);
+    return <IntranetShell user={user} unseenCount={unseenCount}>{children}</IntranetShell>;
   } catch (error) {
     if (isForbidden(error)) {
       redirect("/trocar-senha");
@@ -42,19 +34,34 @@ export default async function AppLayout({
 
     throw error;
   }
+}
 
+function IntranetShell({
+  user,
+  unseenCount,
+  children,
+}: {
+  user: User;
+  unseenCount: number;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex min-h-dvh flex-col bg-zinc-100">
+    <div className="flex h-dvh flex-col overflow-hidden bg-zinc-100">
       <AppHeader
-        displayName={displayName}
-        title={title}
-        imageUrl={imageUrl}
-        isOnline={isOnline}
+        displayName={user.name}
+        title={user.title}
+        imageUrl={user.imageUrl}
+        isOnline={user.isOnline}
         unseenCount={unseenCount}
-        isAdmin={isAdmin}
+        isAdmin={user.isAdmin}
       />
-      <AppContent>{children}</AppContent>
-      <MobileNav />
+      <VoiceCallProvider currentUser={user}>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <AppContent>{children}</AppContent>
+          <VoiceCallDock />
+          <MobileNav />
+        </div>
+      </VoiceCallProvider>
     </div>
   );
 }

@@ -1,12 +1,14 @@
 import { errorMessage, isNotFound } from "@/application/errors";
-import { ChatComposer } from "@/components/ChatComposer";
-import { ChatMessageHistory } from "@/components/ChatMessageHistory";
+import { ChatConversationPane } from "@/components/ChatConversationPane";
+import { ChatServerNotificationMenu } from "@/components/ChatServerNotificationMenu";
 import { ChatShell } from "@/components/ChatShell";
 import { ChatVoiceRoom } from "@/components/ChatVoiceRoom";
 import { LoadError } from "@/components/LoadError";
 import type { ChatMessage } from "@/domain/ChatMessage";
+import type { ChatNotificationPreference } from "@/domain/ChatNotificationPreference";
 import type { ChatSidebarSection, ChatWorkspace } from "@/domain/ChatWorkspace";
 import type { Conversation } from "@/domain/Conversation";
+import type { Space } from "@/domain/Space";
 import type { User } from "@/domain/User";
 import { app } from "@/infrastructure/composition";
 import {
@@ -40,6 +42,8 @@ export default async function ChatViewPage({
   let currentWorkspace: ChatWorkspace | null = null;
   let sections: ChatSidebarSection[] = [];
   let currentUser: User | null = null;
+  let spacesWithoutServer: Space[] = [];
+  let notificationPreference: ChatNotificationPreference | null = null;
   let messages: ChatMessage[] = [];
   let loadError = "";
 
@@ -54,6 +58,8 @@ export default async function ChatViewPage({
     currentWorkspace = page.currentWorkspace;
     sections = page.sections;
     currentUser = page.currentUser;
+    spacesWithoutServer = page.spacesWithoutServer;
+    notificationPreference = page.notificationPreference;
     messages = page.messages;
   } catch (error) {
     await redirectIfUnauthorized(error);
@@ -80,6 +86,7 @@ export default async function ChatViewPage({
       currentWorkspace={currentWorkspace}
       sections={sections}
       currentUser={currentUser}
+      spacesWithoutServer={spacesWithoutServer}
       activeConversationId={conversationId}
       hideNavigationOnMobile
     >
@@ -90,38 +97,40 @@ export default async function ChatViewPage({
           workspaceId={currentWorkspace.id}
           workspaceName={currentWorkspace.name}
           currentUser={currentUser}
+          notificationPreference={notificationPreference}
         />
       ) : (
-        <section className="flex min-h-0 flex-1 flex-col">
-          <header className="border-b border-zinc-200 px-4 py-3">
-            <Link
-              href={chatWorkspaceHref(currentWorkspace.id)}
-              className="text-xs font-medium text-teal-700 lg:hidden"
-            >
-              Voltar
-            </Link>
-            <h1 className="text-base font-semibold text-zinc-900">
-              {current.kind === "channel" ? "#" : "@"} {current.name}
-            </h1>
-          </header>
-          <div className="flex flex-1 flex-col justify-end overflow-y-auto">
-            {loadError ? (
-              <div className="p-4">
-                <LoadError message={loadError} />
-              </div>
-            ) : (
-              <ChatMessageHistory messages={messages} />
-            )}
-          </div>
-          <ChatComposer
-            conversationId={conversationId}
-            placeholder={
-              current.kind === "channel"
-                ? `Conversar em #${current.name}`
-                : `Conversar em @${current.name}`
-            }
-          />
-        </section>
+        <ChatConversationPane
+          key={conversationId}
+          conversationId={conversationId}
+          currentUserId={currentUser?.id ?? 0}
+          title={
+            <>
+              <Link
+                href={chatWorkspaceHref(currentWorkspace.id)}
+                className="text-sm font-medium text-teal-700 lg:hidden"
+              >
+                Voltar
+              </Link>
+              <h1 className="truncate">
+                {current.kind === "channel" ? "#" : "@"} {current.name}
+              </h1>
+            </>
+          }
+          trailing={
+            notificationPreference ? (
+              <ChatServerNotificationMenu
+                initialPreference={notificationPreference}
+              />
+            ) : null
+          }
+          placeholder={
+            current.kind === "channel"
+              ? `Conversar em #${current.name}`
+              : `Conversar em @${current.name}`
+          }
+          initialMessages={messages}
+        />
       )}
     </ChatShell>
   );

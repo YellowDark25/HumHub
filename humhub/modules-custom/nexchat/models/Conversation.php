@@ -3,6 +3,7 @@
 namespace humhub\modules\nexchat\models;
 
 use humhub\components\ActiveRecord;
+use humhub\modules\space\models\Membership as SpaceMembership;
 use humhub\modules\user\models\User;
 use Yii;
 
@@ -160,6 +161,33 @@ class Conversation extends ActiveRecord
             ->exists();
     }
 
+    public function canAccess(int $userId): bool
+    {
+        return $this->isMember($userId) || $this->isOpenToSpaceMember($userId);
+    }
+
+    public function isOpenToSpaceMember(int $userId): bool
+    {
+        if (!$this->isOpenSpaceChannel()) {
+            return false;
+        }
+
+        return SpaceMembership::find()
+            ->where([
+                'space_id' => (int) $this->space_id,
+                'user_id' => $userId,
+                'status' => SpaceMembership::STATUS_MEMBER,
+            ])
+            ->exists();
+    }
+
+    public function isOpenSpaceChannel(): bool
+    {
+        return $this->type === self::TYPE_CHANNEL
+            && (int) $this->is_private !== 1
+            && (int) ($this->space_id ?: 0) > 0;
+    }
+
     public function isAdmin(int $userId): bool
     {
         return Membership::find()
@@ -189,11 +217,45 @@ class Conversation extends ActiveRecord
      */
     public static function findForUser(int $userId): array
     {
-        return self::find()
-            ->innerJoin('nexchat_membership m', 'm.conversation_id = nexchat_conversation.id')
-            ->where(['m.user_id' => $userId, 'm.status' => Membership::STATUS_ACTIVE])
+        $query = self::find()->where([
+            'id' => Membership::find()
+                ->select('conversation_id')
+                ->where([
+                    'user_id' => $userId,
+                    'status' => Membership::STATUS_ACTIVE,
+                ]),
+        ]);
+
+        $spaceIds = self::spaceIdsForUser($userId);
+        if ($spaceIds !== []) {
+            $query->orWhere([
+                'and',
+                ['type' => self::TYPE_CHANNEL],
+                ['space_id' => $spaceIds],
+                ['or', ['is_private' => 0], ['is_private' => null]],
+            ]);
+        }
+
+        return $query
             ->orderBy(['last_message_at' => SORT_DESC, 'id' => SORT_DESC])
             ->all();
+    }
+
+    /**
+     * @return int[]
+     */
+    private static function spaceIdsForUser(int $userId): array
+    {
+        return array_map(
+            'intval',
+            SpaceMembership::find()
+                ->select('space_id')
+                ->where([
+                    'user_id' => $userId,
+                    'status' => SpaceMembership::STATUS_MEMBER,
+                ])
+                ->column(),
+        );
     }
 
     /**

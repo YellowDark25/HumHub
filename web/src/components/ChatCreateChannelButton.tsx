@@ -51,7 +51,7 @@ export function ChatCreateChannelButton({
         title="Criar canal"
         aria-label={`Criar canal em ${categoryName}`}
         onClick={() => setOpen(true)}
-        className="flex h-5 w-5 items-center justify-center rounded text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700"
+        className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700"
       >
         <PlusIcon />
       </button>
@@ -285,7 +285,7 @@ function ChannelTypeIcon({ type }: { type: ChatChannelType }) {
 
 function PlusIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
       <path d="M12 5v14" />
       <path d="M5 12h14" />
     </svg>

@@ -1,24 +1,12 @@
 import type { User } from "@/domain/User";
-import type { SpaceRepository } from "../ports/SpaceRepository";
-import { loadSpaceMembers } from "./loadSpaceMembers";
+import type { AuthRepository } from "../ports/AuthRepository";
 
 export async function listPeople(
-  spaces: SpaceRepository,
+  auth: AuthRepository,
   token: string,
 ): Promise<User[]> {
-  const spaceList = await spaces.list(token);
-  const membershipGroups = await Promise.all(
-    spaceList.map((space) => loadSpaceMembers(spaces, token, space.id)),
-  );
-
-  const unique = new Map<number, User>();
-  for (const members of membershipGroups) {
-    for (const member of members) {
-      unique.set(member.user.id, member.user);
-    }
-  }
-
-  return [...unique.values()].sort((left, right) =>
+  const people = await auth.listPeople(token);
+  return [...people].sort((left, right) =>
     left.name.localeCompare(right.name, "pt-BR"),
   );
 }

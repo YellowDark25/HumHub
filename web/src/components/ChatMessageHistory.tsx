@@ -14,7 +14,7 @@ export function ChatMessageHistory({ messages }: ChatMessageHistoryProps) {
   const items = groupChatHistory(messages);
 
   if (items.length === 0) {
-    return <p className="px-4 py-6 text-sm text-zinc-500">Nenhuma mensagem ainda.</p>;
+    return <p className="px-5 py-6 text-[15px] text-zinc-500">Nenhuma mensagem ainda.</p>;
   }
 
   return (
@@ -32,9 +32,9 @@ export function ChatMessageHistory({ messages }: ChatMessageHistoryProps) {
 
 function DayDivider({ label }: { label: string }) {
   return (
-    <div className="my-4 flex items-center gap-3 px-4">
+    <div className="my-4 flex items-center gap-3 px-5">
       <span className="h-px flex-1 bg-zinc-200" />
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+      <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
         {label}
       </span>
       <span className="h-px flex-1 bg-zinc-200" />
@@ -51,19 +51,19 @@ function MessageGroup({ group }: { group: ChatHistoryGroup }) {
 
   return (
     <div>
-      <article className="flex gap-3 px-4 py-1 hover:bg-zinc-50">
+      <article className="flex gap-3 px-5 py-1.5 hover:bg-zinc-50">
         <Avatar
           name={group.authorName}
           imageUrl={group.authorImageUrl}
-          size="sm"
+          size="md"
           shape="circle"
         />
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-baseline gap-x-2 leading-5">
-            <span className="text-sm font-semibold text-zinc-900">
+            <span className="text-[15px] font-semibold text-zinc-900">
               {group.authorName}
             </span>
-            <time className="text-[11px] text-zinc-400">
+            <time className="text-xs text-zinc-400">
               {formatChatTimestamp(group.publishedAt)}
             </time>
           </p>
@@ -73,9 +73,9 @@ function MessageGroup({ group }: { group: ChatHistoryGroup }) {
       {rest.map((message) => (
         <article
           key={message.id}
-          className="group flex gap-3 px-4 py-0.5 hover:bg-zinc-50"
+          className="group flex gap-3 px-5 py-0.5 hover:bg-zinc-50"
         >
-          <span className="flex w-8 shrink-0 justify-end pt-0.5 text-[10px] text-transparent group-hover:text-zinc-400">
+          <span className="flex w-10 shrink-0 justify-end pt-0.5 text-[11px] text-transparent group-hover:text-zinc-400">
             {formatChatClock(message.publishedAt)}
           </span>
           <div className="min-w-0 flex-1">
@@ -89,13 +89,13 @@ function MessageGroup({ group }: { group: ChatHistoryGroup }) {
 
 function MessageBody({ message }: { message: ChatMessage }) {
   if (message.isDeleted) {
-    return <p className="text-sm italic text-zinc-400">Mensagem excluída</p>;
+    return <p className="text-[15px] italic text-zinc-400">Mensagem excluída</p>;
   }
 
   return (
     <div className="space-y-2">
       {message.content ? (
-        <p className="whitespace-pre-wrap break-words text-sm leading-6 text-zinc-800">
+        <p className="whitespace-pre-wrap break-words text-[15px] leading-6 text-zinc-800">
           {message.content}
         </p>
       ) : null}

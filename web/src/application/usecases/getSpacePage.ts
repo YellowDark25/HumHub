@@ -1,5 +1,6 @@
 import type { SpaceMember } from "@/domain/SpaceMember";
 import type { User } from "@/domain/User";
+import { ApplicationError } from "../errors";
 import type { AuthRepository } from "../ports/AuthRepository";
 import type { FeedRepository } from "../ports/FeedRepository";
 import type { SpaceRepository } from "../ports/SpaceRepository";
@@ -15,8 +16,12 @@ export async function getSpacePage(
   feed: FeedRepository,
   auth: AuthRepository,
 ) {
-  const [space, posts, members, user, activities] = await Promise.all([
-    spaces.getById(token, spaceId),
+  if (!Number.isFinite(spaceId) || spaceId <= 0) {
+    throw new ApplicationError("Espaço inválido.", 404);
+  }
+
+  const space = await spaces.getById(token, spaceId);
+  const [posts, members, user, activities] = await Promise.all([
     feed.listPosts(token, spaceId),
     loadSpaceMembers(spaces, token, spaceId),
     auth.getCurrentUser(token),

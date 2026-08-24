@@ -189,9 +189,11 @@ class AccountProfileController extends Controller
             : Profile::SCENARIO_EDIT_ADMIN;
 
         foreach (self::PROFILE_FIELDS as $field) {
-            if (array_key_exists($field, $data)) {
-                $profile->$field = $data[$field];
+            if (!array_key_exists($field, $data) || !$profile->hasAttribute($field)) {
+                continue;
             }
+
+            $profile->$field = $data[$field];
         }
 
         if (!$profile->save()) {
@@ -298,36 +300,27 @@ class AccountProfileController extends Controller
                 'status' => (int) $user->status,
                 'last_login' => $user->last_login,
             ],
-            'profile' => [
-                'image_url' => $this->imageUrl($user),
-                'firstname' => (string) ($profile->firstname ?? ''),
-                'lastname' => (string) ($profile->lastname ?? ''),
-                'title' => (string) ($profile->title ?? ''),
-                'gender' => (string) ($profile->gender ?? ''),
-                'street' => (string) ($profile->street ?? ''),
-                'zip' => (string) ($profile->zip ?? ''),
-                'city' => (string) ($profile->city ?? ''),
-                'country' => (string) ($profile->country ?? ''),
-                'state' => (string) ($profile->state ?? ''),
-                'birthday' => (string) ($profile->birthday ?? ''),
-                'about' => (string) ($profile->about ?? ''),
-                'phone_private' => (string) ($profile->phone_private ?? ''),
-                'phone_work' => (string) ($profile->phone_work ?? ''),
-                'mobile' => (string) ($profile->mobile ?? ''),
-                'fax' => (string) ($profile->fax ?? ''),
-                'im_skype' => (string) ($profile->im_skype ?? ''),
-                'im_xmpp' => (string) ($profile->im_xmpp ?? ''),
-                'url' => (string) ($profile->url ?? ''),
-                'url_facebook' => (string) ($profile->url_facebook ?? ''),
-                'url_linkedin' => (string) ($profile->url_linkedin ?? ''),
-                'url_xing' => (string) ($profile->url_xing ?? ''),
-                'url_youtube' => (string) ($profile->url_youtube ?? ''),
-                'url_vimeo' => (string) ($profile->url_vimeo ?? ''),
-                'url_flickr' => (string) ($profile->url_flickr ?? ''),
-                'url_myspace' => (string) ($profile->url_myspace ?? ''),
-                'url_twitter' => (string) ($profile->url_twitter ?? ''),
-            ],
+            'profile' => $this->profilePayload($user, $profile),
         ];
+    }
+
+    private function profilePayload(User $user, Profile $profile): array
+    {
+        $payload = ['image_url' => $this->imageUrl($user)];
+        foreach (self::PROFILE_FIELDS as $field) {
+            $payload[$field] = $this->profileValue($profile, $field);
+        }
+
+        return $payload;
+    }
+
+    private function profileValue(Profile $profile, string $field): string
+    {
+        if (!$profile->hasAttribute($field)) {
+            return '';
+        }
+
+        return (string) ($profile->$field ?? '');
     }
 
     private function imageUrl(User $user): string

@@ -4,6 +4,7 @@ namespace humhub\modules\nexchat;
 
 use humhub\helpers\ControllerHelper;
 use humhub\modules\nexchat\components\BearerLogin;
+use humhub\modules\nexchat\components\NexchatNotificationLive;
 use humhub\modules\nexchat\components\NexchatPasswordGate;
 use humhub\modules\ui\menu\MenuLink;
 use humhub\widgets\TopMenu;
@@ -13,7 +14,12 @@ class Events
 {
     public static function onBeforeRequest(): void
     {
-        $path = Yii::$app->request->pathInfo;
+        $request = Yii::$app->request;
+        if (!$request instanceof \yii\web\Request) {
+            return;
+        }
+
+        $path = $request->pathInfo;
         if (!str_starts_with(ltrim($path, '/'), 'nexchat')) {
             return;
         }
@@ -79,5 +85,14 @@ class Events
 CSS;
 
         $view->registerCss($css, [], 'nexchat-topbar-notifications');
+    }
+
+    public static function onNotificationSaved($event): void
+    {
+        if (!isset($event->sender)) {
+            return;
+        }
+
+        NexchatNotificationLive::publishFromRecord($event->sender);
     }
 }

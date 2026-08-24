@@ -16,7 +16,7 @@ export async function joinVoiceRoom(
 ) {
   await requireVoiceChannel(chat, token, conversationId);
   const user = await getCurrentUser(auth, token);
-  const room = voice.list(conversationId);
+  const room = await voice.list(conversationId);
   const alreadyInRoom = room.participants.some(
     (participant) => participant.userId === user.id,
   );
@@ -25,7 +25,7 @@ export async function joinVoiceRoom(
     throw new ApplicationError("A sala de voz está cheia.", 409);
   }
 
-  return voice.join(conversationId, {
+  return voice.createSession(conversationId, {
     userId: user.id,
     name: user.name,
     imageUrl: user.imageUrl,

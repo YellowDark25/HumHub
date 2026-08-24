@@ -29,6 +29,19 @@ if (class_exists(\humhub\components\gates\GateManager::class)) {
     ];
 }
 
+if (class_exists(\humhub\modules\notification\models\Notification::class)) {
+    $events[] = [
+        'class' => \humhub\modules\notification\models\Notification::class,
+        'event' => \yii\db\BaseActiveRecord::EVENT_AFTER_INSERT,
+        'callback' => ['humhub\\modules\\nexchat\\Events', 'onNotificationSaved'],
+    ];
+    $events[] = [
+        'class' => \humhub\modules\notification\models\Notification::class,
+        'event' => \yii\db\BaseActiveRecord::EVENT_AFTER_UPDATE,
+        'callback' => ['humhub\\modules\\nexchat\\Events', 'onNotificationSaved'],
+    ];
+}
+
 return [
     'id' => 'nexchat',
     'class' => Module::class,
@@ -43,6 +56,10 @@ return [
         'nexchat/space-invite/received' => 'nexchat/space-invite/received',
         'nexchat/space-invite/accept' => 'nexchat/space-invite/accept',
         'nexchat/space-invite/decline' => 'nexchat/space-invite/decline',
+        'nexchat/spaces' => 'nexchat/spaces/index',
+        'nexchat/spaces/view' => 'nexchat/spaces/view',
+        'nexchat/people' => 'nexchat/people/index',
+        'nexchat/notification-live' => 'nexchat/notification-live/index',
         'nexchat/notification-settings' => 'nexchat/notification-settings/index',
         'nexchat/notification-settings/save' => 'nexchat/notification-settings/save',
         'nexchat/notification-settings/reset' => 'nexchat/notification-settings/reset',

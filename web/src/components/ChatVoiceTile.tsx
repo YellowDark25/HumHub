@@ -1,67 +1,90 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import type { VoiceParticipant } from "@/domain/VoiceRoom";
+import { useEffect, useRef, type ReactNode } from "react";
+import { voiceCardTone, type VoiceParticipant } from "@/domain/VoiceRoom";
 import { Avatar } from "./Avatar";
 import { useVoiceActivity } from "./useVoiceActivity";
+
+const VOICE_CARD_TONES = [
+  "bg-rose-800",
+  "bg-indigo-800",
+  "bg-emerald-800",
+  "bg-amber-800",
+  "bg-sky-800",
+  "bg-violet-800",
+  "bg-orange-800",
+  "bg-cyan-800",
+] as const;
 
 type ChatVoiceTileProps = {
   participant: VoiceParticipant;
   stream?: MediaStream;
   isSelf?: boolean;
-  isDeafened?: boolean;
+  isSpeaking?: boolean;
+  controls?: ReactNode;
 };
 
 export function ChatVoiceTile({
   participant,
   stream,
   isSelf = false,
-  isDeafened = false,
+  isSpeaking = false,
+  controls,
 }: ChatVoiceTileProps) {
   const tileRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const canListen =
-    Boolean(stream) && !participant.isMicMuted && !participant.isDeafened;
-  useVoiceActivity(stream, canListen, tileRef);
+  useVoiceActivity(isSpeaking, tileRef);
   const hasVideo = Boolean(
     stream?.getVideoTracks().some((track) => track.enabled && track.readyState === "live"),
   );
 
   useEffect(() => {
     const video = videoRef.current;
-    const audio = audioRef.current;
-    if (video) {
-      video.srcObject = hasVideo && stream ? stream : null;
+    if (!video) {
+      return;
     }
-    if (audio) {
-      audio.srcObject = !isSelf && stream ? stream : null;
-      audio.muted = isDeafened;
+
+    const next = hasVideo && stream ? stream : null;
+    if (video.srcObject === next) {
+      return;
     }
-  }, [hasVideo, isDeafened, isSelf, stream]);
+
+    video.srcObject = next;
+    if (!next) {
+      return;
+    }
+
+    void video.play().catch((error) => {
+      console.error("Falha ao reproduzir vídeo da chamada.", error);
+    });
+  }, [hasVideo, stream]);
 
   return (
-    <article ref={tileRef} className="relative rounded-2xl">
-      <div className="relative flex min-h-48 w-full flex-col items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100">
-        {hasVideo ? (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted={isSelf}
-            className={`h-full w-full object-cover ${isSelf && !participant.isScreenSharing ? "scale-x-[-1]" : ""}`}
-          />
-        ) : (
+    <article ref={tileRef} className="relative aspect-video w-full max-w-lg rounded-2xl">
+      <div
+        className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-2xl ${
+          VOICE_CARD_TONES[voiceCardTone(participant.userId)]
+        }`}
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={isSelf}
+          className={`h-full w-full object-cover ${hasVideo ? "" : "hidden"} ${
+            isSelf && !participant.isScreenSharing ? "scale-x-[-1]" : ""
+          }`}
+        />
+        {hasVideo ? null : (
           <Avatar
             name={participant.name}
             imageUrl={participant.imageUrl}
-            size="xl"
+            size="lg"
             shape="circle"
           />
         )}
-        {!isSelf ? <audio ref={audioRef} autoPlay /> : null}
         <div className="absolute bottom-3 left-3 flex items-center gap-2">
-          <span className="rounded-md bg-white/90 px-2 py-1 text-xs font-medium text-zinc-800 shadow-sm">
+          <span className="rounded-md bg-zinc-900/75 px-2 py-1 text-sm font-medium text-zinc-50">
             {isSelf ? `${participant.name} (você)` : participant.name}
           </span>
           {participant.isMicMuted || participant.isDeafened ? (
@@ -75,11 +98,11 @@ export function ChatVoiceTile({
             Compartilhando tela
           </span>
         ) : null}
+        {controls}
       </div>
     </article>
   );
 }
-
 
 function MicOffIcon() {
   return (

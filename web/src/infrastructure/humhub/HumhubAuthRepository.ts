@@ -9,8 +9,19 @@ import type { User } from "@/domain/User";
 import { MUST_CHANGE_PASSWORD_MESSAGE } from "@/shared/mustChangePassword";
 import { resolveTokenMaxAge } from "../config";
 import { humhubRequest } from "./client";
-import { mapAccount, mapUser, toHumhubAccount, toHumhubProfile } from "./mappers";
-import type { HumhubLoginResponse, HumhubPage, HumhubUser } from "./types";
+import {
+  mapAccount,
+  mapDirectoryUser,
+  mapUser,
+  toHumhubAccount,
+  toHumhubProfile,
+} from "./mappers";
+import type {
+  HumhubDirectoryUsers,
+  HumhubLoginResponse,
+  HumhubPage,
+  HumhubUser,
+} from "./types";
 
 export class HumhubAuthRepository implements AuthRepository {
   async login(username: string, password: string): Promise<LoginResult> {
@@ -67,6 +78,18 @@ export class HumhubAuthRepository implements AuthRepository {
     });
 
     return mapUser(user);
+  }
+
+  async listPeople(token: string): Promise<User[]> {
+    const payload = await humhubRequest<HumhubDirectoryUsers>({
+      path: "/nexchat/people",
+      token,
+      origin: "app",
+    });
+
+    return (payload.users ?? [])
+      .map(mapDirectoryUser)
+      .filter((user): user is User => user !== null);
   }
 
   async getAccount(token: string): Promise<Account> {

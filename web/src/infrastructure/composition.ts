@@ -2,11 +2,21 @@ import type { NotificationListQuery } from "@/application/NotificationListQuery"
 import { addComment } from "@/application/usecases/addComment";
 import { countUnseenNotifications } from "@/application/usecases/countUnseenNotifications";
 import { createAdminUser } from "@/application/usecases/createAdminUser";
+import { createChatServer } from "@/application/usecases/createChatServer";
 import { createSpace } from "@/application/usecases/createSpace";
+import { enableSpaceServer } from "@/application/usecases/enableSpaceServer";
 import { getChatFile } from "@/application/usecases/getChatFile";
+import { getHumhubMedia } from "@/application/usecases/getHumhubMedia";
 import { getChatHomePage } from "@/application/usecases/getChatHomePage";
 import { getConversationPage } from "@/application/usecases/getConversationPage";
+import { getServerNotificationPreference } from "@/application/usecases/getServerNotificationPreference";
+import { saveServerNotificationPreference } from "@/application/usecases/saveServerNotificationPreference";
 import { getCurrentUser } from "@/application/usecases/getCurrentUser";
+import { getChatLiveSubscription } from "@/application/usecases/getChatLiveSubscription";
+import { getNotificationLiveSubscription } from "@/application/usecases/getNotificationLiveSubscription";
+import { listMessages } from "@/application/usecases/listMessages";
+import { openChatLiveStream } from "@/application/usecases/openChatLiveStream";
+import { openNotificationLiveStream } from "@/application/usecases/openNotificationLiveStream";
 import { getNotificationPreferences } from "@/application/usecases/getNotificationPreferences";
 import { getPersonPage } from "@/application/usecases/getPersonPage";
 import { getProfilePage } from "@/application/usecases/getProfilePage";
@@ -19,7 +29,6 @@ import type { CreateChannelInput } from "@/application/ports/ChatRepository";
 import { createChannel } from "@/application/usecases/createChannel";
 import { deleteChannel } from "@/application/usecases/deleteChannel";
 import { getChannelSettings } from "@/application/usecases/getChannelSettings";
-import { heartbeatVoiceRoom } from "@/application/usecases/heartbeatVoiceRoom";
 import { inviteChannelMember } from "@/application/usecases/inviteChannelMember";
 import { acceptSpaceInvite } from "@/application/usecases/acceptSpaceInvite";
 import { declineSpaceInvite } from "@/application/usecases/declineSpaceInvite";
@@ -31,9 +40,7 @@ import { leaveVoiceRoom } from "@/application/usecases/leaveVoiceRoom";
 import { listVoiceOccupancy } from "@/application/usecases/listVoiceOccupancy";
 import { listVoiceRoom } from "@/application/usecases/listVoiceRoom";
 import { openDirectMessage } from "@/application/usecases/openDirectMessage";
-import { pullVoiceSignals } from "@/application/usecases/pullVoiceSignals";
 import { removeChannelMember } from "@/application/usecases/removeChannelMember";
-import { sendVoiceSignal } from "@/application/usecases/sendVoiceSignal";
 import { updateChannel } from "@/application/usecases/updateChannel";
 import { listPeople } from "@/application/usecases/listPeople";
 import { listSpaces } from "@/application/usecases/listSpaces";
@@ -45,6 +52,7 @@ import { resetNotificationPreferences } from "@/application/usecases/resetNotifi
 import { saveAdminSettings } from "@/application/usecases/saveAdminSettings";
 import { saveNotificationPreferences } from "@/application/usecases/saveNotificationPreferences";
 import { sendMessage } from "@/application/usecases/sendMessage";
+import { sendTyping } from "@/application/usecases/sendTyping";
 import { setAdminUserStatus } from "@/application/usecases/setAdminUserStatus";
 import { updateAccountGeneral } from "@/application/usecases/updateAccountGeneral";
 import { updateAccountProfile } from "@/application/usecases/updateAccountProfile";
@@ -107,6 +115,7 @@ import type {
   CreateAdminUserInput,
   UpdateAdminUserInput,
 } from "@/domain/AdminUser";
+import type { ChatNotificationPreferencePatch } from "@/domain/ChatNotificationPreference";
 import type { NotificationPreferencePatch } from "@/domain/NotificationPreferences";
 import {
   updateSpaceImage,
@@ -120,10 +129,11 @@ import { HumhubAdminSystemRepository } from "./humhub/HumhubAdminSystemRepositor
 import { HumhubAdminUserRepository } from "./humhub/HumhubAdminUserRepository";
 import { HumhubAuthRepository } from "./humhub/HumhubAuthRepository";
 import { HumhubFeedRepository } from "./humhub/HumhubFeedRepository";
+import { HumhubMediaRepository } from "./humhub/HumhubMediaRepository";
 import { HumhubNotificationRepository } from "./humhub/HumhubNotificationRepository";
 import { HumhubSpaceRepository } from "./humhub/HumhubSpaceRepository";
 import { NexchatChatRepository } from "./nexchat/NexchatChatRepository";
-import { InMemoryVoiceRoomRepository } from "./voice/InMemoryVoiceRoomRepository";
+import { LiveKitVoiceRoomRepository } from "./voice/LiveKitVoiceRoomRepository";
 
 const auth = new HumhubAuthRepository();
 const accountSettings = new HumhubAccountSettingsRepository();
@@ -136,7 +146,8 @@ const feed = new HumhubFeedRepository();
 const spaces = new HumhubSpaceRepository();
 const notifications = new HumhubNotificationRepository();
 const chat = new NexchatChatRepository();
-const voiceRooms = new InMemoryVoiceRoomRepository();
+const voiceRooms = new LiveKitVoiceRoomRepository();
+const media = new HumhubMediaRepository();
 
 export const app = {
   login: (username: string, password: string) => login(auth, username, password),
@@ -317,6 +328,10 @@ export const app = {
     token: string,
     input: { name: string; description: string; createServer: boolean },
   ) => createSpace(auth, spaces, chat, token, input),
+  createChatServer: (token: string, name: string) =>
+    createChatServer(auth, spaces, chat, token, name),
+  enableSpaceServer: (token: string, spaceId: number) =>
+    enableSpaceServer(chat, token, spaceId),
   getSpacePage: (token: string, spaceId: number) =>
     getSpacePage(token, spaceId, spaces, feed, auth),
   updateSpaceImage: (
@@ -332,7 +347,7 @@ export const app = {
     spaceId: number,
     input: SpaceInviteInput,
   ) => inviteSpaceMembers(spaces, token, spaceId, input),
-  listPeople: (token: string) => listPeople(spaces, token),
+  listPeople: (token: string) => listPeople(auth, token),
   listNotifications: (token: string, query?: NotificationListQuery) =>
     listNotifications(notifications, token, query),
   getNotificationPreferences: (token: string) =>
@@ -347,6 +362,10 @@ export const app = {
     countUnseenNotifications(notifications, token),
   markAllNotificationsAsSeen: (token: string) =>
     markAllNotificationsAsSeen(notifications, token),
+  getNotificationLiveSubscription: (token: string) =>
+    getNotificationLiveSubscription(notifications, token),
+  openNotificationLiveStream: (token: string) =>
+    openNotificationLiveStream(notifications, token),
   listConversations: (token: string) => listConversations(chat, token),
   getChatHomePage: (token: string, workspaceId: string) =>
     getChatHomePage(chat, spaces, auth, token, workspaceId),
@@ -356,13 +375,29 @@ export const app = {
     workspaceId: string,
   ) =>
     getConversationPage(chat, spaces, auth, token, conversationId, workspaceId),
+  listMessages: (token: string, conversationId: number, since?: number) =>
+    listMessages(chat, token, conversationId, since ?? 0),
+  getChatLiveSubscription: (token: string, conversationId: number) =>
+    getChatLiveSubscription(chat, token, conversationId),
+  openChatLiveStream: (token: string, conversationId: number) =>
+    openChatLiveStream(chat, token, conversationId),
+  getServerNotificationPreference: (token: string, spaceId: number) =>
+    getServerNotificationPreference(chat, token, spaceId),
+  saveServerNotificationPreference: (
+    token: string,
+    patch: ChatNotificationPreferencePatch,
+  ) => saveServerNotificationPreference(chat, token, patch),
   sendMessage: (
     token: string,
     conversationId: number,
     content: string,
     files?: File[],
   ) => sendMessage(chat, token, conversationId, content, files ?? []),
+  sendTyping: (token: string, conversationId: number, isTyping: boolean) =>
+    sendTyping(chat, token, conversationId, isTyping),
   getChatFile: (token: string, fileId: number) => getChatFile(chat, token, fileId),
+  getHumhubMedia: (token: string, path: string, search?: string) =>
+    getHumhubMedia(media, token, path, search),
   openDirectMessage: (token: string, userId: number) =>
     openDirectMessage(chat, token, userId),
   createChannel: (token: string, input: CreateChannelInput) =>
@@ -393,32 +428,8 @@ export const app = {
   ) => joinVoiceRoom(chat, auth, voiceRooms, token, conversationId, media),
   leaveVoiceRoom: (token: string, conversationId: number) =>
     leaveVoiceRoom(chat, auth, voiceRooms, token, conversationId),
-  heartbeatVoiceRoom: (
-    token: string,
-    conversationId: number,
-    media: VoiceMediaState,
-  ) => heartbeatVoiceRoom(chat, auth, voiceRooms, token, conversationId, media),
   listVoiceRoom: (token: string, conversationId: number) =>
     listVoiceRoom(chat, voiceRooms, token, conversationId),
   listVoiceOccupancy: (token: string) =>
     listVoiceOccupancy(chat, voiceRooms, token),
-  sendVoiceSignal: (
-    token: string,
-    conversationId: number,
-    toUserId: number,
-    kind: string,
-    payload: Record<string, unknown>,
-  ) =>
-    sendVoiceSignal(
-      chat,
-      auth,
-      voiceRooms,
-      token,
-      conversationId,
-      toUserId,
-      kind,
-      payload,
-    ),
-  pullVoiceSignals: (token: string, conversationId: number) =>
-    pullVoiceSignals(chat, auth, voiceRooms, token, conversationId),
 };

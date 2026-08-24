@@ -20,6 +20,47 @@ export function getPublicHumhubUrl(): string {
   );
 }
 
+export function getLiveKitUrl(): string {
+  const url = process.env.LIVEKIT_URL?.trim();
+
+  if (!url) {
+    throw new Error("LIVEKIT_URL não está definida.");
+  }
+
+  return url.replace(/\/$/, "");
+}
+
+export function getPublicLiveKitUrl(): string {
+  return (process.env.NEXT_PUBLIC_LIVEKIT_URL ?? "ws://localhost:7880").replace(
+    /\/$/,
+    "",
+  );
+}
+
+export function getLiveKitApiKey(): string {
+  const key = process.env.LIVEKIT_API_KEY?.trim();
+
+  if (!key) {
+    throw new Error("LIVEKIT_API_KEY não está definida.");
+  }
+
+  return key;
+}
+
+export function getLiveKitApiSecret(): string {
+  const secret = process.env.LIVEKIT_API_SECRET?.trim();
+
+  if (!secret) {
+    throw new Error("LIVEKIT_API_SECRET não está definida.");
+  }
+
+  return secret;
+}
+
+export function getLiveKitHttpUrl(): string {
+  return getLiveKitUrl().replace(/^ws:/, "http:").replace(/^wss:/, "https:");
+}
+
 export function resolveTokenMaxAge(
   expiredAt: string | number | undefined,
 ): number {

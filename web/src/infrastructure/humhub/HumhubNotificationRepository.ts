@@ -1,8 +1,15 @@
+import { ApplicationError } from "@/application/errors";
 import type {
   NotificationListOptions,
   NotificationRepository,
 } from "@/application/ports/NotificationRepository";
 import type { Notification } from "@/domain/Notification";
+import type {
+  NotificationLiveStream,
+  NotificationLiveSubscription,
+} from "@/domain/NotificationLive";
+import { notificationLiveHubUrl } from "@/shared/notificationLive";
+import { getHumhubUrl } from "../config";
 import type {
   NotificationPreferencePatch,
   NotificationPreferences,
@@ -13,9 +20,14 @@ import {
   NOTIFICATION_PAGE_LIMIT,
   UNSEEN_NOTIFICATION_LIMIT,
 } from "./constants";
-import { mapNotification, mapNotificationPreferences } from "./mappers";
+import {
+  mapNotification,
+  mapNotificationLiveSubscription,
+  mapNotificationPreferences,
+} from "./mappers";
 import type {
   HumhubNotification,
+  HumhubNotificationLiveSubscription,
   HumhubNotificationPreferences,
   HumhubPage,
 } from "./types";
@@ -93,6 +105,46 @@ export class HumhubNotificationRepository implements NotificationRepository {
 
     return mapNotificationPreferences(dto);
   }
+
+  async getLiveSubscription(
+    token: string,
+  ): Promise<NotificationLiveSubscription | null> {
+    const dto = await humhubRequest<HumhubNotificationLiveSubscription>({
+      path: "/nexchat/notification-live",
+      token,
+      origin: "app",
+    });
+
+    return mapNotificationLiveSubscription(dto);
+  }
+
+  async openLiveStream(token: string): Promise<NotificationLiveStream | null> {
+    const subscription = await this.getLiveSubscription(token);
+    if (!subscription) {
+      return null;
+    }
+
+    const response = await fetch(internalMercureUrl(subscription), {
+      headers: {
+        Accept: "text/event-stream",
+        Authorization: `Bearer ${subscription.token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok || !response.body) {
+      throw new ApplicationError(
+        "Não foi possível abrir o canal de notificações.",
+        response.status === 404 ? 404 : 502,
+      );
+    }
+
+    return {
+      body: response.body,
+      contentType:
+        response.headers.get("content-type") ?? "text/event-stream",
+    };
+  }
 }
 
 async function fetchNotificationPage(token: string, path: string) {
@@ -122,6 +174,14 @@ function buildNotificationPath(
   }
 
   return `${basePath}?${params.toString()}`;
+}
+
+function internalMercureUrl(subscription: NotificationLiveSubscription): string {
+  const publicHub = new URL(notificationLiveHubUrl(subscription));
+  const internal = new URL(getHumhubUrl());
+  publicHub.protocol = internal.protocol;
+  publicHub.host = internal.host;
+  return publicHub.toString();
 }
 
 function resolvePageLimit(limit: number | undefined, fallback: number): number {

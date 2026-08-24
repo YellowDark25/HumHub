@@ -24,6 +24,7 @@ import { emptyAccountProfile } from "@/domain/Account";
 import type { Activity } from "@/domain/Activity";
 import type { Comment } from "@/domain/Comment";
 import type { Notification } from "@/domain/Notification";
+import type { NotificationLiveSubscription } from "@/domain/NotificationLive";
 import type { NotificationPreferences } from "@/domain/NotificationPreferences";
 import type { AccountProfileModule } from "@/domain/AccountProfileModule";
 import type { Post } from "@/domain/Post";
@@ -37,14 +38,17 @@ import { notificationHref } from "@/shared/notificationHref";
 import { accountModuleCopy } from "@/shared/accountProfileFields";
 import { getPublicHumhubUrl } from "../config";
 import {
+  bannerMediaUrlFromGuid,
+  mediaUrlFromGuid,
+  toBrowserMediaUrl,
+} from "./publicMediaUrl";
+import {
   HUMHUB_EDITOR_PLAIN,
   HUMHUB_EDITOR_RICH_TEXT,
   HUMHUB_USER_STATUS_DISABLED,
   HUMHUB_USER_STATUS_ENABLED,
   HUMHUB_USER_STATUS_NEED_APPROVAL,
   HUMHUB_USER_STATUS_SOFT_DELETED,
-  PROFILE_IMAGE_FOLDER,
-  SPACE_BANNER_FOLDER,
   UNKNOWN_AUTHOR,
 } from "./constants";
 import type {
@@ -72,8 +76,10 @@ import type {
   HumhubCustomPages,
   HumhubMembership,
   HumhubSpaceInvitee,
+  HumhubDirectoryUser,
   HumhubReceivedSpaceInvite,
   HumhubNotification,
+  HumhubNotificationLiveSubscription,
   HumhubNotificationPreferenceCategory,
   HumhubNotificationPreferences,
   HumhubSelectOption,
@@ -119,16 +125,7 @@ function mapUserImage(
   }
 
   const profile = "profile" in dto ? dto.profile : undefined;
-  return resolvePublicImageUrl(profile?.image_url) || imageUrlFromGuid(dto.guid);
-}
-
-function imageUrlFromGuid(guid: string): string {
-  const trimmed = guid.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  return `${getPublicHumhubUrl()}/${PROFILE_IMAGE_FOLDER}/${trimmed}.jpg`;
+  return toBrowserMediaUrl(profile?.image_url) || mediaUrlFromGuid(dto.guid);
 }
 
 export function mapAccount(dto: HumhubUser): Account {
@@ -252,11 +249,11 @@ function mapAccountProfileModule(
     name: copy.name,
     version: text(dto.version),
     description: copy.description,
-    imageUrl: resolvePublicImageUrl(dto.imageUrl),
+    imageUrl: toBrowserMediaUrl(dto.imageUrl),
     isEnabled: Boolean(dto.isEnabled),
     canEnable: Boolean(dto.canEnable),
     canDisable: Boolean(dto.canDisable),
-    configUrl: configUrl ? resolvePublicImageUrl(configUrl) : null,
+    configUrl: configUrl ? resolvePublicPageUrl(configUrl) : null,
   };
 }
 
@@ -331,8 +328,8 @@ function readTags(tags: string[] | undefined): string[] {
   return tags.map((tag) => tag.trim()).filter(Boolean);
 }
 
-function resolvePublicImageUrl(imageUrl?: string): string {
-  const trimmed = imageUrl?.trim() ?? "";
+function resolvePublicPageUrl(pageUrl?: string): string {
+  const trimmed = pageUrl?.trim() ?? "";
   if (!trimmed) {
     return "";
   }
@@ -354,18 +351,9 @@ export function mapSpace(dto: HumhubSpace): Space {
     id: dto.id,
     name: dto.name,
     description: dto.description ?? "",
-    imageUrl: imageUrlFromGuid(dto.guid),
-    bannerUrl: bannerUrlFromGuid(dto.guid),
+    imageUrl: mediaUrlFromGuid(dto.guid),
+    bannerUrl: bannerMediaUrlFromGuid(dto.guid),
   };
-}
-
-function bannerUrlFromGuid(guid: string): string {
-  const trimmed = guid.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  return `${getPublicHumhubUrl()}/${SPACE_BANNER_FOLDER}/${trimmed}.jpg`;
 }
 
 export function mapComment(dto: HumhubComment): Comment {
@@ -412,6 +400,20 @@ export function mapNotification(
     publishedAt: dto.createdAt ?? null,
     isUnseen,
     href: notificationHref(text),
+  };
+}
+
+export function mapNotificationLiveSubscription(
+  dto: HumhubNotificationLiveSubscription,
+): NotificationLiveSubscription | null {
+  if (!dto.available || !dto.jwt?.trim() || !dto.topic?.trim()) {
+    return null;
+  }
+
+  return {
+    hubUrl: `${getPublicHumhubUrl()}/.well-known/mercure`,
+    topic: dto.topic.trim(),
+    token: dto.jwt.trim(),
   };
 }
 
@@ -507,7 +509,7 @@ function mapAdminGroupMember(dto: HumhubAdminGroupMember): AdminGroupMember {
     id: dto.id ?? 0,
     name: text(dto.name) || "Usuário",
     email: text(dto.email),
-    imageUrl: text(dto.imageUrl),
+    imageUrl: toBrowserMediaUrl(dto.imageUrl),
     isManager: Boolean(dto.isManager),
   };
 }
@@ -728,6 +730,25 @@ export function mapSpaceMember(dto: HumhubMembership): SpaceMember | null {
   };
 }
 
+export function mapDirectoryUser(dto: HumhubDirectoryUser): User | null {
+  if (!dto.id) {
+    return null;
+  }
+
+  return {
+    id: dto.id,
+    name: dto.name?.trim() || "Usuário",
+    title: "",
+    username: dto.username?.trim() ?? "",
+    email: "",
+    about: "",
+    tags: [],
+    imageUrl: toBrowserMediaUrl(dto.imageUrl),
+    isOnline: false,
+    isAdmin: false,
+  };
+}
+
 export function mapSpaceInvitee(dto: HumhubSpaceInvitee): SpaceInvitee | null {
   if (!dto.id) {
     return null;
@@ -737,7 +758,7 @@ export function mapSpaceInvitee(dto: HumhubSpaceInvitee): SpaceInvitee | null {
     id: dto.id,
     name: dto.name?.trim() || "Usuário",
     username: dto.username?.trim() ?? "",
-    imageUrl: dto.imageUrl?.trim() ?? "",
+    imageUrl: toBrowserMediaUrl(dto.imageUrl),
   };
 }
 
@@ -751,7 +772,7 @@ export function mapReceivedSpaceInvite(
   return {
     spaceId: dto.spaceId,
     spaceName: dto.spaceName?.trim() || "Espaço",
-    spaceImageUrl: dto.spaceImageUrl?.trim() ?? "",
+    spaceImageUrl: toBrowserMediaUrl(dto.spaceImageUrl),
     invitedByName: dto.invitedByName?.trim() ?? "",
   };
 }

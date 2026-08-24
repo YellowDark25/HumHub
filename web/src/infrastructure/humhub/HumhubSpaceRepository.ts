@@ -22,6 +22,7 @@ import {
 } from "./mappers";
 import type {
   HumhubMembership,
+  HumhubMemberSpaces,
   HumhubPage,
   HumhubReceivedSpaceInvites,
   HumhubSpace,
@@ -31,6 +32,16 @@ import type {
 
 export class HumhubSpaceRepository implements SpaceRepository {
   async list(token: string): Promise<Space[]> {
+    const payload = await humhubRequest<HumhubMemberSpaces>({
+      path: "/nexchat/spaces",
+      token,
+      origin: "app",
+    });
+
+    return (payload.spaces ?? []).map(mapSpace);
+  }
+
+  async listAll(token: string): Promise<Space[]> {
     const page = await humhubRequest<HumhubPage<HumhubSpace>>({
       path: `/space?limit=${SPACE_PAGE_LIMIT}`,
       token,
@@ -40,7 +51,12 @@ export class HumhubSpaceRepository implements SpaceRepository {
   }
 
   async getById(token: string, spaceId: number): Promise<Space> {
-    const dto = await fetchSpaceDto(token, spaceId);
+    const dto = await humhubRequest<HumhubSpace>({
+      path: `/nexchat/spaces/view?id=${spaceId}`,
+      token,
+      origin: "app",
+    });
+
     return mapSpace(dto);
   }
 

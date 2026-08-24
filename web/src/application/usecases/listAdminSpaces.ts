@@ -8,5 +8,5 @@ export async function listAdminSpaces(
   token: string,
 ) {
   await requireAdminAccess(auth, token);
-  return spaces.list(token);
+  return spaces.listAll(token);
 }

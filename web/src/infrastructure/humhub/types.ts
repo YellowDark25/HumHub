@@ -60,6 +60,10 @@ export type HumhubSpace = {
   status: number;
 };
 
+export type HumhubMemberSpaces = {
+  spaces?: HumhubSpace[];
+};
+
 export type HumhubComment = {
   id: number;
   message: string;
@@ -88,6 +92,13 @@ export type HumhubNotification = {
   output?: string;
   createdAt?: string;
   originator?: HumhubUserShort | null;
+};
+
+export type HumhubNotificationLiveSubscription = {
+  available?: boolean;
+  hubUrl?: string;
+  topic?: string;
+  jwt?: string;
 };
 
 export type HumhubNotificationPreferences = {
@@ -126,6 +137,17 @@ export type HumhubSpaceInvitee = {
 
 export type HumhubSpaceInvitees = {
   users?: HumhubSpaceInvitee[];
+};
+
+export type HumhubDirectoryUser = {
+  id: number;
+  name: string;
+  username?: string;
+  imageUrl?: string;
+};
+
+export type HumhubDirectoryUsers = {
+  users?: HumhubDirectoryUser[];
 };
 
 export type HumhubSpaceInviteResult = {

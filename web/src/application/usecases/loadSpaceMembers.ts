@@ -10,13 +10,12 @@ export async function loadSpaceMembers(
   try {
     return await spaces.listMembers(token, spaceId);
   } catch (error) {
-    if (isUnauthorized(error)) {
-      throw error;
+    if (isSpaceAdminOnlyError(error)) {
+      return [];
     }
 
-    // A API REST de membership só aceita quem administra o espaço.
-    if (isForbidden(error)) {
-      return [];
+    if (isUnauthorized(error)) {
+      throw error;
     }
 
     console.error(
@@ -24,4 +23,11 @@ export async function loadSpaceMembers(
     );
     return [];
   }
+}
+
+function isSpaceAdminOnlyError(error: unknown): boolean {
+  return (
+    isForbidden(error) ||
+    /cannot administer this space/i.test(errorMessage(error, ""))
+  );
 }

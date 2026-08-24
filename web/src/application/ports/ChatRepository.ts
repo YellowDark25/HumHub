@@ -1,7 +1,15 @@
 import type { ChannelSettings } from "@/domain/ChannelSettings";
 import type { ChatContact } from "@/domain/ChatContact";
 import type { ChatFile } from "@/domain/ChatFile";
+import type {
+  ChatLiveStream,
+  ChatLiveSubscription,
+} from "@/domain/ChatLive";
 import type { ChatMessage } from "@/domain/ChatMessage";
+import type {
+  ChatNotificationPreference,
+  ChatNotificationPreferencePatch,
+} from "@/domain/ChatNotificationPreference";
 import type { ChatChannelType, Conversation } from "@/domain/Conversation";
 
 export type ConversationLists = {
@@ -14,13 +22,30 @@ export type ConversationLists = {
 
 export interface ChatRepository {
   listConversations(token: string): Promise<ConversationLists>;
-  listMessages(token: string, conversationId: number): Promise<ChatMessage[]>;
+  listMessages(
+    token: string,
+    conversationId: number,
+    since?: number,
+  ): Promise<ChatMessage[]>;
+  getLiveSubscription(
+    token: string,
+    conversationId: number,
+  ): Promise<ChatLiveSubscription | null>;
+  openLiveStream(
+    token: string,
+    conversationId: number,
+  ): Promise<ChatLiveStream | null>;
   sendMessage(
     token: string,
     conversationId: number,
     content: string,
     files?: File[],
   ): Promise<ChatMessage>;
+  sendTyping(
+    token: string,
+    conversationId: number,
+    isTyping: boolean,
+  ): Promise<void>;
   getChatFile(token: string, fileId: number): Promise<ChatFile>;
   openDirectMessage(token: string, userId: number): Promise<Conversation>;
   createChannel(
@@ -48,6 +73,14 @@ export interface ChatRepository {
     conversationId: number,
     userId: number,
   ): Promise<void>;
+  getServerNotificationPreference(
+    token: string,
+    spaceId: number,
+  ): Promise<ChatNotificationPreference>;
+  saveServerNotificationPreference(
+    token: string,
+    patch: ChatNotificationPreferencePatch,
+  ): Promise<ChatNotificationPreference>;
 }
 
 export type CreateChannelInput = {
