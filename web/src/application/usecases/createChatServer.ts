@@ -13,6 +13,7 @@ export function createChatServer(
   return createSpace(auth, spaces, chat, token, {
     name,
     description: "",
+    visibility: "public",
     createServer: true,
   });
 }

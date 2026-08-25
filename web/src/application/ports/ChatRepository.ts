@@ -6,6 +6,8 @@ import type {
   ChatLiveStream,
   ChatLiveSubscription,
 } from "@/domain/ChatLive";
+import type { VoiceLiveStream, VoiceLiveSubscription } from "@/domain/VoiceLive";
+import type { VoiceOccupancyRoom } from "@/domain/VoiceRoom";
 import type { ChatMessage, ChatReaction } from "@/domain/ChatMessage";
 import type {
   ChatNotificationPreference,
@@ -38,6 +40,9 @@ export interface ChatRepository {
     token: string,
     conversationId: number,
   ): Promise<ChatLiveStream | null>;
+  getVoiceLiveSubscription(token: string): Promise<VoiceLiveSubscription | null>;
+  openVoiceLiveStream(token: string): Promise<VoiceLiveStream | null>;
+  publishVoiceOccupancy(token: string, room: VoiceOccupancyRoom): Promise<void>;
   sendMessage(
     token: string,
     conversationId: number,

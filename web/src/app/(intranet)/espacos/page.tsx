@@ -16,7 +16,7 @@ export default async function EspacosPage() {
   let loadError = "";
 
   try {
-    spaces = await app.listSpaces(token);
+    spaces = await app.listVisibleSpaces(token);
   } catch (error) {
     await redirectIfUnauthorized(error);
     loadError = errorMessage(error, "Não foi possível carregar os espaços.");
@@ -32,7 +32,7 @@ export default async function EspacosPage() {
       {spaces.length === 0 && !loadError ? (
         <p className="text-sm text-zinc-500">Nenhum espaço disponível.</p>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {spaces.map((space) => (
             <li key={space.id}>
               <SpaceCard space={space} />

@@ -19,6 +19,8 @@ class NexchatMercure
 
     public const TOPIC_NOTIFICATION_PREFIX = '/humhub/nexchat/notification/';
 
+    public const TOPIC_VOICE_PREFIX = '/humhub/nexchat/voice/';
+
     public static function getTopic(int $conversationId): string
     {
         return self::TOPIC_PREFIX . $conversationId;
@@ -27,6 +29,11 @@ class NexchatMercure
     public static function getNotificationTopic(int $userId): string
     {
         return self::TOPIC_NOTIFICATION_PREFIX . $userId;
+    }
+
+    public static function getVoiceTopic(int $userId): string
+    {
+        return self::TOPIC_VOICE_PREFIX . $userId;
     }
 
     public static function publishNewMessage(Message $message): void
@@ -137,6 +144,31 @@ class NexchatMercure
         ));
     }
 
+    /**
+     * @param int[] $userIds
+     */
+    public static function publishVoiceOccupancy(array $userIds, array $payload): void
+    {
+        $driver = self::getDriver();
+        if (!$driver) {
+            return;
+        }
+
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', $userIds),
+            static fn(int $userId) => $userId > 0,
+        )));
+        if ($ids === []) {
+            return;
+        }
+
+        $hub = self::createPublisherHub($driver);
+        $body = json_encode($payload);
+        foreach ($ids as $userId) {
+            $hub->publish(new Update(self::getVoiceTopic($userId), $body, true));
+        }
+    }
+
     public static function createNotificationSubscriberToken(int $userId): array
     {
         $driver = self::getDriver();
@@ -149,6 +181,34 @@ class NexchatMercure
         }
 
         $topic = self::getNotificationTopic($userId);
+        $token = [
+            'mercure' => [
+                'subscribe' => [$topic],
+                'publish' => [],
+            ],
+            'exp' => time() + 60 * 60 * 6,
+        ];
+
+        return [
+            'available' => true,
+            'hubUrl' => $driver->hubUrl ?: Url::to('/.well-known/mercure', true),
+            'topic' => $topic,
+            'jwt' => JWT::encode($token, $driver->jwtKeySubscriber, 'HS256'),
+        ];
+    }
+
+    public static function createVoiceSubscriberToken(int $userId): array
+    {
+        $driver = self::getDriver();
+        if (!$driver || Yii::$app->user->isGuest || $userId <= 0) {
+            return [];
+        }
+
+        if ((int) Yii::$app->user->id !== $userId) {
+            return [];
+        }
+
+        $topic = self::getVoiceTopic($userId);
         $token = [
             'mercure' => [
                 'subscribe' => [$topic],

@@ -7,6 +7,7 @@ import { createSpace } from "@/application/usecases/createSpace";
 import { enableSpaceServer } from "@/application/usecases/enableSpaceServer";
 import { getChatFile } from "@/application/usecases/getChatFile";
 import { getHumhubMedia } from "@/application/usecases/getHumhubMedia";
+import { getPostFile } from "@/application/usecases/getPostFile";
 import { getChatHomePage } from "@/application/usecases/getChatHomePage";
 import { getConversationPage } from "@/application/usecases/getConversationPage";
 import { getServerNotificationPreference } from "@/application/usecases/getServerNotificationPreference";
@@ -17,6 +18,7 @@ import { getNotificationLiveSubscription } from "@/application/usecases/getNotif
 import { listMessages } from "@/application/usecases/listMessages";
 import { openChatLiveStream } from "@/application/usecases/openChatLiveStream";
 import { openNotificationLiveStream } from "@/application/usecases/openNotificationLiveStream";
+import { openVoiceLiveStream } from "@/application/usecases/openVoiceLiveStream";
 import { getNotificationPreferences } from "@/application/usecases/getNotificationPreferences";
 import { getPersonPage } from "@/application/usecases/getPersonPage";
 import { getProfilePage } from "@/application/usecases/getProfilePage";
@@ -35,8 +37,12 @@ import { inviteChannelMember } from "@/application/usecases/inviteChannelMember"
 import { acceptSpaceInvite } from "@/application/usecases/acceptSpaceInvite";
 import { declineSpaceInvite } from "@/application/usecases/declineSpaceInvite";
 import { inviteSpaceMembers } from "@/application/usecases/inviteSpaceMembers";
+import { followSpace } from "@/application/usecases/followSpace";
+import { leaveSpace } from "@/application/usecases/leaveSpace";
 import { listReceivedSpaceInvites } from "@/application/usecases/listReceivedSpaceInvites";
 import { listSpaceInvitees } from "@/application/usecases/listSpaceInvitees";
+import { listVisibleSpaces } from "@/application/usecases/listVisibleSpaces";
+import { updateSpaceMembershipSettings } from "@/application/usecases/updateSpaceMembershipSettings";
 import { joinVoiceRoom } from "@/application/usecases/joinVoiceRoom";
 import { leaveVoiceRoom } from "@/application/usecases/leaveVoiceRoom";
 import { listVoiceOccupancy } from "@/application/usecases/listVoiceOccupancy";
@@ -114,7 +120,9 @@ import {
   enableAdminModule,
 } from "@/application/usecases/toggleAdminModule";
 import type { VoiceMediaState } from "@/domain/VoiceRoom";
+import type { CreateSpaceInput } from "@/domain/Space";
 import type { SpaceInviteInput } from "@/domain/SpaceInvite";
+import type { SpaceMembershipSettingsPatch } from "@/domain/SpaceMembershipSettings";
 import type { AccountProfile } from "@/domain/Account";
 import type { AccountGeneralPatch } from "@/domain/AccountGeneralSettings";
 import type { AdminGroupInput, AdminGroupPermissionState } from "@/domain/AdminGroup";
@@ -329,16 +337,22 @@ export const app = {
   saveAdminSettings: (token: string, patch: AdminSettingsPatch) =>
     saveAdminSettings(auth, adminSystem, token, patch),
   listFeed: (token: string) => listFeed(token, feed, spaces),
-  publishPost: (token: string, spaceId: number, message: string) =>
-    publishPost(feed, token, spaceId, message),
+  publishPost: (
+    token: string,
+    spaceId: number,
+    message: string,
+    files: File[] = [],
+  ) => publishPost(feed, token, spaceId, message, files),
+  getPostFile: (token: string, fileId: number) => getPostFile(feed, token, fileId),
   listComments: (token: string, postId: number) =>
     listComments(feed, token, postId),
   addComment: (token: string, postId: number, message: string) =>
     addComment(feed, token, postId, message),
   listSpaces: (token: string) => listSpaces(spaces, token),
+  listVisibleSpaces: (token: string) => listVisibleSpaces(spaces, token),
   createSpace: (
     token: string,
-    input: { name: string; description: string; createServer: boolean },
+    input: CreateSpaceInput & { createServer: boolean },
   ) => createSpace(auth, spaces, chat, token, input),
   createChatServer: (token: string, name: string) =>
     createChatServer(auth, spaces, chat, token, name),
@@ -359,6 +373,15 @@ export const app = {
     spaceId: number,
     input: SpaceInviteInput,
   ) => inviteSpaceMembers(spaces, token, spaceId, input),
+  updateSpaceMembershipSettings: (
+    token: string,
+    spaceId: number,
+    patch: SpaceMembershipSettingsPatch,
+  ) => updateSpaceMembershipSettings(spaces, token, spaceId, patch),
+  leaveSpace: (token: string, spaceId: number) =>
+    leaveSpace(spaces, token, spaceId),
+  followSpace: (token: string, spaceId: number) =>
+    followSpace(spaces, token, spaceId),
   listPeople: (token: string) => listPeople(auth, token),
   followPerson: (token: string, userId: number) =>
     followPerson(auth, token, userId),
@@ -485,4 +508,5 @@ export const app = {
     listVoiceRoom(chat, voiceRooms, token, conversationId),
   listVoiceOccupancy: (token: string) =>
     listVoiceOccupancy(chat, voiceRooms, token),
+  openVoiceLiveStream: (token: string) => openVoiceLiveStream(chat, token),
 };

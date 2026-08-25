@@ -44,6 +44,17 @@ export type VoiceOccupancyRoom = VoiceRoom & {
   name: string;
 };
 
+export function occupancyRoomOf(
+  conversation: { kind: string; name: string },
+  room: VoiceRoom,
+): VoiceOccupancyRoom {
+  return {
+    ...room,
+    kind: conversation.kind === "dm" ? "dm" : "channel",
+    name: conversation.name,
+  };
+}
+
 export const DIRECT_CALL_RING_MS = 25_000;
 
 export function isDirectCallWaiting(input: {

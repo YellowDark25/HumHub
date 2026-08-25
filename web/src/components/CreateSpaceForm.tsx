@@ -3,15 +3,35 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { readApiError } from "@/shared/readApiError";
-import type { Space } from "@/domain/Space";
+import type { Space, SpaceVisibility } from "@/domain/Space";
 
 const MAX_SPACE_NAME_LENGTH = 45;
 const MAX_SPACE_DESCRIPTION_LENGTH = 100;
+
+const VISIBILITY_OPTIONS: {
+  value: SpaceVisibility;
+  title: string;
+  description: string;
+}[] = [
+  {
+    value: "public",
+    title: "Público",
+    description:
+      "Aparece para todos os usuários",
+  },
+  {
+    value: "private",
+    title: "Privado",
+    description:
+      "Só aparece para quem criou e para quem for convidado.",
+  },
+];
 
 export function CreateSpaceForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [visibility, setVisibility] = useState<SpaceVisibility>("public");
   const [createServer, setCreateServer] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,6 +53,7 @@ export function CreateSpaceForm() {
         body: JSON.stringify({
           name: trimmedName,
           description: description.trim(),
+          visibility,
           createServer,
         }),
       });
@@ -78,6 +99,34 @@ export function CreateSpaceForm() {
           className="resize-none rounded-xl border border-zinc-200 bg-white px-3 py-3 text-base text-zinc-900 outline-none focus:border-teal-600"
         />
       </label>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-sm font-medium text-zinc-700">Visibilidade</legend>
+        {VISIBILITY_OPTIONS.map((option) => (
+          <label
+            key={option.value}
+            className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 text-sm ${
+              visibility === option.value
+                ? "border-teal-600 bg-teal-50"
+                : "border-zinc-200 bg-white"
+            }`}
+          >
+            <input
+              type="radio"
+              name="visibility"
+              value={option.value}
+              checked={visibility === option.value}
+              onChange={() => setVisibility(option.value)}
+              className="mt-1 accent-teal-700"
+            />
+            <span>
+              <span className="font-medium text-zinc-900">{option.title}</span>
+              <span className="mt-0.5 block text-zinc-500">
+                {option.description}
+              </span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
       <label className="flex items-start gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-700">
         <input
           type="checkbox"

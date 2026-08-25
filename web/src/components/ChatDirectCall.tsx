@@ -66,10 +66,10 @@ export function ChatDirectCallStage({
         conversationId={conversationId}
         currentUser={call.self}
         title={
-          <>
+          <span className="flex min-w-0 items-center gap-2">
             <CameraIcon off={false} />
             {conversationName}
-          </>
+          </span>
         }
         onLeave={() => void call.leave()}
       />

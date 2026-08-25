@@ -35,5 +35,5 @@ export function bannerMediaUrlFromGuid(guid: string): string {
     return "";
   }
 
-  return `${MEDIA_PREFIX}/${SPACE_BANNER_FOLDER}/${trimmed}.jpg`;
+  return `${MEDIA_PREFIX}/${SPACE_BANNER_FOLDER}/${trimmed}_org.jpg`;
 }

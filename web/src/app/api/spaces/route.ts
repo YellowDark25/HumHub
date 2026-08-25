@@ -17,6 +17,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     name?: string;
     description?: string;
+    visibility?: "public" | "private";
     createServer?: boolean;
   } | null;
 
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
     const space = await app.createSpace(token, {
       name: body?.name ?? "",
       description: body?.description ?? "",
+      visibility: body?.visibility === "private" ? "private" : "public",
       createServer: Boolean(body?.createServer),
     });
     return NextResponse.json(space);

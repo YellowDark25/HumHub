@@ -141,6 +141,10 @@ function contactImageUrl(guid?: string): string {
 export function mapChatLiveSubscription(
   dto: NexchatSubscribeToken,
 ): ChatLiveSubscription | null {
+  if (dto.available === false) {
+    return null;
+  }
+
   const hubUrl = dto.hubUrl?.trim() ?? "";
   const topic = dto.topic?.trim() || dto.topics?.[0]?.trim() || "";
   const token = dto.jwt?.trim() ?? "";

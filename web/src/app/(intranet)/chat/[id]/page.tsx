@@ -27,8 +27,7 @@ import {
   requirePageToken,
 } from "@/infrastructure/pageSession";
 import { isChatTopic, topicParentId } from "@/shared/chatTopic";
-import { chatWorkspaceHref, readChatWorkspaceId } from "@/shared/chatWorkspace";
-import Link from "next/link";
+import { readChatWorkspaceId } from "@/shared/chatWorkspace";
 import { notFound } from "next/navigation";
 
 type ChatViewProps = {
@@ -162,19 +161,11 @@ export default async function ChatViewPage({
           workspaceId={currentWorkspace.id}
           conversationName={topicsConversationName}
           title={
-            <>
-              <Link
-                href={chatWorkspaceHref(currentWorkspace.id)}
-                className="text-sm font-medium text-teal-700 lg:hidden"
-              >
-                Voltar
-              </Link>
-              <ConversationTitle
-                conversation={current}
-                parentName={parentChannel?.name ?? null}
-                imageUrl={isDirect ? peer?.imageUrl ?? "" : ""}
-              />
-            </>
+            <ConversationTitle
+              conversation={current}
+              parentName={parentChannel?.name ?? null}
+              imageUrl={isDirect ? peer?.imageUrl ?? "" : ""}
+            />
           }
           trailing={headerActions}
           intro={
@@ -192,6 +183,7 @@ export default async function ChatViewPage({
           banner={
             isDirect ? (
               <ChatDirectCallBar
+                key="direct-call-bar"
                 conversationId={conversationId}
                 conversationName={current.name}
                 workspaceId={currentWorkspace.id}
@@ -202,6 +194,7 @@ export default async function ChatViewPage({
           overlay={
             isDirect ? (
               <ChatDirectCallStage
+                key="direct-call-stage"
                 conversationId={conversationId}
                 conversationName={current.name}
               />

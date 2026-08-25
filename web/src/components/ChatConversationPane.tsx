@@ -7,6 +7,8 @@ import {
   lastChatMessageId,
   upsertChatMessage,
 } from "@/shared/chatLive";
+import { chatWorkspaceHref } from "@/shared/chatWorkspace";
+import Link from "next/link";
 import { subscribeChatMessages } from "./chatMessageEvents";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessageHistory } from "./ChatMessageHistory";
@@ -77,9 +79,24 @@ export function ChatConversationPane({
 
   return (
     <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-      <ChatPaneHeader title={title} trailing={trailing} />
-      {banner}
-      {overlay}
+      <ChatPaneHeader
+        title={
+          <>
+            {workspaceId ? (
+              <Link
+                href={chatWorkspaceHref(workspaceId)}
+                className="text-sm font-medium text-teal-700 lg:hidden"
+              >
+                Voltar
+              </Link>
+            ) : null}
+            {title}
+          </>
+        }
+        trailing={trailing}
+      />
+      {banner ? <div className="contents">{banner}</div> : null}
+      {overlay ? <div className="contents">{overlay}</div> : null}
       <div
         ref={historyRef}
         className="min-h-0 flex-1 overflow-y-auto"

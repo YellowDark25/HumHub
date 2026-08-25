@@ -127,6 +127,7 @@ export type NexchatPoll = {
 
 export type NexchatSubscribeToken = {
   success?: boolean;
+  available?: boolean;
   hubUrl?: string;
   topic?: string;
   topics?: string[];

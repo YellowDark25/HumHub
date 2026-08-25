@@ -17,6 +17,7 @@ type AvatarProps = {
   imageUrl?: string;
   size?: keyof typeof SIZE_CLASS;
   shape?: "circle" | "square";
+  fit?: "cover" | "contain";
 };
 
 export function Avatar({
@@ -24,10 +25,12 @@ export function Avatar({
   imageUrl = "",
   size = "md",
   shape = "square",
+  fit = "cover",
 }: AvatarProps) {
   const [failedUrl, setFailedUrl] = useState("");
   const showImage = Boolean(imageUrl) && failedUrl !== imageUrl;
   const shapeClass = shape === "circle" ? "rounded-full" : "rounded-lg";
+  const fitClass = fit === "contain" ? "object-contain" : "object-cover";
 
   return (
     <span
@@ -37,7 +40,7 @@ export function Avatar({
         <img
           src={imageUrl}
           alt={name}
-          className="h-full w-full object-cover"
+          className={`h-full w-full ${fitClass}`}
           onError={() => setFailedUrl(imageUrl)}
         />
       ) : (

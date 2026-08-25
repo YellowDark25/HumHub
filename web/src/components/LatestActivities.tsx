@@ -12,11 +12,11 @@ export function LatestActivities({ activities }: LatestActivitiesProps) {
   const items = activities.slice(0, SIDEBAR_ACTIVITY_LIMIT);
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-4">
-      <h2 className="text-sm font-semibold text-zinc-900">
+    <section className="flex h-fit flex-col self-start overflow-hidden rounded-2xl border border-zinc-200 bg-white p-4 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6.5rem)]">
+      <h2 className="shrink-0 text-sm font-semibold text-zinc-900">
         Últimas atividades
       </h2>
-      <ul className="mt-3 flex flex-col gap-3">
+      <ul className="mt-3 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain">
         {items.length === 0 ? (
           <li className="text-sm text-zinc-500">Nada recente.</li>
         ) : (

@@ -12,7 +12,7 @@ type SpaceMenuProps = {
 
 export function SpaceMenu({ spaceId, section }: SpaceMenuProps) {
   return (
-    <nav className="rounded-2xl border border-zinc-200 bg-white p-3">
+    <nav className="h-fit self-start rounded-2xl border border-zinc-200 bg-white p-3 lg:sticky lg:top-4">
       <p className="px-2 pb-2 text-sm font-semibold text-zinc-900">
         Menu do espaço
       </p>

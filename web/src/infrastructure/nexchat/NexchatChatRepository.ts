@@ -13,6 +13,8 @@ import type {
   ChatLiveStream,
   ChatLiveSubscription,
 } from "@/domain/ChatLive";
+import type { VoiceLiveStream, VoiceLiveSubscription } from "@/domain/VoiceLive";
+import type { VoiceOccupancyRoom } from "@/domain/VoiceRoom";
 import type { ChatMessage, ChatReaction } from "@/domain/ChatMessage";
 import { notificationLiveHubUrl } from "@/shared/notificationLive";
 import { getHumhubUrl } from "../config";
@@ -22,6 +24,7 @@ import type {
 } from "@/domain/ChatNotificationPreference";
 import type { ChatTopic } from "@/domain/ChatTopic";
 import type { Conversation } from "@/domain/Conversation";
+import { humhubRequest } from "../humhub/client";
 import { nexchatFileRequest, nexchatRequest } from "./client";
 import {
   mapChannelSettings,
@@ -112,31 +115,47 @@ export class NexchatChatRepository implements ChatRepository {
     token: string,
     conversationId: number,
   ): Promise<ChatLiveStream | null> {
-    const subscription = await this.getLiveSubscription(token, conversationId);
-    if (!subscription) {
-      return null;
-    }
+    return openMercureStream(
+      await this.getLiveSubscription(token, conversationId),
+      "Não foi possível abrir o canal do chat.",
+    );
+  }
 
-    const response = await fetch(internalMercureUrl(subscription), {
-      headers: {
-        Accept: "text/event-stream",
-        Authorization: `Bearer ${subscription.token}`,
-      },
-      cache: "no-store",
+  async getVoiceLiveSubscription(
+    token: string,
+  ): Promise<VoiceLiveSubscription | null> {
+    const dto = await humhubRequest<NexchatSubscribeToken>({
+      path: "/nexchat/voice-live",
+      token,
+      origin: "app",
     });
 
-    if (!response.ok || !response.body) {
-      throw new ApplicationError(
-        "Não foi possível abrir o canal do chat.",
-        response.status === 404 ? 404 : 502,
-      );
-    }
+    return mapChatLiveSubscription(dto);
+  }
 
-    return {
-      body: response.body,
-      contentType:
-        response.headers.get("content-type") ?? "text/event-stream",
-    };
+  async openVoiceLiveStream(token: string): Promise<VoiceLiveStream | null> {
+    return openMercureStream(
+      await this.getVoiceLiveSubscription(token),
+      "Não foi possível abrir o canal de voz.",
+    );
+  }
+
+  async publishVoiceOccupancy(
+    token: string,
+    room: VoiceOccupancyRoom,
+  ): Promise<void> {
+    await humhubRequest({
+      path: "/nexchat/voice-live/publish",
+      token,
+      method: "POST",
+      origin: "app",
+      body: {
+        conversationId: room.conversationId,
+        kind: room.kind,
+        name: room.name,
+        participants: room.participants,
+      },
+    });
   }
 
   async sendMessage(
@@ -542,6 +561,35 @@ export class NexchatChatRepository implements ChatRepository {
 
     return mapConversation(result.conversation, "channel");
   }
+}
+
+async function openMercureStream(
+  subscription: ChatLiveSubscription | null,
+  fallback: string,
+): Promise<ChatLiveStream | null> {
+  if (!subscription) {
+    return null;
+  }
+
+  const response = await fetch(internalMercureUrl(subscription), {
+    headers: {
+      Accept: "text/event-stream",
+      Authorization: `Bearer ${subscription.token}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok || !response.body) {
+    throw new ApplicationError(
+      fallback,
+      response.status === 404 ? 404 : 502,
+    );
+  }
+
+  return {
+    body: response.body,
+    contentType: response.headers.get("content-type") ?? "text/event-stream",
+  };
 }
 
 function internalMercureUrl(subscription: ChatLiveSubscription): string {

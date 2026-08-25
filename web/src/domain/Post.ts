@@ -1,4 +1,5 @@
 import type { Comment } from "./Comment";
+import type { PostAttachment } from "./PostAttachment";
 
 export type Post = {
   id: number;
@@ -12,4 +13,5 @@ export type Post = {
   likeCount: number;
   commentCount: number;
   latestComments: Comment[];
+  attachments: PostAttachment[];
 };

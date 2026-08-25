@@ -1,10 +1,8 @@
 export const SPACE_SECTIONS = [
   { id: "stream", label: "Stream" },
-  { id: "sobre", label: "Sobre" },
   { id: "membros", label: "Membros" },
   { id: "arquivos", label: "Arquivos" },
   { id: "tarefas", label: "Tarefas" },
-  { id: "wiki", label: "Wiki" },
 ] as const;
 
 export type SpaceSectionId = (typeof SPACE_SECTIONS)[number]["id"];

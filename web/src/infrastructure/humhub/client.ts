@@ -11,6 +11,10 @@ type HumhubRequest = {
   origin?: "rest" | "app";
 };
 
+function isFormData(body: unknown): body is FormData {
+  return typeof FormData !== "undefined" && body instanceof FormData;
+}
+
 export async function humhubRequest<T>({
   path,
   token,
@@ -26,7 +30,7 @@ export async function humhubRequest<T>({
     headers.Authorization = `Bearer ${token}`;
   }
 
-  if (body !== undefined) {
+  if (body !== undefined && !isFormData(body)) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -34,7 +38,12 @@ export async function humhubRequest<T>({
   const response = await fetch(`${root}${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body:
+      body === undefined
+        ? undefined
+        : isFormData(body)
+          ? body
+          : JSON.stringify(body),
     cache: "no-store",
     redirect: "manual",
   });
@@ -58,6 +67,10 @@ export async function humhubRequest<T>({
   }
 
   if (!payload || typeof payload !== "object") {
+    if (isFormData(body) && response.ok) {
+      return {} as T;
+    }
+
     throw new ApplicationError(
       "O HumHub não devolveu dados válidos da sessão.",
       502,

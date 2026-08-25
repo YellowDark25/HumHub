@@ -1,17 +1,23 @@
 import { ApplicationError } from "@/application/errors";
 import type { SpaceRepository } from "@/application/ports/SpaceRepository";
-import type { Space } from "@/domain/Space";
+import type { CreateSpaceInput, Space } from "@/domain/Space";
 import type {
   ReceivedSpaceInvite,
   SpaceInvitee,
   SpaceInviteInput,
 } from "@/domain/SpaceInvite";
 import type { SpaceMember } from "@/domain/SpaceMember";
+import type {
+  SpaceMembershipSettings,
+  SpaceMembershipSettingsPatch,
+} from "@/domain/SpaceMembershipSettings";
 import { humhubRequest } from "./client";
 import {
   MEMBER_PAGE_LIMIT,
-  SPACE_JOIN_POLICY_APPLICATION,
+  SPACE_JOIN_POLICY_FREE,
+  SPACE_JOIN_POLICY_NONE,
   SPACE_PAGE_LIMIT,
+  SPACE_VISIBILITY_NONE,
   SPACE_VISIBILITY_REGISTERED,
 } from "./constants";
 import {
@@ -19,6 +25,7 @@ import {
   mapSpace,
   mapSpaceInvitee,
   mapSpaceMember,
+  mapSpaceMembershipSettings,
 } from "./mappers";
 import type {
   HumhubMembership,
@@ -28,12 +35,23 @@ import type {
   HumhubSpace,
   HumhubSpaceInvitees,
   HumhubSpaceInviteResult,
+  HumhubSpaceMembershipSettings,
 } from "./types";
 
 export class HumhubSpaceRepository implements SpaceRepository {
   async list(token: string): Promise<Space[]> {
     const payload = await humhubRequest<HumhubMemberSpaces>({
       path: "/nexchat/spaces",
+      token,
+      origin: "app",
+    });
+
+    return (payload.spaces ?? []).map(mapSpace);
+  }
+
+  async listVisible(token: string): Promise<Space[]> {
+    const payload = await humhubRequest<HumhubMemberSpaces>({
+      path: "/nexchat/spaces/directory",
       token,
       origin: "app",
     });
@@ -51,13 +69,23 @@ export class HumhubSpaceRepository implements SpaceRepository {
   }
 
   async getById(token: string, spaceId: number): Promise<Space> {
+    return (await this.getDetails(token, spaceId)).space;
+  }
+
+  async getDetails(
+    token: string,
+    spaceId: number,
+  ): Promise<{ space: Space; membership: SpaceMembershipSettings | null }> {
     const dto = await humhubRequest<HumhubSpace>({
       path: `/nexchat/spaces/view?id=${spaceId}`,
       token,
       origin: "app",
     });
 
-    return mapSpace(dto);
+    return {
+      space: mapSpace(dto),
+      membership: mapSpaceMembershipSettings(dto.membership),
+    };
   }
 
   async listMembers(token: string, spaceId: number): Promise<SpaceMember[]> {
@@ -138,21 +166,23 @@ export class HumhubSpaceRepository implements SpaceRepository {
     });
   }
 
-  async create(
-    token: string,
-    name: string,
-    description: string,
-  ): Promise<Space> {
+  async create(token: string, input: CreateSpaceInput): Promise<Space> {
     try {
       const dto = await humhubRequest<HumhubSpace>({
         path: "/space",
         token,
         method: "POST",
         body: {
-          name,
-          description,
-          visibility: SPACE_VISIBILITY_REGISTERED,
-          join_policy: SPACE_JOIN_POLICY_APPLICATION,
+          name: input.name,
+          description: input.description,
+          visibility:
+            input.visibility === "private"
+              ? SPACE_VISIBILITY_NONE
+              : SPACE_VISIBILITY_REGISTERED,
+          join_policy:
+            input.visibility === "private"
+              ? SPACE_JOIN_POLICY_NONE
+              : SPACE_JOIN_POLICY_FREE,
         },
       });
 
@@ -169,6 +199,18 @@ export class HumhubSpaceRepository implements SpaceRepository {
     }
   }
 
+  async follow(token: string, spaceId: number): Promise<Space> {
+    const dto = await humhubRequest<HumhubSpace>({
+      path: "/nexchat/spaces/follow",
+      token,
+      origin: "app",
+      method: "POST",
+      body: { spaceId },
+    });
+
+    return mapSpace(dto);
+  }
+
   async updateImage(
     token: string,
     spaceId: number,
@@ -183,6 +225,39 @@ export class HumhubSpaceRepository implements SpaceRepository {
     imageDataUrl: string,
   ): Promise<Space> {
     return uploadSpaceMedia(token, spaceId, "banner", imageDataUrl);
+  }
+
+  async updateMembershipSettings(
+    token: string,
+    spaceId: number,
+    patch: SpaceMembershipSettingsPatch,
+  ): Promise<SpaceMembershipSettings> {
+    const payload = await humhubRequest<{
+      membership?: HumhubSpaceMembershipSettings | null;
+    }>({
+      path: "/nexchat/spaces/save-membership",
+      token,
+      origin: "app",
+      method: "POST",
+      body: { spaceId, ...patch },
+    });
+
+    const membership = mapSpaceMembershipSettings(payload.membership);
+    if (!membership) {
+      throw new ApplicationError("Você não é membro deste espaço.", 403);
+    }
+
+    return membership;
+  }
+
+  async leave(token: string, spaceId: number): Promise<void> {
+    await humhubRequest({
+      path: "/nexchat/spaces/leave",
+      token,
+      origin: "app",
+      method: "POST",
+      body: { spaceId },
+    });
   }
 }
 

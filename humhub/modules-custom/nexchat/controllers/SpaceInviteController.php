@@ -249,11 +249,14 @@ class SpaceInviteController extends Controller
     {
         if (method_exists($space, 'addMember')) {
             $space->addMember((int) Yii::$app->user->id);
-            return;
+        } else {
+            $membership->status = Membership::STATUS_MEMBER;
+            $membership->save(false);
         }
 
-        $membership->status = Membership::STATUS_MEMBER;
-        $membership->save(false);
+        if (method_exists($space, 'follow')) {
+            $space->follow();
+        }
     }
 
     /**

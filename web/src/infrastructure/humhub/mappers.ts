@@ -28,9 +28,11 @@ import type { NotificationLiveSubscription } from "@/domain/NotificationLive";
 import type { NotificationPreferences } from "@/domain/NotificationPreferences";
 import type { AccountProfileModule } from "@/domain/AccountProfileModule";
 import type { Post } from "@/domain/Post";
+import type { PostAttachment } from "@/domain/PostAttachment";
 import type { Space } from "@/domain/Space";
 import type { ReceivedSpaceInvite, SpaceInvitee } from "@/domain/SpaceInvite";
 import type { SpaceMember } from "@/domain/SpaceMember";
+import type { SpaceMembershipSettings } from "@/domain/SpaceMembershipSettings";
 import { isFriendshipStatus, type Person } from "@/domain/Person";
 import type { User } from "@/domain/User";
 import { isRecentlyOnline } from "@/shared/onlineStatus";
@@ -50,6 +52,7 @@ import {
   HUMHUB_USER_STATUS_ENABLED,
   HUMHUB_USER_STATUS_NEED_APPROVAL,
   HUMHUB_USER_STATUS_SOFT_DELETED,
+  SPACE_VISIBILITY_NONE,
   UNKNOWN_AUTHOR,
 } from "./constants";
 import type {
@@ -84,9 +87,11 @@ import type {
   HumhubNotificationPreferenceCategory,
   HumhubNotificationPreferences,
   HumhubSelectOption,
+  HumhubFile,
   HumhubPost,
   HumhubProfile,
   HumhubSpace,
+  HumhubSpaceMembershipSettings,
   HumhubUser,
   HumhubUserShort,
 } from "./types";
@@ -358,6 +363,31 @@ export function mapSpace(dto: HumhubSpace): Space {
     description: dto.description ?? "",
     imageUrl: mediaUrlFromGuid(dto.guid),
     bannerUrl: bannerMediaUrlFromGuid(dto.guid),
+    postCount: readCount(dto.postCount, 0),
+    memberCount: readCount(dto.memberCount, 0),
+    followerCount: readCount(dto.followerCount, 0),
+    visibility: mapSpaceVisibility(dto.visibility),
+    isMember: Boolean(dto.isMember),
+    isFollowing: Boolean(dto.isFollowing),
+    isInvited: Boolean(dto.isInvited),
+  };
+}
+
+function mapSpaceVisibility(value: number | undefined) {
+  return value === SPACE_VISIBILITY_NONE ? "private" : "public";
+}
+
+export function mapSpaceMembershipSettings(
+  dto?: HumhubSpaceMembershipSettings | null,
+): SpaceMembershipSettings | null {
+  if (!dto) {
+    return null;
+  }
+
+  return {
+    receivesNotifications: Boolean(dto.receivesNotifications),
+    showsOnDashboard: Boolean(dto.showsOnDashboard),
+    canLeave: Boolean(dto.canLeave),
   };
 }
 
@@ -383,12 +413,41 @@ export function mapPost(
     authorId: dto.content.metadata.created_by?.id ?? null,
     authorName: dto.content.metadata.created_by?.display_name ?? UNKNOWN_AUTHOR,
     authorImageUrl: mapUserImage(dto.content.metadata.created_by),
-    message: dto.message,
+    message: (dto.message ?? "").trim(),
     publishedAt: dto.content.metadata.created_at,
     likeCount: dto.content.likes?.total ?? 0,
     commentCount: dto.content.comments?.total ?? 0,
     latestComments: (dto.content.comments?.latest ?? []).map(mapComment),
+    attachments: readPostFiles(dto).map(mapPostAttachment).filter(hasAttachmentId),
   };
+}
+
+function readPostFiles(dto: HumhubPost): HumhubFile[] {
+  const files = dto.content.files ?? dto.files;
+  if (!files) {
+    return [];
+  }
+
+  return Array.isArray(files) ? files : [files];
+}
+
+function mapPostAttachment(dto: HumhubFile): PostAttachment {
+  const id = Number(dto.id ?? 0);
+  const mime = dto.mime_type ?? "";
+  const name = dto.file_name || dto.name || "arquivo";
+
+  return {
+    id,
+    name,
+    mime,
+    url: `/api/posts/files/${id}`,
+    isImage: mime.startsWith("image/"),
+    isAudio: mime.startsWith("audio/"),
+  };
+}
+
+function hasAttachmentId(attachment: PostAttachment) {
+  return attachment.id > 0;
 }
 
 export function mapNotification(

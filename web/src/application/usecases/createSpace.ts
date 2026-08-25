@@ -1,3 +1,4 @@
+import type { CreateSpaceInput, SpaceVisibility } from "@/domain/Space";
 import { ApplicationError } from "../errors";
 import type { AuthRepository } from "../ports/AuthRepository";
 import type { ChatRepository } from "../ports/ChatRepository";
@@ -14,20 +15,21 @@ export async function createSpace(
   spaces: SpaceRepository,
   chat: ChatRepository,
   token: string,
-  input: { name: string; description: string; createServer: boolean },
+  input: CreateSpaceInput & { createServer: boolean },
 ) {
   await requireSpaceAdmin(auth, token);
-  const space = await spaces.create(
-    token,
-    readSpaceName(input.name),
-    readSpaceDescription(input.description),
-  );
+  const space = await spaces.create(token, {
+    name: readSpaceName(input.name),
+    description: readSpaceDescription(input.description),
+    visibility: readSpaceVisibility(input.visibility),
+  });
+  const joined = await spaces.follow(token, space.id);
 
   if (input.createServer) {
-    await enableSpaceServer(chat, token, space.id);
+    await enableSpaceServer(chat, token, joined.id);
   }
 
-  return space;
+  return joined;
 }
 
 async function requireSpaceAdmin(auth: AuthRepository, token: string) {
@@ -69,4 +71,12 @@ function readSpaceDescription(description: string) {
   }
 
   return trimmed;
+}
+
+function readSpaceVisibility(visibility: SpaceVisibility) {
+  if (visibility === "public" || visibility === "private") {
+    return visibility;
+  }
+
+  throw new ApplicationError("Escolha se o espaço é público ou privado.", 400);
 }

@@ -58,6 +58,19 @@ export type HumhubSpace = {
   contentcontainer_id: number;
   visibility: number;
   status: number;
+  postCount?: number;
+  memberCount?: number;
+  followerCount?: number;
+  isMember?: boolean;
+  isFollowing?: boolean;
+  isInvited?: boolean;
+  membership?: HumhubSpaceMembershipSettings | null;
+};
+
+export type HumhubSpaceMembershipSettings = {
+  receivesNotifications?: boolean;
+  showsOnDashboard?: boolean;
+  canLeave?: boolean;
 };
 
 export type HumhubMemberSpaces = {
@@ -71,13 +84,25 @@ export type HumhubComment = {
   createdBy?: HumhubUserShort;
 };
 
+export type HumhubFile = {
+  id?: number;
+  guid?: string;
+  mime_type?: string;
+  size?: number;
+  file_name?: string;
+  name?: string;
+  url?: string;
+};
+
 export type HumhubPost = {
   id: number;
   message: string;
+  files?: HumhubFile | HumhubFile[];
   content: {
     id: number;
     comments?: { total?: number; latest?: HumhubComment[] };
     likes?: { total?: number };
+    files?: HumhubFile | HumhubFile[];
     metadata: {
       created_at: string | null;
       created_by: HumhubUserShort | null;

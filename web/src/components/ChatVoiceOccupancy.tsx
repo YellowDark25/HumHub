@@ -9,6 +9,7 @@ import type {
 import { formatCallDuration } from "@/shared/format";
 import { Avatar } from "./Avatar";
 import { useVoiceCall } from "./useVoiceCall";
+import { useVoiceOccupancyLive } from "./useVoiceOccupancyLive";
 
 type OccupancyValue = {
   occupantsByChannel: Record<number, VoiceParticipant[]>;
@@ -24,8 +25,6 @@ const OccupancyContext = createContext<OccupancyValue>({
   selfJoinedAt: null,
 });
 
-const OCCUPANCY_POLL_MS = 2500;
-
 export function ChatVoiceOccupancyProvider({
   currentUserId,
   children,
@@ -33,35 +32,8 @@ export function ChatVoiceOccupancyProvider({
   currentUserId: number | null;
   children: ReactNode;
 }) {
-  const [rooms, setRooms] = useState<VoiceOccupancyRoom[]>([]);
+  const rooms = useVoiceOccupancyLive();
   const call = useVoiceCall();
-  const liveConversationId = call.channel?.conversationId ?? null;
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const response = await fetch("/api/chat/voice");
-        if (!response.ok || cancelled) {
-          return;
-        }
-        const payload = (await response.json()) as { rooms?: VoiceOccupancyRoom[] };
-        if (!cancelled) {
-          setRooms(payload.rooms ?? []);
-        }
-      } catch (error) {
-        console.error("Falha ao carregar quem está em chamada.", error);
-      }
-    }
-
-    void load();
-    const timer = window.setInterval(() => void load(), OCCUPANCY_POLL_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [liveConversationId]);
 
   const value = useMemo<OccupancyValue>(() => {
     const occupantsByChannel = Object.fromEntries(
