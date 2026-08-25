@@ -1053,13 +1053,13 @@ class IndexController extends Controller
             return ['success' => false, 'error' => 'Não é possível encaminhar esta mensagem.'];
         }
 
-        $messages = [];
-        foreach ($conversationIds as $conversationId) {
-            $conversation = $this->findConversation($conversationId);
-            if ($this->isVoiceChannel($conversation)) {
-                return ['success' => false, 'error' => 'Não é possível encaminhar para um canal de voz.'];
-            }
+        $destinations = $this->forwardDestinations($conversationIds);
+        if (is_string($destinations)) {
+            return ['success' => false, 'error' => $destinations];
+        }
 
+        $messages = [];
+        foreach ($destinations as $conversation) {
             $message = new Message([
                 'conversation_id' => $conversation->id,
                 'user_id' => (int) Yii::$app->user->id,
@@ -1519,6 +1519,25 @@ class IndexController extends Controller
     {
         return $conversation->type === Conversation::TYPE_CHANNEL
             && $this->readOptionalString($conversation, 'channel_kind') === Conversation::KIND_VOICE;
+    }
+
+    /**
+     * @param int[] $conversationIds
+     * @return Conversation[]|string
+     */
+    private function forwardDestinations(array $conversationIds)
+    {
+        $destinations = [];
+        foreach ($conversationIds as $conversationId) {
+            $conversation = $this->findConversation($conversationId);
+            if ($this->isVoiceChannel($conversation)) {
+                return 'Não é possível encaminhar para um canal de voz.';
+            }
+
+            $destinations[] = $conversation;
+        }
+
+        return $destinations;
     }
 
     private function forwardedContent(Message $source, string $comment): string
