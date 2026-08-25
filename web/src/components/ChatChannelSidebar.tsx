@@ -1,3 +1,5 @@
+"use client";
+
 import type {
   ChatSidebarItem,
   ChatSidebarSection,
@@ -13,7 +15,7 @@ import { ChatPaneHeader } from "./ChatPaneHeader";
 import { ChatPersonRow } from "./ChatPersonRow";
 import { ChatUserPanel } from "./ChatUserPanel";
 import { ChatVoiceConnectionBar } from "./ChatVoiceConnectionBar";
-import { ChatVoiceOccupancyProvider } from "./ChatVoiceOccupancy";
+import { useVoiceOccupancy } from "./ChatVoiceOccupancy";
 
 type ChatChannelSidebarProps = {
   workspace: ChatWorkspace;
@@ -39,27 +41,25 @@ export function ChatChannelSidebar({
       } min-h-0 flex-col border-b border-zinc-200 bg-zinc-50 lg:border-r lg:border-b-0`}
     >
       <ChatPaneHeader title={<p className="truncate">{workspace.name}</p>} />
-      <ChatVoiceOccupancyProvider currentUserId={currentUser?.id ?? null}>
-        <div
-          className={`flex flex-1 flex-col overflow-y-auto p-2.5 ${
-            isHome ? "gap-1.5" : "gap-6 p-3.5"
-          }`}
-        >
-          {sections.map((section) => (
-            <SidebarSection
-              key={section.title}
-              section={section}
-              workspaceId={workspace.id}
-              workspaceName={workspace.name}
-              spaceId={workspace.spaceId}
-              hideTitle={isHome && section.title === workspace.name}
-              activeConversationId={activeConversationId}
-            />
-          ))}
-        </div>
-        <ChatVoiceConnectionBar />
-        {currentUser ? <ChatUserPanel user={currentUser} /> : null}
-      </ChatVoiceOccupancyProvider>
+      <div
+        className={`flex flex-1 flex-col overflow-y-auto p-2.5 ${
+          isHome ? "gap-1.5" : "gap-6 p-3.5"
+        }`}
+      >
+        {sections.map((section) => (
+          <SidebarSection
+            key={section.title}
+            section={section}
+            workspaceId={workspace.id}
+            workspaceName={workspace.name}
+            spaceId={workspace.spaceId}
+            hideTitle={isHome && section.title === workspace.name}
+            activeConversationId={activeConversationId}
+          />
+        ))}
+      </div>
+      <ChatVoiceConnectionBar />
+      {currentUser ? <ChatUserPanel user={currentUser} /> : null}
     </aside>
   );
 }
@@ -148,19 +148,15 @@ function SidebarItem({
 
     if (item.conversationId) {
       return (
-        <Link
-          href={chatConversationHref(item.conversationId, workspaceId)}
-          className={`flex items-center gap-2.5 rounded-lg px-2 py-2 ${
-            isActive ? "bg-zinc-200" : "hover:bg-zinc-200/70"
-          }`}
-        >
-          <ChatPersonRow
-            name={item.name}
-            imageUrl={item.imageUrl}
-            subtitle={item.subtitle}
-            isOnline={item.isOnline}
-          />
-        </Link>
+        <DirectMessageLink
+          conversationId={item.conversationId}
+          name={item.name}
+          imageUrl={item.imageUrl}
+          subtitle={item.subtitle}
+          isOnline={item.isOnline}
+          workspaceId={workspaceId}
+          isActive={isActive}
+        />
       );
     }
   }
@@ -174,6 +170,43 @@ function SidebarItem({
       isActive={isActive}
       activeConversationId={activeConversationId}
     />
+  );
+}
+
+function DirectMessageLink({
+  conversationId,
+  name,
+  imageUrl,
+  subtitle,
+  isOnline,
+  workspaceId,
+  isActive,
+}: {
+  conversationId: number;
+  name: string;
+  imageUrl: string;
+  subtitle: string;
+  isOnline: boolean;
+  workspaceId: string;
+  isActive: boolean;
+}) {
+  const { occupantsByChannel } = useVoiceOccupancy();
+  const occupants = occupantsByChannel[conversationId] ?? [];
+
+  return (
+    <Link
+      href={chatConversationHref(conversationId, workspaceId)}
+      className={`flex items-center gap-2.5 rounded-lg px-2 py-2 ${
+        isActive ? "bg-zinc-200" : "hover:bg-zinc-200/70"
+      }`}
+    >
+      <ChatPersonRow
+        name={name}
+        imageUrl={imageUrl}
+        subtitle={occupants.length > 0 ? "Em chamada" : subtitle}
+        isOnline={isOnline}
+      />
+    </Link>
   );
 }
 

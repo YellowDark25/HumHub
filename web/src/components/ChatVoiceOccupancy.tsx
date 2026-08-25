@@ -1,24 +1,30 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { VoiceParticipant, VoiceRoom } from "@/domain/VoiceRoom";
+import type {
+  VoiceOccupancyRoom,
+  VoiceParticipant,
+  VoiceRoom,
+} from "@/domain/VoiceRoom";
 import { formatCallDuration } from "@/shared/format";
 import { Avatar } from "./Avatar";
 import { useVoiceCall } from "./useVoiceCall";
 
 type OccupancyValue = {
   occupantsByChannel: Record<number, VoiceParticipant[]>;
+  occupancyRooms: VoiceOccupancyRoom[];
   connectedRoom: VoiceRoom | null;
   selfJoinedAt: number | null;
 };
 
 const OccupancyContext = createContext<OccupancyValue>({
   occupantsByChannel: {},
+  occupancyRooms: [],
   connectedRoom: null,
   selfJoinedAt: null,
 });
 
-const OCCUPANCY_POLL_MS = 4000;
+const OCCUPANCY_POLL_MS = 2500;
 
 export function ChatVoiceOccupancyProvider({
   currentUserId,
@@ -27,7 +33,7 @@ export function ChatVoiceOccupancyProvider({
   currentUserId: number | null;
   children: ReactNode;
 }) {
-  const [rooms, setRooms] = useState<VoiceRoom[]>([]);
+  const [rooms, setRooms] = useState<VoiceOccupancyRoom[]>([]);
   const call = useVoiceCall();
   const liveConversationId = call.channel?.conversationId ?? null;
 
@@ -40,12 +46,12 @@ export function ChatVoiceOccupancyProvider({
         if (!response.ok || cancelled) {
           return;
         }
-        const payload = (await response.json()) as { rooms?: VoiceRoom[] };
+        const payload = (await response.json()) as { rooms?: VoiceOccupancyRoom[] };
         if (!cancelled) {
           setRooms(payload.rooms ?? []);
         }
-      } catch {
-        return;
+      } catch (error) {
+        console.error("Falha ao carregar quem está em chamada.", error);
       }
     }
 
@@ -76,7 +82,12 @@ export function ChatVoiceOccupancyProvider({
     }
     const connectedRoom = liveRoom;
     const selfJoinedAt = joinedAtOf(connectedRoom, currentUserId);
-    return { occupantsByChannel, connectedRoom, selfJoinedAt };
+    return {
+      occupantsByChannel,
+      occupancyRooms: rooms,
+      connectedRoom,
+      selfJoinedAt,
+    };
   }, [call.channel, call.room, currentUserId, rooms]);
 
   return (

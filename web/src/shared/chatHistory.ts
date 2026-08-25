@@ -1,7 +1,8 @@
+import { readChatCallEvent } from "@/domain/ChatCallEvent";
 import type { ChatMessage } from "@/domain/ChatMessage";
 import { formatChatDayHeading, parseDate } from "./format";
 
-const GROUP_GAP_MS = 5 * 60 * 1000;
+const GROUP_GAP_MS = 7 * 60 * 1000;
 
 export type ChatHistoryDay = {
   type: "day";
@@ -59,11 +60,19 @@ export function groupChatHistory(messages: ChatMessage[]): ChatHistoryItem[] {
 }
 
 function canJoinGroup(group: ChatHistoryGroup, message: ChatMessage): boolean {
-  if (group.authorId !== message.authorId) {
+  if (readChatCallEvent(message.content) || message.replyTo) {
     return false;
   }
 
   const previous = group.messages[group.messages.length - 1];
+  if (previous && readChatCallEvent(previous.content)) {
+    return false;
+  }
+
+  if (group.authorId !== message.authorId) {
+    return false;
+  }
+
   const previousTime = parseDate(previous?.publishedAt)?.getTime();
   const nextTime = parseDate(message.publishedAt)?.getTime();
   if (previousTime === undefined || nextTime === undefined) {

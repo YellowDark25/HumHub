@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { DEFAULT_VOICE_LISTEN } from "@/domain/VoiceRoom";
+import { attachMediaStream, detachMediaStream } from "./attachMediaStream";
 import { useParticipantListenMap } from "./useParticipantListen";
 
 type VoiceCallAudioSinkProps = {
@@ -51,18 +52,8 @@ function RemoteAudio({
       return;
     }
 
-    if (audio.srcObject !== stream) {
-      audio.srcObject = stream;
-      void audio.play().catch((error) => {
-        console.error("Falha ao reproduzir áudio da chamada.", error);
-      });
-    }
-
-    return () => {
-      if (audio.srcObject === stream) {
-        audio.srcObject = null;
-      }
-    };
+    attachMediaStream(audio, stream);
+    return () => detachMediaStream(audio, stream);
   }, [stream]);
 
   useEffect(() => {
@@ -75,5 +66,5 @@ function RemoteAudio({
     audio.volume = volume / 100;
   }, [muted, volume]);
 
-  return <audio ref={audioRef} autoPlay />;
+  return <audio ref={audioRef} />;
 }

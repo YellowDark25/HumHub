@@ -27,6 +27,6 @@ class NexchatNotificationCategory extends NotificationCategory
 
     public function getDescription()
     {
-        return Yii::t('NexchatModule.notifications', 'Receba notificações de mensagens do chat, menções e convites para canais e espaços.');
+        return Yii::t('NexchatModule.notifications', 'Receba notificações de mensagens do chat, pedidos de amizade, menções e convites para canais e espaços.');
     }
 }

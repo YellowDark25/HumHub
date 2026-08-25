@@ -1,4 +1,5 @@
 import type { Account, AccountUpdate } from "@/domain/Account";
+import type { Person } from "@/domain/Person";
 import type { User } from "@/domain/User";
 
 export type LoginResult = {
@@ -11,7 +12,10 @@ export interface AuthRepository {
   impersonate(token: string, userId: number): Promise<LoginResult>;
   getCurrentUser(token: string): Promise<User>;
   getUser(token: string, userId: number): Promise<User>;
-  listPeople(token: string): Promise<User[]>;
+  getPerson(token: string, userId: number): Promise<Person>;
+  listPeople(token: string): Promise<Person[]>;
+  followPerson(token: string, userId: number): Promise<Person>;
+  unfollowPerson(token: string, userId: number): Promise<Person>;
   getAccount(token: string): Promise<Account>;
   updateUser(
     token: string,

@@ -18,6 +18,7 @@ export type ChatSidebarItemKind = "channel" | "dm" | "invite" | "contact";
 export type ChatSidebarItem = {
   key: string;
   name: string;
+  username: string;
   kind: ChatSidebarItemKind;
   conversationId: number | null;
   parentConversationId: number | null;

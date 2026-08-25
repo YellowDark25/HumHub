@@ -176,10 +176,7 @@ function channelsForWorkspace(
     return channels;
   }
 
-  return channels.filter(
-    (channel) =>
-      channel.spaceId === workspace.spaceId || channel.spaceId === null,
-  );
+  return channels.filter((channel) => channel.spaceId === workspace.spaceId);
 }
 
 function conversationItems(
@@ -189,6 +186,7 @@ function conversationItems(
   return conversations.map((conversation) => ({
     key: `${conversation.kind}-${conversation.id}`,
     name: conversation.name,
+    username: "",
     kind: conversation.kind,
     conversationId: conversation.id,
     parentConversationId: conversation.parentConversationId,
@@ -206,6 +204,7 @@ function contactItems(contacts: ChatContact[]): ChatSidebarItem[] {
   return contacts.map((contact) => ({
     key: `contact-${contact.userId}`,
     name: contact.name,
+    username: contact.username,
     kind: contact.conversationId ? "dm" : "contact",
     conversationId: contact.conversationId,
     parentConversationId: null,

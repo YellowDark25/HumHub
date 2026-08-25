@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { voiceCardTone, type VoiceParticipant } from "@/domain/VoiceRoom";
+import { attachMediaStream, detachMediaStream } from "./attachMediaStream";
 import { Avatar } from "./Avatar";
 import { useVoiceActivity } from "./useVoiceActivity";
 
@@ -45,18 +46,8 @@ export function ChatVoiceTile({
     }
 
     const next = hasVideo && stream ? stream : null;
-    if (video.srcObject === next) {
-      return;
-    }
-
-    video.srcObject = next;
-    if (!next) {
-      return;
-    }
-
-    void video.play().catch((error) => {
-      console.error("Falha ao reproduzir vídeo da chamada.", error);
-    });
+    attachMediaStream(video, next);
+    return () => detachMediaStream(video, next);
   }, [hasVideo, stream]);
 
   return (
@@ -68,7 +59,6 @@ export function ChatVoiceTile({
       >
         <video
           ref={videoRef}
-          autoPlay
           playsInline
           muted={isSelf}
           className={`h-full w-full object-cover ${hasVideo ? "" : "hidden"} ${

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { VoiceMediaState, VoiceSession } from "@/domain/VoiceRoom";
+import { recordDirectCallEnd } from "./directCallLog";
 import { joinVoiceRoomApi, leaveVoiceRoomApi } from "./voiceApi";
 
 export function useVoiceSession() {
@@ -83,6 +84,7 @@ export function useVoiceSession() {
     function onPageHide() {
       const conversationId = sessionRef.current?.room.conversationId;
       if (conversationId) {
+        void recordDirectCallEnd({ keepalive: true });
         void leaveRoom(conversationId, true);
       }
     }

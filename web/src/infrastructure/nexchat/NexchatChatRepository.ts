@@ -8,11 +8,12 @@ import type {
 } from "@/application/ports/ChatRepository";
 import type { ChannelSettings } from "@/domain/ChannelSettings";
 import type { ChatFile } from "@/domain/ChatFile";
+import type { ChatMutualServer } from "@/domain/ChatMutualServer";
 import type {
   ChatLiveStream,
   ChatLiveSubscription,
 } from "@/domain/ChatLive";
-import type { ChatMessage } from "@/domain/ChatMessage";
+import type { ChatMessage, ChatReaction } from "@/domain/ChatMessage";
 import { notificationLiveHubUrl } from "@/shared/notificationLive";
 import { getHumhubUrl } from "../config";
 import type {
@@ -26,7 +27,9 @@ import {
   mapChannelSettings,
   mapChatContact,
   mapChatLiveSubscription,
+  mapChatMutualServer,
   mapChatMessage,
+  mapChatReaction,
   mapChatTopic,
   mapConversation,
   mapServerNotificationPreference,
@@ -35,8 +38,10 @@ import type {
   NexchatBootstrap,
   NexchatChannelSettingsResult,
   NexchatCreateChannelResult,
+  NexchatMutualServersResult,
   NexchatOpenDmResult,
   NexchatPoll,
+  NexchatReaction,
   NexchatSendResult,
   NexchatServerNotificationPreference,
   NexchatSubscribeToken,
@@ -61,6 +66,19 @@ export class NexchatChatRepository implements ChatRepository {
       contacts: (data.contacts ?? []).map(mapChatContact),
       spaceServerIds: data.spaceServerIds ?? [],
     };
+  }
+
+  async listMutualServers(
+    token: string,
+    userId: number,
+  ): Promise<ChatMutualServer[]> {
+    const data = await nexchatRequest<NexchatMutualServersResult>({
+      path: "mutual-servers",
+      token,
+      query: { userId },
+    });
+
+    return (data.servers ?? []).map(mapChatMutualServer);
   }
 
   async listMessages(
@@ -126,12 +144,13 @@ export class NexchatChatRepository implements ChatRepository {
     conversationId: number,
     content: string,
     files: File[] = [],
+    replyToId = 0,
   ): Promise<ChatMessage> {
     const result = await nexchatRequest<NexchatSendResult>({
       path: "send",
       token,
       method: "POST",
-      body: sendBody(conversationId, content, files),
+      body: sendBody(conversationId, content, files, replyToId),
     });
 
     if (!result.message) {
@@ -139,6 +158,105 @@ export class NexchatChatRepository implements ChatRepository {
     }
 
     return mapChatMessage(result.message);
+  }
+
+  async editMessage(
+    token: string,
+    messageId: number,
+    content: string,
+  ): Promise<ChatMessage> {
+    const result = await nexchatRequest<NexchatSendResult>({
+      path: "edit",
+      token,
+      method: "POST",
+      body: { message_id: messageId, content },
+    });
+
+    if (!result.success || !result.message) {
+      throw new ApplicationError(
+        result.error || "Não foi possível atualizar a mensagem.",
+        400,
+      );
+    }
+
+    return mapChatMessage(result.message);
+  }
+
+  async deleteMessage(token: string, messageId: number): Promise<ChatMessage> {
+    const result = await nexchatRequest<NexchatSendResult>({
+      path: "delete",
+      token,
+      method: "POST",
+      body: { message_id: messageId },
+    });
+
+    if (!result.success || !result.message) {
+      throw new ApplicationError(
+        result.error || "Não foi possível excluir a mensagem.",
+        400,
+      );
+    }
+
+    return mapChatMessage(result.message);
+  }
+
+  async reactToMessage(
+    token: string,
+    messageId: number,
+    emoji: string,
+  ): Promise<{ messageId: number; reactions: ChatReaction[] }> {
+    const result = await nexchatRequest<{
+      success: boolean;
+      error?: string;
+      messageId?: number;
+      reactions?: NexchatReaction[];
+    }>({
+      path: "react",
+      token,
+      method: "POST",
+      body: { message_id: messageId, emoji },
+    });
+
+    if (!result.success) {
+      throw new ApplicationError(
+        result.error || "Não foi possível reagir à mensagem.",
+        400,
+      );
+    }
+
+    return {
+      messageId: result.messageId ?? messageId,
+      reactions: (result.reactions ?? []).map(mapChatReaction),
+    };
+  }
+
+  async forwardMessage(
+    token: string,
+    messageId: number,
+    conversationIds: number[],
+    comment: string,
+  ): Promise<ChatMessage[]> {
+    const result = await nexchatRequest<{
+      success: boolean;
+      error?: string;
+      messages?: NexchatSendResult["message"][];
+    }>({
+      path: "forward",
+      token,
+      method: "POST",
+      body: { message_id: messageId, conversation_ids: conversationIds, comment },
+    });
+
+    if (!result.success) {
+      throw new ApplicationError(
+        result.error || "Não foi possível encaminhar a mensagem.",
+        400,
+      );
+    }
+
+    return (result.messages ?? []).flatMap((message) =>
+      message ? [mapChatMessage(message)] : [],
+    );
   }
 
   async sendTyping(
@@ -434,14 +552,26 @@ function internalMercureUrl(subscription: ChatLiveSubscription): string {
   return publicHub.toString();
 }
 
-function sendBody(conversationId: number, content: string, files: File[]) {
+function sendBody(
+  conversationId: number,
+  content: string,
+  files: File[],
+  replyToId: number,
+) {
   if (files.length === 0) {
-    return { conversation_id: conversationId, content };
+    return {
+      conversation_id: conversationId,
+      content,
+      reply_to_id: replyToId || undefined,
+    };
   }
 
   const form = new FormData();
   form.append("conversation_id", String(conversationId));
   form.append("content", content);
+  if (replyToId) {
+    form.append("reply_to_id", String(replyToId));
+  }
   for (const file of files) {
     form.append("files[]", file, file.name);
   }

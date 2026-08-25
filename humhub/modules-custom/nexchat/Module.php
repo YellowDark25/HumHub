@@ -23,6 +23,8 @@ class Module extends \humhub\components\Module
             \humhub\modules\nexchat\notifications\NewChannelMessage::class,
             \humhub\modules\nexchat\notifications\ChannelInvite::class,
             \humhub\modules\nexchat\notifications\SpaceInviteNotification::class,
+            \humhub\modules\nexchat\notifications\FriendshipRequestNotification::class,
+            \humhub\modules\nexchat\notifications\FriendshipAcceptedNotification::class,
         ];
     }
 

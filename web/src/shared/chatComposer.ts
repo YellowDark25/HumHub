@@ -1,11 +1,15 @@
 export const CHAT_FILE_ACCEPT =
   "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z,.mp4,.webm,.mp3,.ogg,.wav";
 
+export const CHAT_QUICK_REACTIONS = ["👍", "👀", "😆"] as const;
+export const CHAT_MORE_REACTIONS = ["👍", "👀", "😆", "💯"] as const;
+
 export const CHAT_EMOJIS = [
   "😀",
   "😁",
   "😂",
   "🤣",
+  "😆",
   "😊",
   "😍",
   "😘",

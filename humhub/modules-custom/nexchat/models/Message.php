@@ -127,6 +127,11 @@ class Message extends ActiveRecord
         }
 
         $text = trim((string) $this->content);
+        $callPreview = self::callPreview($text);
+        if ($callPreview !== null) {
+            return $callPreview;
+        }
+
         if ($text !== '') {
             return mb_substr($text, 0, $length);
         }
@@ -136,6 +141,19 @@ class Message extends ActiveRecord
         }
 
         return '';
+    }
+
+    public static function callPreview(string $content): ?string
+    {
+        if ($content === 'nexhub-call:v1:started') {
+            return 'Iniciou uma chamada';
+        }
+
+        if (preg_match('/^nexhub-call:v1:ended:\d+$/', $content)) {
+            return 'Chamada encerrada';
+        }
+
+        return null;
     }
 
     public static function resolveAvatarUrl(?User $user): string

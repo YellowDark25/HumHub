@@ -15,13 +15,14 @@ export function ChatVoiceConnectionBar() {
   }
 
   const conversationId = channel.conversationId;
+  const isDirect = channel.kind === "dm";
   const href = chatConversationHref(conversationId, channel.workspaceId);
   const workspaceHref = chatWorkspaceHref(channel.workspaceId);
 
   async function disconnect() {
-    const wasOnChannel = pathname === `/chat/${conversationId}`;
+    const wasOnVoiceChannel = !isDirect && pathname === `/chat/${conversationId}`;
     await leave();
-    if (wasOnChannel) {
+    if (wasOnVoiceChannel) {
       router.push(workspaceHref);
     }
   }
@@ -30,7 +31,9 @@ export function ChatVoiceConnectionBar() {
     <div className="border-t border-zinc-200 bg-zinc-100 px-3.5 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <Link href={href} className="min-w-0">
-          <p className="text-sm font-semibold text-green-600">Voz conectada</p>
+          <p className="text-sm font-semibold text-green-600">
+            {isDirect ? "Em chamada" : "Voz conectada"}
+          </p>
           <p className="truncate text-xs text-zinc-500">{channel.channelName}</p>
         </Link>
         <button

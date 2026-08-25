@@ -143,11 +143,23 @@ export type HumhubDirectoryUser = {
   id: number;
   name: string;
   username?: string;
+  title?: string;
+  about?: string;
+  tags?: string[];
+  groups?: { id: number; name: string }[];
   imageUrl?: string;
+  isOnline?: boolean;
+  lastSeenAt?: string | null;
+  isSelf?: boolean;
+  friendship?: string;
 };
 
 export type HumhubDirectoryUsers = {
   users?: HumhubDirectoryUser[];
+};
+
+export type HumhubDirectoryPerson = {
+  user?: HumhubDirectoryUser;
 };
 
 export type HumhubSpaceInviteResult = {

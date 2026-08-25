@@ -16,6 +16,8 @@ type ChatComposerProps = {
   workspaceId?: string;
   conversationName?: string;
   placeholder: string;
+  replyTo?: ChatMessage | null;
+  onClearReply?: () => void;
   onSent?: (message: ChatMessage) => void;
 };
 
@@ -24,6 +26,8 @@ export function ChatComposer({
   workspaceId,
   conversationName,
   placeholder,
+  replyTo,
+  onClearReply,
   onSent,
 }: ChatComposerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -74,7 +78,12 @@ export function ChatComposer({
     setError("");
     setIsSending(true);
     try {
-      const response = await postMessage(conversationId, trimmed, outgoing);
+      const response = await postMessage(
+        conversationId,
+        trimmed,
+        outgoing,
+        replyTo?.id ?? 0,
+      );
       if (!response.ok) {
         setError(
           await readApiError(response, "Não foi possível enviar a mensagem."),
@@ -87,6 +96,7 @@ export function ChatComposer({
       setContent("");
       setFiles([]);
       setPanel("");
+      onClearReply?.();
       onSent?.(sent);
     } catch {
       setError("Falha de rede ao enviar.");
@@ -175,6 +185,23 @@ export function ChatComposer({
           onClose={() => setTopicsOpen(false)}
         />
       ) : null}
+      {replyTo ? (
+        <div className="mb-2 flex items-start justify-between gap-3 rounded-xl bg-zinc-100 px-3 py-2">
+          <p className="min-w-0 text-xs text-zinc-500">
+            <span className="font-semibold text-zinc-700">
+              Respondendo a {replyTo.authorName}
+            </span>
+            <span className="mt-0.5 block truncate">{replyTo.content || "Anexo"}</span>
+          </p>
+          <button
+            type="button"
+            onClick={onClearReply}
+            className="text-xs font-medium text-zinc-500 hover:text-zinc-800"
+          >
+            Cancelar
+          </button>
+        </div>
+      ) : null}
       <form
         onSubmit={handleSubmit}
         className="overflow-hidden rounded-2xl bg-zinc-100"
@@ -260,18 +287,22 @@ async function postMessage(
   conversationId: number,
   content: string,
   files: File[],
+  replyToId: number,
 ) {
   if (files.length === 0) {
     return fetch("/api/chat/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId, content }),
+      body: JSON.stringify({ conversationId, content, replyToId }),
     });
   }
 
   const form = new FormData();
   form.append("conversationId", String(conversationId));
   form.append("content", content);
+  if (replyToId) {
+    form.append("replyToId", String(replyToId));
+  }
   for (const file of files) {
     form.append("files", file);
   }

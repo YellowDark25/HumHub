@@ -1,9 +1,11 @@
+import type { Person } from "@/domain/Person";
 import type { User } from "@/domain/User";
 import Link from "next/link";
+import { PersonFriendshipActions } from "./PersonFriendshipActions";
 import { ProfilePhoto } from "./ProfilePhoto";
 
 type ProfileHeaderProps = {
-  user: User;
+  user: User | Person;
   spaceCount: number;
   canEdit?: boolean;
 };
@@ -47,9 +49,15 @@ export function ProfileHeader({
             >
               Editar conta
             </Link>
+          ) : isPerson(user) ? (
+            <PersonFriendshipActions person={user} />
           ) : null}
         </div>
       </div>
     </section>
   );
+}
+
+function isPerson(user: User | Person): user is Person {
+  return "friendship" in user && "isSelf" in user;
 }

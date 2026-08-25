@@ -31,6 +31,7 @@ import type { Post } from "@/domain/Post";
 import type { Space } from "@/domain/Space";
 import type { ReceivedSpaceInvite, SpaceInvitee } from "@/domain/SpaceInvite";
 import type { SpaceMember } from "@/domain/SpaceMember";
+import { isFriendshipStatus, type Person } from "@/domain/Person";
 import type { User } from "@/domain/User";
 import { isRecentlyOnline } from "@/shared/onlineStatus";
 import { stripHtml } from "@/shared/format";
@@ -730,7 +731,7 @@ export function mapSpaceMember(dto: HumhubMembership): SpaceMember | null {
   };
 }
 
-export function mapDirectoryUser(dto: HumhubDirectoryUser): User | null {
+export function mapDirectoryUser(dto: HumhubDirectoryUser): Person | null {
   if (!dto.id) {
     return null;
   }
@@ -738,14 +739,20 @@ export function mapDirectoryUser(dto: HumhubDirectoryUser): User | null {
   return {
     id: dto.id,
     name: dto.name?.trim() || "Usuário",
-    title: "",
+    title: dto.title?.trim() ?? "",
     username: dto.username?.trim() ?? "",
     email: "",
-    about: "",
-    tags: [],
+    about: dto.about?.trim() ?? "",
+    tags: readTags(dto.tags),
     imageUrl: toBrowserMediaUrl(dto.imageUrl),
-    isOnline: false,
+    isOnline: Boolean(dto.isOnline),
     isAdmin: false,
+    isSelf: Boolean(dto.isSelf),
+    friendship: isFriendshipStatus(dto.friendship) ? dto.friendship : "none",
+    groups: (dto.groups ?? [])
+      .filter((group) => group.id > 0 && group.name?.trim())
+      .map((group) => ({ id: group.id, name: group.name.trim() })),
+    lastSeenAt: dto.lastSeenAt?.trim() || null,
   };
 }
 

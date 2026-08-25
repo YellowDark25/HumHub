@@ -44,7 +44,9 @@ import { listVoiceRoom } from "@/application/usecases/listVoiceRoom";
 import { openDirectMessage } from "@/application/usecases/openDirectMessage";
 import { removeChannelMember } from "@/application/usecases/removeChannelMember";
 import { updateChannel } from "@/application/usecases/updateChannel";
+import { followPerson } from "@/application/usecases/followPerson";
 import { listPeople } from "@/application/usecases/listPeople";
+import { unfollowPerson } from "@/application/usecases/unfollowPerson";
 import { listSpaces } from "@/application/usecases/listSpaces";
 import { login } from "@/application/usecases/login";
 import { markAllNotificationsAsSeen } from "@/application/usecases/markAllNotificationsAsSeen";
@@ -53,8 +55,15 @@ import { requireAdminAccess } from "@/application/usecases/requireAdminAccess";
 import { resetNotificationPreferences } from "@/application/usecases/resetNotificationPreferences";
 import { saveAdminSettings } from "@/application/usecases/saveAdminSettings";
 import { saveNotificationPreferences } from "@/application/usecases/saveNotificationPreferences";
+import { finishDirectCallLog } from "@/application/usecases/finishDirectCallLog";
+import { deleteMessage } from "@/application/usecases/deleteMessage";
+import { editMessage } from "@/application/usecases/editMessage";
+import { forwardMessage } from "@/application/usecases/forwardMessage";
+import { listForwardTargets } from "@/application/usecases/listForwardTargets";
+import { reactToMessage } from "@/application/usecases/reactToMessage";
 import { sendMessage } from "@/application/usecases/sendMessage";
 import { sendTyping } from "@/application/usecases/sendTyping";
+import { startDirectCallLog } from "@/application/usecases/startDirectCallLog";
 import { setAdminUserStatus } from "@/application/usecases/setAdminUserStatus";
 import { updateAccountGeneral } from "@/application/usecases/updateAccountGeneral";
 import { updateAccountProfile } from "@/application/usecases/updateAccountProfile";
@@ -350,6 +359,10 @@ export const app = {
     input: SpaceInviteInput,
   ) => inviteSpaceMembers(spaces, token, spaceId, input),
   listPeople: (token: string) => listPeople(auth, token),
+  followPerson: (token: string, userId: number) =>
+    followPerson(auth, token, userId),
+  unfollowPerson: (token: string, userId: number) =>
+    unfollowPerson(auth, token, userId),
   listNotifications: (token: string, query?: NotificationListQuery) =>
     listNotifications(notifications, token, query),
   getNotificationPreferences: (token: string) =>
@@ -394,7 +407,31 @@ export const app = {
     conversationId: number,
     content: string,
     files?: File[],
-  ) => sendMessage(chat, token, conversationId, content, files ?? []),
+    replyToId?: number,
+  ) => sendMessage(chat, token, conversationId, content, files ?? [], replyToId ?? 0),
+  editMessage: (token: string, messageId: number, content: string) =>
+    editMessage(chat, token, messageId, content),
+  deleteMessage: (token: string, messageId: number) =>
+    deleteMessage(chat, token, messageId),
+  reactToMessage: (token: string, messageId: number, emoji: string) =>
+    reactToMessage(chat, token, messageId, emoji),
+  forwardMessage: (
+    token: string,
+    input: {
+      messageId: number;
+      conversationIds: number[];
+      userIds?: number[];
+      comment?: string;
+    },
+  ) => forwardMessage(chat, token, input),
+  listForwardTargets: (token: string) => listForwardTargets(chat, token),
+  startDirectCallLog: (token: string, conversationId: number) =>
+    startDirectCallLog(chat, token, conversationId),
+  finishDirectCallLog: (
+    token: string,
+    messageId: number,
+    durationSeconds: number,
+  ) => finishDirectCallLog(chat, token, messageId, durationSeconds),
   sendTyping: (token: string, conversationId: number, isTyping: boolean) =>
     sendTyping(chat, token, conversationId, isTyping),
   getChatFile: (token: string, fileId: number) => getChatFile(chat, token, fileId),

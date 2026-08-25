@@ -6,6 +6,7 @@ use humhub\components\Controller;
 use humhub\modules\notification\components\BaseNotification;
 use humhub\modules\nexchat\assets\NexchatAsset;
 use humhub\modules\nexchat\components\BearerLogin;
+use humhub\modules\nexchat\components\NexchatFriendship;
 use humhub\modules\nexchat\components\NexchatMercure;
 use humhub\modules\nexchat\Module;
 use humhub\modules\nexchat\models\Attachment;
@@ -64,6 +65,21 @@ class IndexController extends Controller
             'pendingInvites' => array_map([$this, 'conversationToItem'], $data['pendingInvites']),
             'contacts' => $this->listContacts((int) Yii::$app->user->id),
             'spaceServerIds' => $this->spaceServerIds(),
+        ];
+    }
+
+    public function actionMutualServers()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $userId = (int) Yii::$app->request->get('userId', 0);
+        if ($userId <= 0 || $userId === (int) Yii::$app->user->id) {
+            return ['success' => true, 'servers' => []];
+        }
+
+        return [
+            'success' => true,
+            'servers' => $this->listMutualServers($userId),
         ];
     }
 
@@ -210,6 +226,43 @@ class IndexController extends Controller
         Yii::$app->session->setFlash('error', $message);
 
         return $this->redirect(['index']);
+    }
+
+    /**
+     * @return array<int, array{id: int, name: string, guid: string}>
+     */
+    private function listMutualServers(int $peerUserId): array
+    {
+        $mine = $this->spaceServerIds();
+        if ($mine === []) {
+            return [];
+        }
+
+        $peerIds = array_map(
+            'intval',
+            SpaceMembership::find()
+                ->select('space_id')
+                ->where([
+                    'user_id' => $peerUserId,
+                    'status' => SpaceMembership::STATUS_MEMBER,
+                ])
+                ->column(),
+        );
+        $sharedIds = array_values(array_intersect($mine, $peerIds));
+        if ($sharedIds === []) {
+            return [];
+        }
+
+        $servers = [];
+        foreach (Space::find()->where(['id' => $sharedIds])->all() as $space) {
+            $servers[] = [
+                'id' => (int) $space->id,
+                'name' => (string) $space->getDisplayName(),
+                'guid' => (string) $space->guid,
+            ];
+        }
+
+        return $servers;
     }
 
     /**
@@ -480,6 +533,12 @@ class IndexController extends Controller
             return $this->redirect(['index']);
         }
 
+        $denied = $this->requireFriendship((int) Yii::$app->user->id, $targetUserId);
+        if ($denied !== null) {
+            Yii::$app->session->setFlash('error', $denied);
+            return $this->redirect(['index']);
+        }
+
         $conversation = Conversation::findOrCreateDm((int) Yii::$app->user->id, $targetUserId);
 
         return $this->redirect(['view', 'id' => $conversation->id]);
@@ -492,6 +551,11 @@ class IndexController extends Controller
         $targetUserId = (int) Yii::$app->request->post('user_id', 0);
         if ($targetUserId <= 0 || $targetUserId === (int) Yii::$app->user->id) {
             return ['success' => false, 'error' => 'Usuário inválido.'];
+        }
+
+        $denied = $this->requireFriendship((int) Yii::$app->user->id, $targetUserId);
+        if ($denied !== null) {
+            return ['success' => false, 'error' => $denied];
         }
 
         $conversation = Conversation::findOrCreateDm((int) Yii::$app->user->id, $targetUserId);
@@ -953,6 +1017,75 @@ class IndexController extends Controller
         return ['success' => true, 'message' => $message->toPayload()];
     }
 
+    public function actionForward()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $messageId = (int) Yii::$app->request->post('message_id', 0);
+        $comment = trim((string) Yii::$app->request->post('comment', ''));
+        $conversationIds = Yii::$app->request->post('conversation_ids', []);
+        if (!is_array($conversationIds)) {
+            return ['success' => false, 'error' => 'Destinos inválidos.'];
+        }
+
+        $conversationIds = array_values(array_unique(array_filter(
+            array_map('intval', $conversationIds),
+            static fn(int $id) => $id > 0,
+        )));
+
+        if ($messageId <= 0 || $conversationIds === []) {
+            return ['success' => false, 'error' => 'Selecione pelo menos um destino.'];
+        }
+
+        if (count($conversationIds) > 10) {
+            return ['success' => false, 'error' => 'Você pode encaminhar para no máximo 10 destinos.'];
+        }
+
+        $source = Message::findOne($messageId);
+        if (!$source || $source->isDeleted()) {
+            return ['success' => false, 'error' => 'Mensagem não encontrada.'];
+        }
+
+        $this->findConversation((int) $source->conversation_id);
+
+        $content = $this->forwardedContent($source, $comment);
+        if ($content === '' && empty($source->attachments)) {
+            return ['success' => false, 'error' => 'Não é possível encaminhar esta mensagem.'];
+        }
+
+        $messages = [];
+        foreach ($conversationIds as $conversationId) {
+            $conversation = $this->findConversation($conversationId);
+            if ($this->isVoiceChannel($conversation)) {
+                return ['success' => false, 'error' => 'Não é possível encaminhar para um canal de voz.'];
+            }
+
+            $message = new Message([
+                'conversation_id' => $conversation->id,
+                'user_id' => (int) Yii::$app->user->id,
+                'content' => $content,
+            ]);
+
+            if (!$message->save()) {
+                return ['success' => false, 'error' => 'Não foi possível encaminhar a mensagem.'];
+            }
+
+            $this->copyAttachments($source, $message);
+            $message->refresh();
+
+            try {
+                NexchatMercure::publishNewMessage($message);
+            } catch (\Throwable $e) {
+                Yii::error($e, 'nexchat');
+            }
+
+            $this->notifyRecipients($conversation, $message);
+            $messages[] = $message->toPayload();
+        }
+
+        return ['success' => true, 'messages' => $messages];
+    }
+
     public function actionPoll($id, $since = 0)
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
@@ -1262,7 +1395,7 @@ class IndexController extends Controller
     }
 
     /**
-     * @return array<int, array{id: int, name: string, guid: string, title: string, lastPreview: string, isOnline: bool, conversationId: int|null}>
+     * @return array<int, array{id: int, name: string, username: string, guid: string, title: string, lastPreview: string, isOnline: bool, conversationId: int|null}>
      */
     protected function listContacts(int $userId): array
     {
@@ -1278,12 +1411,23 @@ class IndexController extends Controller
             $directMessages,
         ));
 
+        $viewer = User::findOne($userId);
+        $restrictToFriends = NexchatFriendship::isAvailable();
+        $friendIds = $restrictToFriends && $viewer instanceof User
+            ? NexchatFriendship::friendIdSet($viewer)
+            : [];
+
         $contacts = [];
         foreach (User::find()->where(['!=', 'id', $userId])->with('profile')->orderBy(['username' => SORT_ASC])->all() as $user) {
             $existing = $directMessages[Conversation::buildDmKey($userId, (int) $user->id)] ?? null;
+            if ($restrictToFriends && $existing === null && !isset($friendIds[(int) $user->id])) {
+                continue;
+            }
+
             $contacts[] = [
                 'id' => (int) $user->id,
                 'name' => $user->getDisplayName(),
+                'username' => (string) $user->username,
                 'guid' => (string) $user->guid,
                 'title' => trim((string) ($user->profile->title ?? '')),
                 'lastPreview' => $existing ? ($previews[(int) $existing->id] ?? '') : '',
@@ -1325,6 +1469,21 @@ class IndexController extends Controller
         return $previews;
     }
 
+    private function requireFriendship(int $userId, int $targetUserId): ?string
+    {
+        $user = User::findOne($userId);
+        $target = User::findOne($targetUserId);
+        if (!($user instanceof User) || !($target instanceof User)) {
+            return 'Usuário inválido.';
+        }
+
+        if (NexchatFriendship::canDirectMessage($user, $target)) {
+            return null;
+        }
+
+        return 'Vocês precisam ser amigos para enviar mensagem direta. Siga a pessoa em Pessoas e aguarde o aceite.';
+    }
+
     protected function isUserOnline(User $user): bool
     {
         $lastLogin = $user->hasAttribute("last_login")
@@ -1353,6 +1512,72 @@ class IndexController extends Controller
 
         if (!$conversation->isAdmin((int) Yii::$app->user->id)) {
             throw new ForbiddenHttpException('Somente administradores do canal podem fazer isso.');
+        }
+    }
+
+    private function isVoiceChannel(Conversation $conversation): bool
+    {
+        return $conversation->type === Conversation::TYPE_CHANNEL
+            && $this->readOptionalString($conversation, 'channel_kind') === Conversation::KIND_VOICE;
+    }
+
+    private function forwardedContent(Message $source, string $comment): string
+    {
+        $body = $this->unwrapForwardedContent((string) $source->content);
+        $authorName = $source->author->displayName ?? 'Usuário';
+        $payload = json_encode(
+            ['authorName' => $authorName, 'content' => $body],
+            JSON_UNESCAPED_UNICODE,
+        );
+        $marker = 'nexhub-forward:v1:' . $payload;
+
+        return $comment !== '' ? $comment . "\n\n" . $marker : $marker;
+    }
+
+    private function unwrapForwardedContent(string $content): string
+    {
+        if (preg_match('/nexhub-forward:v1:(.+)$/s', $content, $matches)) {
+            $decoded = json_decode($matches[1], true);
+            if (is_array($decoded) && isset($decoded['content']) && is_string($decoded['content'])) {
+                return $decoded['content'];
+            }
+        }
+
+        return $content;
+    }
+
+    private function copyAttachments(Message $source, Message $target): void
+    {
+        $basePath = Module::ensureUploadPath();
+        if ($basePath === null) {
+            return;
+        }
+
+        foreach ($source->attachments as $attachment) {
+            $path = $attachment->getFilePath();
+            if (!is_file($path)) {
+                continue;
+            }
+
+            $extension = pathinfo((string) $attachment->stored_name, PATHINFO_EXTENSION);
+            $storedName = bin2hex(random_bytes(16)) . ($extension !== '' ? '.' . $extension : '');
+            $targetPath = $basePath . DIRECTORY_SEPARATOR . $storedName;
+            if (!@copy($path, $targetPath)) {
+                continue;
+            }
+
+            $copy = new Attachment([
+                'message_id' => $target->id,
+                'file_name' => $attachment->file_name,
+                'stored_name' => $storedName,
+                'mime' => $attachment->mime,
+                'size' => $attachment->size,
+                'is_image' => $attachment->is_image,
+            ]);
+
+            if (!$copy->save()) {
+                @unlink($targetPath);
+            }
         }
     }
 

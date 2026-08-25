@@ -23,6 +23,59 @@ export function playVoiceLeaveChime() {
   playChime(LEAVE_NOTES_HZ, "leave");
 }
 
+const RING_NOTES_HZ = [880, 1175] as const;
+const RING_REPEAT_MS = 1800;
+
+let ringTimer: ReturnType<typeof setInterval> | null = null;
+let ringHolders = 0;
+
+export function startVoiceRingtone() {
+  ringHolders += 1;
+  if (ringTimer !== null) {
+    return;
+  }
+
+  playRingBurst();
+  ringTimer = setInterval(playRingBurst, RING_REPEAT_MS);
+}
+
+export function stopVoiceRingtone() {
+  if (ringHolders === 0) {
+    return;
+  }
+
+  ringHolders -= 1;
+  if (ringHolders > 0 || ringTimer === null) {
+    return;
+  }
+
+  clearInterval(ringTimer);
+  ringTimer = null;
+}
+
+export function forceStopVoiceRingtone() {
+  ringHolders = 0;
+  if (ringTimer === null) {
+    return;
+  }
+
+  clearInterval(ringTimer);
+  ringTimer = null;
+}
+
+function playRingBurst() {
+  unlockVoiceChimes();
+  const context = sharedContext;
+  if (!context) {
+    return;
+  }
+
+  const startedAt = context.currentTime;
+  RING_NOTES_HZ.forEach((frequency, index) => {
+    playNote(context, frequency, startedAt + index * NOTE_GAP_SECONDS);
+  });
+}
+
 function playChime(notes: readonly number[], kind: "join" | "leave") {
   const now = Date.now();
   const lastPlayedAt = kind === "join" ? lastJoinPlayedAt : lastLeavePlayedAt;

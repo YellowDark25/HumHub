@@ -18,6 +18,7 @@ type ChatTopicsModalProps = {
   conversationName: string;
   workspaceId: string;
   initialView?: "list" | "create";
+  initialMessage?: string;
   onClose: () => void;
 };
 
@@ -26,6 +27,7 @@ export function ChatTopicsModal({
   conversationName,
   workspaceId,
   initialView = "list",
+  initialMessage = "",
   onClose,
 }: ChatTopicsModalProps) {
   const [view, setView] = useState<"list" | "create">(initialView);
@@ -71,6 +73,7 @@ export function ChatTopicsModal({
             conversationId={conversationId}
             conversationName={conversationName}
             workspaceId={workspaceId}
+            initialMessage={initialMessage}
             onBack={() => setView("list")}
             onClose={onClose}
           />
@@ -226,18 +229,20 @@ function CreateTopicForm({
   conversationId,
   conversationName,
   workspaceId,
+  initialMessage = "",
   onBack,
   onClose,
 }: {
   conversationId: number;
   conversationName: string;
   workspaceId: string;
+  initialMessage?: string;
   onBack: () => void;
   onClose: () => void;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(initialMessage);
   const [isPrivate, setIsPrivate] = useState(false);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);

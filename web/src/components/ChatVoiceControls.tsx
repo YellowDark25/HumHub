@@ -9,7 +9,7 @@ type ChatVoiceControlsProps = {
   onToggleMic: () => void;
   onToggleCamera: () => void;
   onToggleScreen: () => void;
-  onInvite: () => void;
+  onInvite?: () => void;
   onToggleFullscreen: () => void;
   onLeave: () => void;
 };
@@ -50,9 +50,11 @@ export function ChatVoiceControls({
         >
           <ScreenIcon />
         </ControlButton>
-        <ControlButton label="Adicionar pessoas" onClick={onInvite}>
-          <AddPeopleIcon />
-        </ControlButton>
+        {onInvite ? (
+          <ControlButton label="Adicionar pessoas" onClick={onInvite}>
+            <AddPeopleIcon />
+          </ControlButton>
+        ) : null}
         <ControlButton
           label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
           isActive={isFullscreen}

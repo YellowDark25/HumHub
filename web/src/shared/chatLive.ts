@@ -1,6 +1,7 @@
 import type { ChatAttachment } from "@/domain/ChatAttachment";
 import type { ChatLiveEvent } from "@/domain/ChatLive";
-import type { ChatMessage } from "@/domain/ChatMessage";
+import type { ChatMessage, ChatReaction, ChatReplyPreview } from "@/domain/ChatMessage";
+import { reactionsForUser } from "@/domain/ChatMessage";
 
 export const CHAT_LIVE_POLL_MS = 4_000;
 export const CHAT_LIVE_RECONNECT_MS = 2_000;
@@ -30,6 +31,22 @@ export function readChatLiveEvent(
     return message
       ? { type: "editMessage", conversationId, message }
       : null;
+  }
+
+  if (payload.type === "nexchat.reaction") {
+    const messageId = Number(payload.messageId);
+    if (!Number.isFinite(messageId) || messageId <= 0) {
+      return null;
+    }
+
+    return {
+      type: "reaction",
+      conversationId,
+      messageId,
+      reactions: Array.isArray(payload.reactions)
+        ? payload.reactions.flatMap(readLiveReaction)
+        : [],
+    };
   }
 
   if (payload.type === "nexchat.typing") {
@@ -71,17 +88,26 @@ export function readChatLiveEvent(
 export function applyChatLiveEvent(
   messages: ChatMessage[],
   event: ChatLiveEvent,
+  currentUserId = 0,
 ): ChatMessage[] {
   if (event.type === "typing") {
     return messages;
   }
 
+  if (event.type === "reaction") {
+    return messages.map((item) =>
+      item.id === event.messageId
+        ? { ...item, reactions: reactionsForUser(event.reactions, currentUserId) }
+        : item,
+    );
+  }
+
   if (event.type === "newMessage" || event.type === "editMessage") {
-    return upsertChatMessage(messages, event.message);
+    return upsertChatMessage(messages, withUserReactions(event.message, currentUserId));
   }
 
   if (event.message) {
-    return upsertChatMessage(messages, event.message);
+    return upsertChatMessage(messages, withUserReactions(event.message, currentUserId));
   }
 
   return messages.map((item) =>
@@ -126,8 +152,55 @@ function readLiveMessage(payload: unknown): ChatMessage | null {
     content: typeof payload.content === "string" ? payload.content : "",
     publishedAt:
       typeof payload.createdAt === "string" ? payload.createdAt : null,
+    editedAt: typeof payload.editedAt === "string" ? payload.editedAt : null,
     isDeleted: payload.deleted === true,
     attachments,
+    reactions: Array.isArray(payload.reactions)
+      ? payload.reactions.flatMap(readLiveReaction)
+      : [],
+    replyTo: readLiveReply(payload.replyTo),
+  };
+}
+
+function readLiveReaction(payload: unknown): ChatReaction[] {
+  if (!isRecord(payload) || typeof payload.emoji !== "string" || !payload.emoji) {
+    return [];
+  }
+
+  return [
+    {
+      emoji: payload.emoji,
+      count: typeof payload.count === "number" ? payload.count : 0,
+      isMine: payload.mine === true,
+      users: Array.isArray(payload.users)
+        ? payload.users.filter((name): name is string => typeof name === "string")
+        : [],
+      userIds: Array.isArray(payload.userIds)
+        ? payload.userIds.filter((id): id is number => typeof id === "number")
+        : [],
+    },
+  ];
+}
+
+function readLiveReply(payload: unknown): ChatReplyPreview | null {
+  if (!isRecord(payload) || typeof payload.id !== "number" || !payload.id) {
+    return null;
+  }
+
+  return {
+    id: payload.id,
+    authorName:
+      typeof payload.authorName === "string" && payload.authorName.trim()
+        ? payload.authorName
+        : "Usuário",
+    preview: typeof payload.preview === "string" ? payload.preview : "",
+  };
+}
+
+function withUserReactions(message: ChatMessage, currentUserId: number): ChatMessage {
+  return {
+    ...message,
+    reactions: reactionsForUser(message.reactions, currentUserId),
   };
 }
 
@@ -173,8 +246,11 @@ function deletedMessage(message: ChatMessage): ChatMessage {
   return {
     ...message,
     content: "",
+    editedAt: null,
     isDeleted: true,
     attachments: [],
+    reactions: [],
+    replyTo: null,
   };
 }
 

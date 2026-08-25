@@ -3,8 +3,8 @@ import { FeedCard } from "@/components/FeedCard";
 import { LoadError } from "@/components/LoadError";
 import { ProfileHeader } from "@/components/ProfileHeader";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
+import type { Person } from "@/domain/Person";
 import type { Post } from "@/domain/Post";
-import type { User } from "@/domain/User";
 import { app } from "@/infrastructure/composition";
 import {
   redirectIfUnauthorized,
@@ -20,7 +20,7 @@ export default async function PessoaPage({
   const token = await requirePageToken();
   const userId = Number((await params).id);
 
-  let user: User | null = null;
+  let user: Person | null = null;
   let posts: Post[] = [];
   let canEdit = false;
   let loadError = "";

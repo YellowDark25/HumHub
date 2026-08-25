@@ -17,3 +17,34 @@ export async function GET(request: Request) {
     return jsonError(error, "Não foi possível carregar as mensagens.");
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const token = await requireAuthToken();
+    const body = (await request.json().catch(() => null)) as {
+      messageId?: number;
+      content?: string;
+    } | null;
+    const message = await app.editMessage(
+      token,
+      Number(body?.messageId),
+      body?.content ?? "",
+    );
+    return NextResponse.json(message);
+  } catch (error) {
+    return jsonError(error, "Não foi possível editar a mensagem.");
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const token = await requireAuthToken();
+    const body = (await request.json().catch(() => null)) as {
+      messageId?: number;
+    } | null;
+    const message = await app.deleteMessage(token, Number(body?.messageId));
+    return NextResponse.json(message);
+  } catch (error) {
+    return jsonError(error, "Não foi possível excluir a mensagem.");
+  }
+}

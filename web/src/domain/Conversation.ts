@@ -14,3 +14,9 @@ export type Conversation = {
   slowModeSeconds: number;
   canManage: boolean;
 };
+
+export function canJoinVoice(
+  conversation: Pick<Conversation, "kind" | "channelType">,
+) {
+  return conversation.kind === "dm" || conversation.channelType === "voice";
+}

@@ -1,8 +1,10 @@
+import { chatCallPreview } from "@/domain/ChatCallEvent";
 import type { ChannelMember, ChannelSettings } from "@/domain/ChannelSettings";
 import type { ChatAttachment } from "@/domain/ChatAttachment";
 import type { ChatContact } from "@/domain/ChatContact";
+import type { ChatMutualServer } from "@/domain/ChatMutualServer";
 import type { ChatLiveSubscription } from "@/domain/ChatLive";
-import type { ChatMessage } from "@/domain/ChatMessage";
+import type { ChatMessage, ChatReaction, ChatReplyPreview } from "@/domain/ChatMessage";
 import type {
   ChatNotificationLevel,
   ChatNotificationPreference,
@@ -20,6 +22,8 @@ import type {
   NexchatContact,
   NexchatConversation,
   NexchatMessage,
+  NexchatReaction,
+  NexchatReplyTo,
   NexchatServerNotificationPreference,
   NexchatSubscribeToken,
   NexchatTopic,
@@ -102,12 +106,29 @@ function readChannelType(value?: string | null): ChatChannelType {
   return "text";
 }
 
+export function mapChatMutualServer(dto: {
+  id: number;
+  name: string;
+  guid?: string;
+}): ChatMutualServer {
+  return {
+    id: dto.id,
+    name: dto.name,
+    imageUrl: contactImageUrl(dto.guid),
+  };
+}
+
 export function mapChatContact(dto: NexchatContact): ChatContact {
   return {
     userId: dto.id,
     name: dto.name,
+    username: dto.username?.trim() ?? "",
     imageUrl: contactImageUrl(dto.guid),
-    subtitle: dto.lastPreview?.trim() || dto.title?.trim() || "",
+    subtitle:
+      chatCallPreview(dto.lastPreview ?? "") ||
+      dto.lastPreview?.trim() ||
+      dto.title?.trim() ||
+      "",
     isOnline: Boolean(dto.isOnline),
     conversationId: dto.conversationId ?? null,
   };
@@ -138,8 +159,33 @@ export function mapChatMessage(dto: NexchatMessage): ChatMessage {
     authorImageUrl: toBrowserMediaUrl(dto.avatarUrl),
     content: dto.content,
     publishedAt: dto.createdAt ?? null,
+    editedAt: dto.editedAt ?? null,
     isDeleted: Boolean(dto.deleted),
     attachments: (dto.attachments ?? []).map(mapChatAttachment),
+    reactions: (dto.reactions ?? []).map(mapChatReaction),
+    replyTo: mapChatReply(dto.replyTo),
+  };
+}
+
+export function mapChatReaction(dto: NexchatReaction): ChatReaction {
+  return {
+    emoji: dto.emoji,
+    count: dto.count ?? 0,
+    isMine: Boolean(dto.mine),
+    users: dto.users ?? [],
+    userIds: dto.userIds ?? [],
+  };
+}
+
+function mapChatReply(dto?: NexchatReplyTo | null): ChatReplyPreview | null {
+  if (!dto?.id) {
+    return null;
+  }
+
+  return {
+    id: dto.id,
+    authorName: dto.authorName?.trim() || "Usuário",
+    preview: dto.preview ?? "",
   };
 }
 

@@ -7,6 +7,7 @@ import {
   lastChatMessageId,
   upsertChatMessage,
 } from "@/shared/chatLive";
+import { subscribeChatMessages } from "./chatMessageEvents";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessageHistory } from "./ChatMessageHistory";
 import { ChatPaneHeader } from "./ChatPaneHeader";
@@ -21,7 +22,12 @@ type ChatConversationPaneProps = {
   conversationName?: string;
   title: ReactNode;
   trailing?: ReactNode;
+  banner?: ReactNode;
+  overlay?: ReactNode;
+  intro?: ReactNode;
   placeholder: string;
+  canManage?: boolean;
+  canCreateTopic?: boolean;
   initialMessages: ChatMessage[];
 };
 
@@ -32,17 +38,33 @@ export function ChatConversationPane({
   conversationName,
   title,
   trailing,
+  banner,
+  overlay,
+  intro,
   placeholder,
+  canManage = false,
+  canCreateTopic = false,
   initialMessages,
 }: ChatConversationPaneProps) {
   const [messages, setMessages] = useState(initialMessages);
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const typers = useChatTypers(currentUserId);
   const historyRef = useRef<HTMLDivElement>(null);
 
   useChatLive(conversationId, lastChatMessageId(messages), (event) => {
     typers.onLiveEvent(event);
-    setMessages((current) => applyChatLiveEvent(current, event));
+    setMessages((current) => applyChatLiveEvent(current, event, currentUserId));
   });
+
+  useEffect(() => {
+    return subscribeChatMessages((id, message) => {
+      if (id !== conversationId) {
+        return;
+      }
+
+      setMessages((current) => upsertChatMessage(current, message));
+    });
+  }, [conversationId]);
 
   useEffect(() => {
     const history = historyRef.current;
@@ -54,14 +76,29 @@ export function ChatConversationPane({
   }, [messages]);
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <ChatPaneHeader title={title} trailing={trailing} />
+      {banner}
+      {overlay}
       <div
         ref={historyRef}
         className="min-h-0 flex-1 overflow-y-auto"
       >
         <div className="flex min-h-full flex-col justify-end">
-          <ChatMessageHistory messages={messages} />
+          <ChatMessageHistory
+            messages={messages}
+            currentUserId={currentUserId}
+            canManage={canManage}
+            conversationId={conversationId}
+            workspaceId={workspaceId}
+            conversationName={conversationName}
+            canCreateTopic={canCreateTopic}
+            intro={intro}
+            onUpdated={(message) =>
+              setMessages((current) => upsertChatMessage(current, message))
+            }
+            onReply={setReplyTo}
+          />
         </div>
       </div>
       <ChatTypingIndicator label={typers.label} />
@@ -70,6 +107,8 @@ export function ChatConversationPane({
         workspaceId={workspaceId}
         conversationName={conversationName}
         placeholder={placeholder}
+        replyTo={replyTo}
+        onClearReply={() => setReplyTo(null)}
         onSent={(message) =>
           setMessages((current) => upsertChatMessage(current, message))
         }

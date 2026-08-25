@@ -13,7 +13,7 @@ export async function getPersonPage(
   }
 
   const [user, posts] = await Promise.all([
-    auth.getUser(token, userId),
+    auth.getPerson(token, userId),
     feed.listPosts(token),
   ]);
 

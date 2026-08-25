@@ -1,11 +1,12 @@
 import type { ChannelSettings } from "@/domain/ChannelSettings";
 import type { ChatContact } from "@/domain/ChatContact";
+import type { ChatMutualServer } from "@/domain/ChatMutualServer";
 import type { ChatFile } from "@/domain/ChatFile";
 import type {
   ChatLiveStream,
   ChatLiveSubscription,
 } from "@/domain/ChatLive";
-import type { ChatMessage } from "@/domain/ChatMessage";
+import type { ChatMessage, ChatReaction } from "@/domain/ChatMessage";
 import type {
   ChatNotificationPreference,
   ChatNotificationPreferencePatch,
@@ -23,6 +24,7 @@ export type ConversationLists = {
 
 export interface ChatRepository {
   listConversations(token: string): Promise<ConversationLists>;
+  listMutualServers(token: string, userId: number): Promise<ChatMutualServer[]>;
   listMessages(
     token: string,
     conversationId: number,
@@ -41,7 +43,25 @@ export interface ChatRepository {
     conversationId: number,
     content: string,
     files?: File[],
+    replyToId?: number,
   ): Promise<ChatMessage>;
+  editMessage(
+    token: string,
+    messageId: number,
+    content: string,
+  ): Promise<ChatMessage>;
+  deleteMessage(token: string, messageId: number): Promise<ChatMessage>;
+  reactToMessage(
+    token: string,
+    messageId: number,
+    emoji: string,
+  ): Promise<{ messageId: number; reactions: ChatReaction[] }>;
+  forwardMessage(
+    token: string,
+    messageId: number,
+    conversationIds: number[],
+    comment: string,
+  ): Promise<ChatMessage[]>;
   sendTyping(
     token: string,
     conversationId: number,

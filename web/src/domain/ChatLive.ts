@@ -1,4 +1,4 @@
-import type { ChatMessage } from "./ChatMessage";
+import type { ChatMessage, ChatReaction } from "./ChatMessage";
 
 export type ChatLiveSubscription = {
   hubUrl: string;
@@ -22,6 +22,12 @@ export type ChatLiveEvent =
       conversationId: number;
       messageId: number;
       message: ChatMessage | null;
+    }
+  | {
+      type: "reaction";
+      conversationId: number;
+      messageId: number;
+      reactions: ChatReaction[];
     }
   | {
       type: "typing";

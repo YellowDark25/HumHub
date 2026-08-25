@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -19,6 +20,8 @@ import type {
 import { useChatAudioControls } from "./useChatAudioControls";
 import { useLiveKitRoom } from "./useLiveKitRoom";
 import { VoiceCallAudioSink } from "./VoiceCallAudioSink";
+import { recordDirectCallEnd } from "./directCallLog";
+import { forceStopVoiceRingtone } from "./playVoiceChime";
 import { useVoiceJoinChime } from "./useVoiceJoinChime";
 import { useVoiceSession } from "./useVoiceSession";
 
@@ -34,7 +37,7 @@ type VoiceCallValue = {
   isReady: boolean;
   isJoining: boolean;
   error: string;
-  join: (channel: VoiceCallChannel) => Promise<void>;
+  join: (channel: VoiceCallChannel) => Promise<boolean>;
   leave: () => Promise<void>;
   toggleMic: () => void;
   toggleDeafen: () => void;
@@ -72,23 +75,37 @@ export function VoiceCallProvider({
   const otherIds = live.others.map((item) => item.userId);
   useVoiceJoinChime(Boolean(live.room), otherIds);
 
+  useEffect(() => {
+    if (live.others.length > 0) {
+      forceStopVoiceRingtone();
+    }
+  }, [live.others.length]);
+
   const join = useCallback(
     async (next: VoiceCallChannel) => {
       const media = mediaRef.current;
+      setChannel(next);
       const joined = await session.join(next.conversationId, {
         isMicMuted: media.isMicMuted,
         isDeafened: media.isDeafened,
         isCameraOn: false,
         isScreenSharing: false,
       });
-      if (joined) {
-        setChannel(next);
+      if (!joined) {
+        setChannel((current) =>
+          current?.conversationId === next.conversationId ? null : current,
+        );
+        return false;
       }
+
+      return true;
     },
     [session.join],
   );
 
   const leave = useCallback(async () => {
+    forceStopVoiceRingtone();
+    await recordDirectCallEnd();
     await session.leave();
     setChannel(null);
   }, [session.leave]);

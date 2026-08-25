@@ -49,6 +49,20 @@ export type NexchatAttachment = {
   isImage?: boolean;
 };
 
+export type NexchatReaction = {
+  emoji: string;
+  count?: number;
+  mine?: boolean;
+  users?: string[];
+  userIds?: number[];
+};
+
+export type NexchatReplyTo = {
+  id: number;
+  authorName?: string;
+  preview?: string;
+};
+
 export type NexchatMessage = {
   id: number;
   userId?: number;
@@ -56,18 +70,33 @@ export type NexchatMessage = {
   avatarUrl?: string;
   content: string;
   createdAt?: string;
+  editedAt?: string | null;
   deleted?: boolean;
   attachments?: NexchatAttachment[];
+  reactions?: NexchatReaction[];
+  replyTo?: NexchatReplyTo | null;
 };
 
 export type NexchatContact = {
   id: number;
   name: string;
+  username?: string;
   guid?: string;
   title?: string;
   lastPreview?: string;
   isOnline?: boolean;
   conversationId?: number | null;
+};
+
+export type NexchatMutualServer = {
+  id: number;
+  name: string;
+  guid?: string;
+};
+
+export type NexchatMutualServersResult = {
+  success: boolean;
+  servers?: NexchatMutualServer[];
 };
 
 export type NexchatBootstrap = {
@@ -107,6 +136,7 @@ export type NexchatSubscribeToken = {
 
 export type NexchatSendResult = {
   success: boolean;
+  error?: string;
   message?: NexchatMessage;
 };
 

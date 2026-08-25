@@ -5,6 +5,7 @@ import {
 } from "@/application/errors";
 import type { AuthRepository, LoginResult } from "@/application/ports/AuthRepository";
 import type { Account, AccountUpdate } from "@/domain/Account";
+import type { Person } from "@/domain/Person";
 import type { User } from "@/domain/User";
 import { MUST_CHANGE_PASSWORD_MESSAGE } from "@/shared/mustChangePassword";
 import { resolveTokenMaxAge } from "../config";
@@ -17,6 +18,7 @@ import {
   toHumhubProfile,
 } from "./mappers";
 import type {
+  HumhubDirectoryPerson,
   HumhubDirectoryUsers,
   HumhubLoginResponse,
   HumhubPage,
@@ -80,7 +82,7 @@ export class HumhubAuthRepository implements AuthRepository {
     return mapUser(user);
   }
 
-  async listPeople(token: string): Promise<User[]> {
+  async listPeople(token: string): Promise<Person[]> {
     const payload = await humhubRequest<HumhubDirectoryUsers>({
       path: "/nexchat/people",
       token,
@@ -89,7 +91,49 @@ export class HumhubAuthRepository implements AuthRepository {
 
     return (payload.users ?? [])
       .map(mapDirectoryUser)
-      .filter((user): user is User => user !== null);
+      .filter((user): user is Person => user !== null);
+  }
+
+  async getPerson(token: string, userId: number): Promise<Person> {
+    const payload = await humhubRequest<HumhubDirectoryPerson>({
+      path: `/nexchat/people/view?id=${userId}`,
+      token,
+      origin: "app",
+    });
+    const person = payload.user ? mapDirectoryUser(payload.user) : null;
+    if (!person) {
+      throw new ApplicationError("Pessoa não encontrada.", 404);
+    }
+
+    return person;
+  }
+
+  async followPerson(token: string, userId: number): Promise<Person> {
+    return this.changeFriendship(token, userId, "follow");
+  }
+
+  async unfollowPerson(token: string, userId: number): Promise<Person> {
+    return this.changeFriendship(token, userId, "unfollow");
+  }
+
+  private async changeFriendship(
+    token: string,
+    userId: number,
+    action: "follow" | "unfollow",
+  ): Promise<Person> {
+    const payload = await humhubRequest<HumhubDirectoryPerson>({
+      path: `/nexchat/people/${action}`,
+      method: "POST",
+      token,
+      origin: "app",
+      body: { userId },
+    });
+    const person = payload.user ? mapDirectoryUser(payload.user) : null;
+    if (!person) {
+      throw new ApplicationError("Não foi possível atualizar a amizade.", 400);
+    }
+
+    return person;
   }
 
   async getAccount(token: string): Promise<Account> {

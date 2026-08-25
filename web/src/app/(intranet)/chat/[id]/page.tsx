@@ -1,11 +1,19 @@
 import { errorMessage, isNotFound } from "@/application/errors";
+import { Avatar } from "@/components/Avatar";
 import { ChatConversationPane } from "@/components/ChatConversationPane";
+import {
+  ChatDirectCallBar,
+  ChatDirectCallButton,
+  ChatDirectCallStage,
+} from "@/components/ChatDirectCall";
+import { ChatDmIntro } from "@/components/ChatDmIntro";
 import { ChatServerHeaderActions } from "@/components/ChatServerHeaderActions";
 import { ChatShell } from "@/components/ChatShell";
 import { ChatTopicIcon } from "@/components/ChatTopicIcon";
 import { ChatVoiceRoom } from "@/components/ChatVoiceRoom";
 import { LoadError } from "@/components/LoadError";
 import type { ChatMessage } from "@/domain/ChatMessage";
+import type { ChatMutualServer } from "@/domain/ChatMutualServer";
 import type { ChatNotificationPreference } from "@/domain/ChatNotificationPreference";
 import type { ChatSidebarSection, ChatWorkspace } from "@/domain/ChatWorkspace";
 import type { Conversation } from "@/domain/Conversation";
@@ -48,6 +56,7 @@ export default async function ChatViewPage({
   let notificationPreference: ChatNotificationPreference | null = null;
   let messages: ChatMessage[] = [];
   let channels: Conversation[] = [];
+  let mutualServers: ChatMutualServer[] = [];
   let loadError = "";
 
   try {
@@ -65,6 +74,7 @@ export default async function ChatViewPage({
     notificationPreference = page.notificationPreference;
     messages = page.messages;
     channels = page.lists.channels;
+    mutualServers = page.mutualServers ?? [];
   } catch (error) {
     await redirectIfUnauthorized(error);
     if (isNotFound(error)) {
@@ -89,7 +99,17 @@ export default async function ChatViewPage({
   );
   const topicsConversationId = topicParentId(current);
   const topicsConversationName = parentChannel?.name ?? current.name;
-  const headerActions = (
+  const isDirect = current.kind === "dm";
+  const peer = sections
+    .flatMap((section) => section.items)
+    .find((item) => item.conversationId === conversationId);
+  const headerActions = isDirect ? (
+    <ChatDirectCallButton
+      conversationId={conversationId}
+      conversationName={current.name}
+      workspaceId={currentWorkspace.id}
+    />
+  ) : (
     <ChatServerHeaderActions
       conversationId={topicsConversationId}
       conversationName={topicsConversationName}
@@ -135,10 +155,40 @@ export default async function ChatViewPage({
               <ConversationTitle
                 conversation={current}
                 parentName={parentChannel?.name ?? null}
+                imageUrl={isDirect ? peer?.imageUrl ?? "" : ""}
               />
             </>
           }
           trailing={headerActions}
+          intro={
+            isDirect ? (
+              <ChatDmIntro
+                name={current.name}
+                username={peer?.username ?? ""}
+                imageUrl={peer?.imageUrl ?? ""}
+                userId={peer?.userId ?? null}
+                mutualServers={mutualServers}
+              />
+            ) : null
+          }
+          banner={
+            isDirect ? (
+              <ChatDirectCallBar
+                conversationId={conversationId}
+                conversationName={current.name}
+                workspaceId={currentWorkspace.id}
+                peerImageUrl={peer?.imageUrl ?? ""}
+              />
+            ) : null
+          }
+          overlay={
+            isDirect ? (
+              <ChatDirectCallStage
+                conversationId={conversationId}
+                conversationName={current.name}
+              />
+            ) : null
+          }
           placeholder={
             isChatTopic(current)
               ? `Conversar em '${current.name}'`
@@ -146,6 +196,8 @@ export default async function ChatViewPage({
                 ? `Conversar em #${current.name}`
                 : `Conversar em @${current.name}`
           }
+          canManage={current.canManage}
+          canCreateTopic={!isDirect}
           initialMessages={messages}
         />
       )}
@@ -156,9 +208,11 @@ export default async function ChatViewPage({
 function ConversationTitle({
   conversation,
   parentName,
+  imageUrl,
 }: {
   conversation: Conversation;
   parentName: string | null;
+  imageUrl: string;
 }) {
   if (parentName && isChatTopic(conversation)) {
     return (
@@ -173,9 +227,18 @@ function ConversationTitle({
     );
   }
 
+  if (conversation.kind === "dm") {
+    return (
+      <h1 className="flex min-w-0 items-center gap-2 truncate">
+        <Avatar name={conversation.name} imageUrl={imageUrl} size="sm" shape="circle" />
+        <span className="truncate">{conversation.name}</span>
+      </h1>
+    );
+  }
+
   return (
     <h1 className="truncate">
-      {conversation.kind === "channel" ? "#" : "@"} {conversation.name}
+      # {conversation.name}
     </h1>
   );
 }

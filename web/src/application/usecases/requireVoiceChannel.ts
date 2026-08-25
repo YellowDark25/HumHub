@@ -1,4 +1,4 @@
-import type { Conversation } from "@/domain/Conversation";
+import { canJoinVoice, type Conversation } from "@/domain/Conversation";
 import { ApplicationError } from "../errors";
 import type { ChatRepository } from "../ports/ChatRepository";
 
@@ -22,8 +22,8 @@ export async function requireVoiceChannel(
     throw new ApplicationError("Conversa não encontrada.", 404);
   }
 
-  if (current.channelType !== "voice") {
-    throw new ApplicationError("Este canal não é de voz.", 400);
+  if (!canJoinVoice(current)) {
+    throw new ApplicationError("Esta conversa não permite chamada.", 400);
   }
 
   return current;

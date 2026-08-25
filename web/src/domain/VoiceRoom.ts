@@ -30,11 +30,53 @@ export type VoiceSession = {
   room: VoiceRoom;
 };
 
+export type VoiceCallKind = "channel" | "dm";
+
 export type VoiceCallChannel = {
   conversationId: number;
   channelName: string;
   workspaceId: string;
+  kind: VoiceCallKind;
 };
+
+export type VoiceOccupancyRoom = VoiceRoom & {
+  kind: VoiceCallKind;
+  name: string;
+};
+
+export const DIRECT_CALL_RING_MS = 25_000;
+
+export function isDirectCallWaiting(input: {
+  isJoined: boolean;
+  isJoining: boolean;
+  livePeerCount: number;
+  occupancyPeerCount: number;
+}) {
+  return (
+    input.isJoined &&
+    !input.isJoining &&
+    input.livePeerCount === 0 &&
+    input.occupancyPeerCount === 0
+  );
+}
+
+export function pickIncomingDirectCall(
+  rooms: VoiceOccupancyRoom[],
+  currentUserId: number,
+  joinedConversationId: number | null,
+) {
+  return (
+    rooms.find((room) => {
+      if (room.kind !== "dm" || room.conversationId === joinedConversationId) {
+        return false;
+      }
+
+      return room.participants.some(
+        (participant) => participant.userId !== currentUserId,
+      );
+    }) ?? null
+  );
+}
 
 export const MAX_VOICE_LISTEN_VOLUME = 100;
 
@@ -77,4 +119,12 @@ export function readVoiceMedia(
     isCameraOn: Boolean(input?.isCameraOn),
     isScreenSharing: Boolean(input?.isScreenSharing),
   };
+}
+
+export function isVideoCallActive(
+  participants: Pick<VoiceMediaState, "isCameraOn" | "isScreenSharing">[],
+) {
+  return participants.some(
+    (participant) => participant.isCameraOn || participant.isScreenSharing,
+  );
 }

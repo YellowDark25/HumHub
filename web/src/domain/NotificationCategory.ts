@@ -10,6 +10,7 @@ export const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
   { id: "space_member", label: "Membros do Espaço" },
   { id: "space_created", label: "Novo Espaço" },
   { id: "followed", label: "Seguindo" },
+  { id: "friendship", label: "Amizade" },
   { id: "mentioned", label: "Menções" },
   { id: "content_created", label: "Novo Conteúdo" },
   { id: "nexchat", label: "Chat" },

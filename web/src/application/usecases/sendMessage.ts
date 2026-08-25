@@ -7,6 +7,7 @@ export function sendMessage(
   conversationId: number,
   content: string,
   files: File[] = [],
+  replyToId = 0,
 ) {
   const trimmed = content.trim();
   if (!trimmed && files.length === 0) {
@@ -17,5 +18,5 @@ export function sendMessage(
     throw new ApplicationError("Conversa inválida.", 400);
   }
 
-  return chat.sendMessage(token, conversationId, trimmed, files);
+  return chat.sendMessage(token, conversationId, trimmed, files, replyToId);
 }

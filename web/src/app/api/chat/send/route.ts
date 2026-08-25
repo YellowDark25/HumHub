@@ -12,6 +12,7 @@ export async function POST(request: Request) {
       input.conversationId,
       input.content,
       input.files,
+      input.replyToId,
     );
     return NextResponse.json(message);
   } catch (error) {
@@ -29,17 +30,20 @@ async function readSendInput(request: Request) {
       files: form
         .getAll("files")
         .filter((item): item is File => item instanceof File && item.size > 0),
+      replyToId: Number(form.get("replyToId") ?? 0),
     };
   }
 
   const body = (await request.json().catch(() => null)) as {
     conversationId?: number;
     content?: string;
+    replyToId?: number;
   } | null;
 
   return {
     conversationId: Number(body?.conversationId),
     content: body?.content ?? "",
     files: [] as File[],
+    replyToId: Number(body?.replyToId ?? 0),
   };
 }

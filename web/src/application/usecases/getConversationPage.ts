@@ -5,6 +5,7 @@ import type { ChatRepository } from "../ports/ChatRepository";
 import type { SpaceRepository } from "../ports/SpaceRepository";
 import { assembleChatNavigation } from "./assembleChatNavigation";
 import { getCurrentUser } from "./getCurrentUser";
+import { listMutualServers } from "./listMutualServers";
 import { loadServerNotificationPreference } from "./loadServerNotificationPreference";
 
 export async function getConversationPage(
@@ -41,16 +42,25 @@ export async function getConversationPage(
     current,
   );
   const spaceId = chatNotificationSpaceId(navigation.currentWorkspace);
+  const peerUserId =
+    current.kind === "dm"
+      ? lists.contacts.find((contact) => contact.conversationId === conversationId)
+          ?.userId ?? 0
+      : 0;
+
+  const [notificationPreference, mutualServers] = await Promise.all([
+    loadServerNotificationPreference(chat, token, spaceId),
+    peerUserId > 0
+      ? listMutualServers(chat, token, peerUserId)
+      : Promise.resolve([]),
+  ]);
 
   return {
     current,
     currentUser,
     messages,
-    notificationPreference: await loadServerNotificationPreference(
-      chat,
-      token,
-      spaceId,
-    ),
+    notificationPreference,
+    mutualServers,
     ...navigation,
   };
 }

@@ -1,6 +1,8 @@
 import { AppContent } from "@/components/AppContent";
 import { AppHeader } from "@/components/AppHeader";
 import { MobileNav } from "@/components/MobileNav";
+import { ChatIncomingDirectCall } from "@/components/ChatIncomingDirectCall";
+import { ChatVoiceOccupancyProvider } from "@/components/ChatVoiceOccupancy";
 import { VoiceCallDock } from "@/components/VoiceCallDock";
 import { VoiceCallProvider } from "@/components/VoiceCallProvider";
 import { isForbidden, isUnauthorized } from "@/application/errors";
@@ -56,11 +58,14 @@ function IntranetShell({
         isAdmin={user.isAdmin}
       />
       <VoiceCallProvider currentUser={user}>
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <AppContent>{children}</AppContent>
-          <VoiceCallDock />
-          <MobileNav />
-        </div>
+        <ChatVoiceOccupancyProvider currentUserId={user.id}>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <AppContent>{children}</AppContent>
+            <VoiceCallDock />
+            <ChatIncomingDirectCall />
+            <MobileNav />
+          </div>
+        </ChatVoiceOccupancyProvider>
       </VoiceCallProvider>
     </div>
   );
