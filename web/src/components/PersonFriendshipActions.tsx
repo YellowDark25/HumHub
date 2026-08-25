@@ -122,9 +122,9 @@ type FriendshipButton = {
 };
 
 const primaryButtonClass =
-  "rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50";
+  "cursor-pointer rounded-lg bg-teal-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-teal-600 disabled:cursor-not-allowed disabled:opacity-50";
 const secondaryButtonClass =
-  "rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-semibold text-zinc-700 disabled:opacity-50";
+  "cursor-pointer rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-semibold text-zinc-700 hover:border-teal-400 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50";
 
 function buttonsFor(status: FriendshipStatus): FriendshipButton[] {
   if (status === "outgoing") {

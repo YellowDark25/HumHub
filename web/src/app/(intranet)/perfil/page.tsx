@@ -39,6 +39,7 @@ export default async function PerfilPage({
   let posts: Post[] = [];
   let spaces: Space[] = [];
   let invites: ReceivedSpaceInvite[] = [];
+  let friendCount = 0;
   let loadError = "";
 
   try {
@@ -47,6 +48,7 @@ export default async function PerfilPage({
     posts = page.posts;
     spaces = page.spaces;
     invites = page.invites;
+    friendCount = page.friendCount;
   } catch (error) {
     await redirectIfUnauthorized(error);
     loadError = errorMessage(error, "Não foi possível carregar o perfil.");
@@ -62,7 +64,11 @@ export default async function PerfilPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <ProfileHeader user={user} spaceCount={spaces.length} />
+      <ProfileHeader
+        user={user}
+        spaceCount={spaces.length}
+        friendCount={friendCount}
+      />
       <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)_260px]">
         <ProfileMenu section={section} inviteCount={invites.length} />
         <main className="flex min-w-0 flex-col gap-4">

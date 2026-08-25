@@ -8,6 +8,8 @@ use humhub\modules\nexchat\components\NexchatFriendship;
 use humhub\modules\nexchat\notifications\FriendshipAcceptedNotification;
 use humhub\modules\nexchat\notifications\FriendshipRequestNotification;
 use humhub\modules\notification\components\BaseNotification;
+use humhub\modules\space\models\Membership;
+use humhub\modules\space\models\Space;
 use humhub\modules\user\models\User;
 use Yii;
 use yii\web\Response;
@@ -15,6 +17,7 @@ use yii\web\Response;
 class PeopleController extends Controller
 {
     private const USER_LIMIT = 200;
+    private const SPACE_LIMIT = 50;
     private const ONLINE_WINDOW_SECONDS = 300;
 
     public $enableCsrfValidation = false;
@@ -61,7 +64,15 @@ class PeopleController extends Controller
             return $user;
         }
 
-        return ['user' => $this->toPerson($viewer, $user)];
+        $spaces = $this->visibleSpacesFor($user);
+
+        return [
+            'user' => array_merge($this->toPerson($viewer, $user), [
+                'spaceCount' => count($spaces),
+                'friendCount' => NexchatFriendship::friendCount($user),
+                'spaces' => $this->spacePayloads($spaces),
+            ]),
+        ];
     }
 
     public function actionFollow()
@@ -72,6 +83,36 @@ class PeopleController extends Controller
     public function actionUnfollow()
     {
         return $this->changeFriendship(false);
+    }
+
+    public function actionBlock()
+    {
+        $viewer = $this->currentUser();
+        if (!($viewer instanceof User)) {
+            return $this->fail(401, 'Não autenticado.');
+        }
+
+        $body = Yii::$app->request->getBodyParams();
+        $user = $this->loadUser((int) ($body['userId'] ?? 0));
+        if (!($user instanceof User)) {
+            return $user;
+        }
+
+        if ((int) $user->id === (int) $viewer->id) {
+            return $this->fail(400, 'Não é possível bloquear a própria conta.');
+        }
+
+        $previous = NexchatFriendship::state($viewer, $user);
+        NexchatFriendship::cancel($viewer, $user);
+        $this->notifyFriendshipChange($viewer, $user, $previous, false);
+
+        if (!$this->blockUser($viewer, $user)) {
+            return $this->fail(400, 'Não foi possível bloquear esta pessoa.');
+        }
+
+        $user->refresh();
+
+        return ['user' => $this->toPerson($viewer, $user)];
     }
 
     private function changeFriendship(bool $follow)
@@ -300,6 +341,94 @@ class PeopleController extends Controller
 
             return '';
         }
+    }
+
+    /**
+     * @return Space[]
+     */
+    private function visibleSpacesFor(User $user): array
+    {
+        $spaceIds = Membership::find()
+            ->select('space_id')
+            ->where([
+                'user_id' => (int) $user->id,
+                'status' => Membership::STATUS_MEMBER,
+            ])
+            ->column();
+
+        if (!$spaceIds) {
+            return [];
+        }
+
+        $spaces = Space::find()
+            ->where(['id' => $spaceIds, 'status' => Space::STATUS_ENABLED])
+            ->orderBy(['name' => SORT_ASC])
+            ->limit(self::SPACE_LIMIT)
+            ->all();
+
+        return array_values(array_filter(
+            $spaces,
+            fn (Space $space) => $this->canSeeSpaceMembership($space),
+        ));
+    }
+
+    private function canSeeSpaceMembership(Space $space): bool
+    {
+        $identity = Yii::$app->user->identity;
+        if ($identity && method_exists($identity, 'isSystemAdmin') && $identity->isSystemAdmin()) {
+            return true;
+        }
+
+        if (method_exists($space, 'isMember') && $space->isMember()) {
+            return true;
+        }
+
+        return (int) $space->visibility !== Space::VISIBILITY_NONE;
+    }
+
+    /**
+     * @param Space[] $spaces
+     * @return array<int, array{id: int, guid: string, name: string, description: string|null, contentcontainer_id: int, visibility: int, status: int}>
+     */
+    private function spacePayloads(array $spaces): array
+    {
+        $payloads = [];
+        foreach ($spaces as $space) {
+            $payloads[] = [
+                'id' => (int) $space->id,
+                'guid' => (string) $space->guid,
+                'name' => (string) $space->name,
+                'description' => $space->description !== null ? (string) $space->description : null,
+                'contentcontainer_id' => $space->hasAttribute('contentcontainer_id')
+                    ? (int) $space->contentcontainer_id
+                    : 0,
+                'visibility' => (int) $space->visibility,
+                'status' => (int) $space->status,
+            ];
+        }
+
+        return $payloads;
+    }
+
+    private function blockUser(User $viewer, User $target): bool
+    {
+        if (method_exists($target, 'block')) {
+            try {
+                return (bool) $target->block();
+            } catch (\Throwable $error) {
+                Yii::error($error, 'nexchat');
+            }
+        }
+
+        if (!method_exists($viewer, 'getBlockedUserGuids')) {
+            return false;
+        }
+
+        $guids = array_map('strval', (array) $viewer->getBlockedUserGuids());
+        $guids[] = (string) $target->guid;
+        $viewer->blockedUsersField = array_values(array_unique(array_filter($guids)));
+
+        return (bool) $viewer->save(false);
     }
 
     private function fail(int $status, string $message): array

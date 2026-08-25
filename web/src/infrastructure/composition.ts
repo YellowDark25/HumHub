@@ -44,6 +44,7 @@ import { listVoiceRoom } from "@/application/usecases/listVoiceRoom";
 import { openDirectMessage } from "@/application/usecases/openDirectMessage";
 import { removeChannelMember } from "@/application/usecases/removeChannelMember";
 import { updateChannel } from "@/application/usecases/updateChannel";
+import { blockPerson } from "@/application/usecases/blockPerson";
 import { followPerson } from "@/application/usecases/followPerson";
 import { listPeople } from "@/application/usecases/listPeople";
 import { unfollowPerson } from "@/application/usecases/unfollowPerson";
@@ -363,6 +364,8 @@ export const app = {
     followPerson(auth, token, userId),
   unfollowPerson: (token: string, userId: number) =>
     unfollowPerson(auth, token, userId),
+  blockPerson: (token: string, userId: number) =>
+    blockPerson(auth, token, userId),
   listNotifications: (token: string, query?: NotificationListQuery) =>
     listNotifications(notifications, token, query),
   getNotificationPreferences: (token: string) =>

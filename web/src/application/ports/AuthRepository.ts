@@ -16,6 +16,7 @@ export interface AuthRepository {
   listPeople(token: string): Promise<Person[]>;
   followPerson(token: string, userId: number): Promise<Person>;
   unfollowPerson(token: string, userId: number): Promise<Person>;
+  blockPerson(token: string, userId: number): Promise<Person>;
   getAccount(token: string): Promise<Account>;
   updateUser(
     token: string,

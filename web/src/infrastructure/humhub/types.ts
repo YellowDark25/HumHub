@@ -152,6 +152,9 @@ export type HumhubDirectoryUser = {
   lastSeenAt?: string | null;
   isSelf?: boolean;
   friendship?: string;
+  spaceCount?: number;
+  friendCount?: number;
+  spaces?: HumhubSpace[];
 };
 
 export type HumhubDirectoryUsers = {

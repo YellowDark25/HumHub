@@ -1,5 +1,6 @@
 import { chatNotificationSpaceId } from "@/shared/chatNotification";
-import { ApplicationError } from "../errors";
+import { ApplicationError, isUnauthorized } from "../errors";
+import type { Person } from "@/domain/Person";
 import type { AuthRepository } from "../ports/AuthRepository";
 import type { ChatRepository } from "../ports/ChatRepository";
 import type { SpaceRepository } from "../ports/SpaceRepository";
@@ -48,11 +49,12 @@ export async function getConversationPage(
           ?.userId ?? 0
       : 0;
 
-  const [notificationPreference, mutualServers] = await Promise.all([
+  const [notificationPreference, mutualServers, peer] = await Promise.all([
     loadServerNotificationPreference(chat, token, spaceId),
     peerUserId > 0
       ? listMutualServers(chat, token, peerUserId)
       : Promise.resolve([]),
+    loadPeerPerson(auth, token, peerUserId),
   ]);
 
   return {
@@ -61,6 +63,27 @@ export async function getConversationPage(
     messages,
     notificationPreference,
     mutualServers,
+    peer,
     ...navigation,
   };
+}
+
+async function loadPeerPerson(
+  auth: AuthRepository,
+  token: string,
+  peerUserId: number,
+): Promise<Person | null> {
+  if (peerUserId <= 0) {
+    return null;
+  }
+
+  try {
+    return await auth.getPerson(token, peerUserId);
+  } catch (error) {
+    if (isUnauthorized(error)) {
+      throw error;
+    }
+
+    return null;
+  }
 }

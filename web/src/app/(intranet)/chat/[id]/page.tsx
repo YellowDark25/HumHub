@@ -7,6 +7,7 @@ import {
   ChatDirectCallStage,
 } from "@/components/ChatDirectCall";
 import { ChatDmIntro } from "@/components/ChatDmIntro";
+import { ChatPeerProfilePreview } from "@/components/ChatPeerProfilePreview";
 import { ChatServerHeaderActions } from "@/components/ChatServerHeaderActions";
 import { ChatShell } from "@/components/ChatShell";
 import { ChatTopicIcon } from "@/components/ChatTopicIcon";
@@ -17,6 +18,7 @@ import type { ChatMutualServer } from "@/domain/ChatMutualServer";
 import type { ChatNotificationPreference } from "@/domain/ChatNotificationPreference";
 import type { ChatSidebarSection, ChatWorkspace } from "@/domain/ChatWorkspace";
 import type { Conversation } from "@/domain/Conversation";
+import type { Person } from "@/domain/Person";
 import type { Space } from "@/domain/Space";
 import type { User } from "@/domain/User";
 import { app } from "@/infrastructure/composition";
@@ -57,6 +59,7 @@ export default async function ChatViewPage({
   let messages: ChatMessage[] = [];
   let channels: Conversation[] = [];
   let mutualServers: ChatMutualServer[] = [];
+  let peerPerson: Person | null = null;
   let loadError = "";
 
   try {
@@ -75,6 +78,7 @@ export default async function ChatViewPage({
     messages = page.messages;
     channels = page.lists.channels;
     mutualServers = page.mutualServers ?? [];
+    peerPerson = page.peer ?? null;
   } catch (error) {
     await redirectIfUnauthorized(error);
     if (isNotFound(error)) {
@@ -104,11 +108,24 @@ export default async function ChatViewPage({
     .flatMap((section) => section.items)
     .find((item) => item.conversationId === conversationId);
   const headerActions = isDirect ? (
-    <ChatDirectCallButton
-      conversationId={conversationId}
-      conversationName={current.name}
-      workspaceId={currentWorkspace.id}
-    />
+    <div className="flex items-center gap-0.5">
+      <ChatDirectCallButton
+        conversationId={conversationId}
+        conversationName={current.name}
+        workspaceId={currentWorkspace.id}
+      />
+      {peer?.userId ? (
+        <ChatPeerProfilePreview
+          name={current.name}
+          username={peer.username}
+          imageUrl={peer.imageUrl}
+          userId={peer.userId}
+          person={peerPerson}
+          mutualServers={mutualServers}
+          align="right"
+        />
+      ) : null}
+    </div>
   ) : (
     <ChatServerHeaderActions
       conversationId={topicsConversationId}
@@ -168,6 +185,7 @@ export default async function ChatViewPage({
                 imageUrl={peer?.imageUrl ?? ""}
                 userId={peer?.userId ?? null}
                 mutualServers={mutualServers}
+                peer={peerPerson}
               />
             ) : null
           }

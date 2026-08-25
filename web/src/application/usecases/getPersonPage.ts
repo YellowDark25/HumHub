@@ -20,5 +20,6 @@ export async function getPersonPage(
   return {
     user,
     posts: posts.filter((post) => post.authorId === user.id),
+    spaces: user.spaces,
   };
 }

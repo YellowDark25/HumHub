@@ -12,10 +12,11 @@ export async function getProfilePage(
   spaces: SpaceRepository,
 ) {
   const sessionUser = await auth.getCurrentUser(token);
-  const [posts, spaceList, invites] = await Promise.all([
+  const [posts, spaceList, invites, friendCount] = await Promise.all([
     feed.listPosts(token),
     spaces.list(token),
     loadReceivedInvites(spaces, token),
+    loadFriendCount(auth, token, sessionUser.id),
   ]);
 
   return {
@@ -23,7 +24,28 @@ export async function getProfilePage(
     posts: postsByAuthor(posts, sessionUser.id),
     spaces: spaceList,
     invites,
+    friendCount,
   };
+}
+
+async function loadFriendCount(
+  auth: AuthRepository,
+  token: string,
+  userId: number,
+): Promise<number> {
+  try {
+    const person = await auth.getPerson(token, userId);
+    return person.friendCount;
+  } catch (error) {
+    if (isUnauthorized(error)) {
+      throw error;
+    }
+
+    console.error(
+      `Falha ao carregar a quantidade de amigos: ${error instanceof Error ? error.message : "erro desconhecido"}`,
+    );
+    return 0;
+  }
 }
 
 async function loadReceivedInvites(

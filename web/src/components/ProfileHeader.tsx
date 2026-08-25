@@ -7,12 +7,14 @@ import { ProfilePhoto } from "./ProfilePhoto";
 type ProfileHeaderProps = {
   user: User | Person;
   spaceCount: number;
+  friendCount: number;
   canEdit?: boolean;
 };
 
 export function ProfileHeader({
   user,
   spaceCount,
+  friendCount,
   canEdit = true,
 }: ProfileHeaderProps) {
   return (
@@ -36,12 +38,8 @@ export function ProfileHeader({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-6 pb-1">
-          <p className="text-center">
-            <span className="block text-base font-semibold text-zinc-900">
-              {spaceCount}
-            </span>
-            <span className="text-xs text-zinc-500">Espaços</span>
-          </p>
+          <ProfileStat value={spaceCount} label="Espaços" />
+          <ProfileStat value={friendCount} label="Amigos" />
           {canEdit ? (
             <Link
               href="/configuracoes"
@@ -55,6 +53,15 @@ export function ProfileHeader({
         </div>
       </div>
     </section>
+  );
+}
+
+function ProfileStat({ value, label }: { value: number; label: string }) {
+  return (
+    <p className="text-center">
+      <span className="block text-base font-semibold text-zinc-900">{value}</span>
+      <span className="text-xs text-zinc-500">{label}</span>
+    </p>
   );
 }
 

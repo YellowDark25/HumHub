@@ -1,7 +1,9 @@
 import { mutualServerCountLabel, type ChatMutualServer } from "@/domain/ChatMutualServer";
+import type { Person } from "@/domain/Person";
 import { chatWorkspaceHref } from "@/shared/chatWorkspace";
 import Link from "next/link";
 import { Avatar } from "./Avatar";
+import { ChatDmPeerActions } from "./ChatDmPeerActions";
 
 type ChatDmIntroProps = {
   name: string;
@@ -9,6 +11,7 @@ type ChatDmIntroProps = {
   imageUrl: string;
   userId: number | null;
   mutualServers?: ChatMutualServer[];
+  peer?: Person | null;
 };
 
 export function ChatDmIntro({
@@ -17,6 +20,7 @@ export function ChatDmIntro({
   imageUrl,
   userId,
   mutualServers = [],
+  peer = null,
 }: ChatDmIntroProps) {
   const servers = mutualServers ?? [];
   const mutualLabel = mutualServerCountLabel(servers.length);
@@ -64,14 +68,7 @@ export function ChatDmIntro({
           </span>
         ) : null}
         {mutualLabel && userId ? <span aria-hidden="true">·</span> : null}
-        {userId ? (
-          <Link
-            href={`/pessoas/${userId}`}
-            className="inline-flex h-8 items-center rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-          >
-            Ver perfil
-          </Link>
-        ) : null}
+        {peer ? <ChatDmPeerActions person={peer} /> : null}
       </div>
     </div>
   );

@@ -74,6 +74,15 @@ class NexchatFriendship
         return $ids;
     }
 
+    public static function friendCount(User $user): int
+    {
+        if (!self::isAvailable()) {
+            return 0;
+        }
+
+        return (int) Friendship::getFriendsQuery($user)->count();
+    }
+
     public static function add(User $user, User $friend): bool
     {
         if (!self::isAvailable()) {

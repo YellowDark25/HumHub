@@ -116,10 +116,14 @@ export class HumhubAuthRepository implements AuthRepository {
     return this.changeFriendship(token, userId, "unfollow");
   }
 
+  async blockPerson(token: string, userId: number): Promise<Person> {
+    return this.changeFriendship(token, userId, "block");
+  }
+
   private async changeFriendship(
     token: string,
     userId: number,
-    action: "follow" | "unfollow",
+    action: "follow" | "unfollow" | "block",
   ): Promise<Person> {
     const payload = await humhubRequest<HumhubDirectoryPerson>({
       path: `/nexchat/people/${action}`,

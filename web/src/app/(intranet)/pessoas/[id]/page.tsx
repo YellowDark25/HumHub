@@ -5,6 +5,7 @@ import { ProfileHeader } from "@/components/ProfileHeader";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
 import type { Person } from "@/domain/Person";
 import type { Post } from "@/domain/Post";
+import type { Space } from "@/domain/Space";
 import { app } from "@/infrastructure/composition";
 import {
   redirectIfUnauthorized,
@@ -22,6 +23,7 @@ export default async function PessoaPage({
 
   let user: Person | null = null;
   let posts: Post[] = [];
+  let spaces: Space[] = [];
   let canEdit = false;
   let loadError = "";
 
@@ -32,6 +34,7 @@ export default async function PessoaPage({
     ]);
     user = page.user;
     posts = page.posts;
+    spaces = page.spaces;
     canEdit = current.id === page.user.id;
   } catch (error) {
     await redirectIfUnauthorized(error);
@@ -53,7 +56,8 @@ export default async function PessoaPage({
     <div className="flex flex-col gap-6">
       <ProfileHeader
         user={user}
-        spaceCount={0}
+        spaceCount={user.spaceCount}
+        friendCount={user.friendCount}
         canEdit={canEdit}
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
@@ -67,7 +71,7 @@ export default async function PessoaPage({
             posts.map((post) => <FeedCard key={post.id} post={post} />)
           )}
         </main>
-        <ProfileSidebar tags={user.tags} spaces={[]} />
+        <ProfileSidebar tags={user.tags} spaces={spaces} />
       </div>
     </div>
   );

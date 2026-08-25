@@ -329,6 +329,10 @@ function readTags(tags: string[] | undefined): string[] {
   return tags.map((tag) => tag.trim()).filter(Boolean);
 }
 
+function readCount(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
 function resolvePublicPageUrl(pageUrl?: string): string {
   const trimmed = pageUrl?.trim() ?? "";
   if (!trimmed) {
@@ -753,6 +757,9 @@ export function mapDirectoryUser(dto: HumhubDirectoryUser): Person | null {
       .filter((group) => group.id > 0 && group.name?.trim())
       .map((group) => ({ id: group.id, name: group.name.trim() })),
     lastSeenAt: dto.lastSeenAt?.trim() || null,
+    spaces: (dto.spaces ?? []).filter((space) => space.id > 0).map(mapSpace),
+    spaceCount: readCount(dto.spaceCount, dto.spaces?.length ?? 0),
+    friendCount: readCount(dto.friendCount, 0),
   };
 }
 

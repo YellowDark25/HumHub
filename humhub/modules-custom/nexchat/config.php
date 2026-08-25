@@ -62,6 +62,7 @@ return [
         'nexchat/people/view' => 'nexchat/people/view',
         'nexchat/people/follow' => 'nexchat/people/follow',
         'nexchat/people/unfollow' => 'nexchat/people/unfollow',
+        'nexchat/people/block' => 'nexchat/people/block',
         'nexchat/notification-live' => 'nexchat/notification-live/index',
         'nexchat/notification-settings' => 'nexchat/notification-settings/index',
         'nexchat/notification-settings/save' => 'nexchat/notification-settings/save',
