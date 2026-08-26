@@ -67,7 +67,7 @@ export async function humhubRequest<T>({
   }
 
   if (!payload || typeof payload !== "object") {
-    if (isFormData(body) && response.ok) {
+    if (response.ok && (isFormData(body) || method === "DELETE")) {
       return {} as T;
     }
 

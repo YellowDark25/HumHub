@@ -9,23 +9,43 @@ import {
 } from "@/shared/notificationLive";
 import { readApiError } from "@/shared/readApiError";
 
+/**
+ * Mantém o cliente inscrito no stream de notificações em tempo real.
+ * Abre um EventSource em `/api/notifications/live/stream`; se o SSE falhar,
+ * faz fallback para polling de GET `/api/notifications/unseen`. O callback
+ * mais recente é gravado num efeito (não no render) para o React Compiler
+ * aceitar o ref e o efeito de conexão poder ficar com deps vazias.
+ * @param onEvent recebe cada evento (contagem e, se houver, a notificação).
+ */
 export function useNotificationLive(
   onEvent: (event: NotificationLiveEvent) => void,
 ) {
   const onEventRef = useRef(onEvent);
-  onEventRef.current = onEvent;
+
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  });
 
   useEffect(() => {
     let stopped = false;
     let source: EventSource | null = null;
     let pollTimer = 0;
 
+    /**
+     * Encaminha o evento ao callback atual se o hook ainda estiver montado.
+     * Lê `onEventRef` (não o `onEvent` do render) para não reabrir o stream.
+     */
     function emit(event: NotificationLiveEvent) {
       if (!stopped) {
         onEventRef.current(event);
       }
     }
 
+    /**
+     * Inicia o polling da contagem não lida quando o SSE não está disponível.
+     * Agenda um intervalo que, com a aba visível, chama `loadUnseenCount` e
+     * emite só a contagem; não cria um segundo timer se já houver um.
+     */
     function startPolling() {
       if (pollTimer || stopped) {
         return;
@@ -42,6 +62,11 @@ export function useNotificationLive(
       }, NOTIFICATION_LIVE_POLL_MS);
     }
 
+    /**
+     * Abre o EventSource de notificações e cai para polling se ele falhar.
+     * Sem `EventSource`, vai direto ao polling; em erro de rede, fecha o
+     * stream e chama `startPolling`.
+     */
     function connectMercure() {
       if (typeof EventSource === "undefined") {
         startPolling();
@@ -78,6 +103,12 @@ export function useNotificationLive(
   }, []);
 }
 
+/**
+ * Conta notificações não lidas do usuário autenticado.
+ * Chama GET `/api/notifications/unseen`; se a rede ou a API falhar, registra
+ * o erro e devolve null.
+ * @returns quantidade não vista, ou null quando não foi possível obter o valor.
+ */
 async function loadUnseenCount() {
   try {
     const response = await fetch("/api/notifications/unseen");

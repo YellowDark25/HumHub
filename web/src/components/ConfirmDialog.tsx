@@ -15,6 +15,11 @@ type ConfirmDialogProps = {
   onCancel: () => void;
 };
 
+/**
+ * Modal de confirmação (excluir, sair, etc.) renderizado no `document.body`.
+ * Trava o scroll, foca o diálogo e fecha com Escape ou clique no fundo,
+ * salvo quando `pending` está ativo.
+ */
 export function ConfirmDialog({
   open,
   title,
@@ -28,7 +33,10 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCancelRef = useRef(onCancel);
-  onCancelRef.current = onCancel;
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  });
 
   useEffect(() => {
     if (!open) {

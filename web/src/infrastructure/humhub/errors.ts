@@ -54,7 +54,7 @@ function collectStrings(value: unknown, messages: string[]) {
 
 function translateHumhubMessage(message: string): string {
   if (message === "Validation failed") {
-    return "Os dados não passaram na validação. Confira o nome de usuário (sem espaços), o e-mail e a senha.";
+    return "Os dados não passaram na validação.";
   }
 
   if (/username contains invalid characters/i.test(message)) {

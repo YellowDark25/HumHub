@@ -441,6 +441,7 @@ function mapPostAttachment(dto: HumhubFile): PostAttachment {
     name,
     mime,
     url: `/api/posts/files/${id}`,
+    sizeBytes: Number(dto.size ?? 0),
     isImage: mime.startsWith("image/"),
     isAudio: mime.startsWith("audio/"),
   };

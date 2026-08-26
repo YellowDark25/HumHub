@@ -3,6 +3,7 @@ export type PostAttachment = {
   name: string;
   url: string;
   mime: string;
+  sizeBytes: number;
   isImage: boolean;
   isAudio: boolean;
 };

@@ -1,15 +1,18 @@
 import type { Post } from "@/domain/Post";
-import type { SpaceMember } from "@/domain/SpaceMember";
-import type { User } from "@/domain/User";
 import { ApplicationError, errorMessage, isUnauthorized } from "../errors";
 import type { AuthRepository } from "../ports/AuthRepository";
 import type { FeedRepository } from "../ports/FeedRepository";
 import type { SpaceRepository } from "../ports/SpaceRepository";
+import { canManageSpace } from "./canManageSpace";
 import { loadActivities } from "./loadActivities";
+import { spaceFilesFromPosts } from "./listSpaceFiles";
 import { loadSpaceMembers } from "./loadSpaceMembers";
 
-const SPACE_MANAGER_ROLES = new Set(["admin", "owner"]);
-
+/**
+ * Monta a página de um espaço (stream, arquivos, membros e atividades).
+ * Carrega espaço, publicações, membros, usuário e atividades em paralelo;
+ * deriva arquivos e se o usuário pode gerir o espaço.
+ */
 export async function getSpacePage(
   token: string,
   spaceId: number,
@@ -30,16 +33,23 @@ export async function getSpacePage(
       loadActivities(feed, token, spaceId),
     ]);
 
+  const canManage = canManageSpace(user, members);
+
   return {
     space,
     membership,
     posts,
+    files: spaceFilesFromPosts(posts, { userId: user.id, canManage }),
     members,
     activities,
-    canManage: canManageSpace(user, members),
+    canManage,
   };
 }
 
+/**
+ * Busca as publicações do espaço sem derrubar a página se o feed falhar.
+ * Propaga só 401; nos demais erros registra e devolve lista vazia.
+ */
 async function loadSpacePosts(
   feed: FeedRepository,
   token: string,
@@ -57,13 +67,4 @@ async function loadSpacePosts(
     );
     return [];
   }
-}
-
-function canManageSpace(user: User, members: SpaceMember[]) {
-  if (user.isAdmin) {
-    return true;
-  }
-
-  const membership = members.find((member) => member.user.id === user.id);
-  return SPACE_MANAGER_ROLES.has(membership?.role ?? "");
 }

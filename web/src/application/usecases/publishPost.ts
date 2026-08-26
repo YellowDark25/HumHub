@@ -12,10 +12,7 @@ export function publishPost(
   message: string,
   files: File[] = [],
 ) {
-  const trimmed = message.trim();
-  if (!trimmed && files.length === 0) {
-    throw new ApplicationError("A publicação não pode ficar vazia.", 400);
-  }
+  const trimmed = readPostMessage(message, files);
 
   if (!spaceId) {
     throw new ApplicationError("Selecione um espaço.", 400);
@@ -37,4 +34,17 @@ export function publishPost(
   }
 
   return feed.publishPost(token, spaceId, trimmed, files);
+}
+
+function readPostMessage(message: string, files: File[]) {
+  const trimmed = message.trim();
+  if (trimmed) {
+    return trimmed;
+  }
+
+  if (files.length === 0) {
+    throw new ApplicationError("A publicação não pode ficar vazia.", 400);
+  }
+
+  return files.map((file) => file.name).join(", ");
 }

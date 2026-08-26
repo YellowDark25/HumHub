@@ -1,18 +1,16 @@
-import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { compressUploadFiles } from "@/shared/compressUpload";
 import { POST_FILE_ACCEPT } from "@/shared/postComposer";
 import { readApiError } from "@/shared/readApiError";
 
-export function usePublishPost(spaceId: number) {
+export function useUploadSpaceFiles(spaceId: number) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [message, setMessage] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [description, setDescription] = useState("");
   const [error, setError] = useState("");
   const [isSending, setIsSending] = useState(false);
-
-  const canPublish = message.trim() !== "" || files.length > 0;
 
   function openFilePicker() {
     fileInputRef.current?.click();
@@ -23,6 +21,7 @@ export function usePublishPost(spaceId: number) {
       return;
     }
 
+    setError("");
     setFiles((current) => [...current, ...Array.from(selected)]);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -33,8 +32,14 @@ export function usePublishPost(spaceId: number) {
     setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
   }
 
-  async function publish() {
-    if (!canPublish || !spaceId) {
+  function cancelDraft() {
+    setFiles([]);
+    setDescription("");
+    setError("");
+  }
+
+  async function upload() {
+    if (files.length === 0 || isSending) {
       return;
     }
 
@@ -42,45 +47,43 @@ export function usePublishPost(spaceId: number) {
     setIsSending(true);
 
     const form = new FormData();
-    form.append("spaceId", String(spaceId));
-    form.append("message", message);
+    form.append("description", description);
     for (const file of await compressUploadFiles(files)) {
       form.append("files", file);
     }
 
     try {
-      const response = await fetch("/api/posts", {
+      const response = await fetch(`/api/spaces/${spaceId}/files`, {
         method: "POST",
         body: form,
       });
 
       if (!response.ok) {
-        setError(await readApiError(response, "Não foi possível publicar."));
+        setError(await readApiError(response, "Não foi possível enviar os arquivos."));
         return;
       }
 
-      setMessage("");
-      setFiles([]);
+      cancelDraft();
       router.refresh();
     } catch {
-      setError("Falha de rede ao publicar.");
+      setError("Falha de rede ao enviar os arquivos.");
     } finally {
       setIsSending(false);
     }
   }
 
   return {
-    message,
-    setMessage,
     files,
+    description,
+    setDescription,
     error,
     isSending,
-    canPublish,
     fileInputRef,
     fileAccept: POST_FILE_ACCEPT,
     openFilePicker,
     addFiles,
     removeFile,
-    publish,
+    cancelDraft,
+    upload,
   };
 }

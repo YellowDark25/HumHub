@@ -4,11 +4,13 @@ import { FeedCard } from "@/components/FeedCard";
 import { LatestActivities } from "@/components/LatestActivities";
 import { LoadError } from "@/components/LoadError";
 import { PostComposer } from "@/components/PostComposer";
+import { SpaceFiles } from "@/components/SpaceFiles";
 import { SpaceHeader } from "@/components/SpaceHeader";
 import { SpaceMenu } from "@/components/SpaceMenu";
 import type { Activity } from "@/domain/Activity";
 import type { Post } from "@/domain/Post";
 import type { Space } from "@/domain/Space";
+import type { SpaceFile } from "@/domain/SpaceFile";
 import type { SpaceMember } from "@/domain/SpaceMember";
 import type { SpaceMembershipSettings } from "@/domain/SpaceMembershipSettings";
 import { app } from "@/infrastructure/composition";
@@ -24,10 +26,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 const EMPTY_SECTION_COPY: Record<
-  Exclude<SpaceSectionId, "stream" | "membros">,
+  Exclude<SpaceSectionId, "stream" | "membros" | "arquivos">,
   string
 > = {
-  arquivos: "Nenhum arquivo neste espaço.",
   tarefas: "Nenhuma tarefa neste espaço.",
 };
 
@@ -51,6 +52,7 @@ export default async function SpaceFeedPage({
 
   let space: Space | null = null;
   let posts: Post[] = [];
+  let files: SpaceFile[] = [];
   let members: SpaceMember[] = [];
   let activities: Activity[] = [];
   let canManage = false;
@@ -61,6 +63,7 @@ export default async function SpaceFeedPage({
     const page = await app.getSpacePage(token, spaceId);
     space = page.space;
     posts = page.posts;
+    files = page.files;
     members = page.members;
     activities = page.activities;
     canManage = page.canManage;
@@ -99,6 +102,7 @@ export default async function SpaceFeedPage({
             section={section}
             space={space}
             posts={posts}
+            files={files}
             members={members}
             loadError={loadError}
           />
@@ -113,15 +117,27 @@ function SpaceSection({
   section,
   space,
   posts,
+  files,
   members,
   loadError,
 }: {
   section: SpaceSectionId;
   space: Space;
   posts: Post[];
+  files: SpaceFile[];
   members: SpaceMember[];
   loadError: string;
 }) {
+  if (section === "arquivos") {
+    return (
+      <SpaceFiles
+        spaceId={space.id}
+        files={files}
+        canUpload={space.isMember}
+      />
+    );
+  }
+
   if (section === "membros") {
     return (
       <section className="rounded-2xl border border-zinc-200 bg-white p-4">

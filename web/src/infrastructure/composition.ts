@@ -23,6 +23,8 @@ import { getNotificationPreferences } from "@/application/usecases/getNotificati
 import { getPersonPage } from "@/application/usecases/getPersonPage";
 import { getProfilePage } from "@/application/usecases/getProfilePage";
 import { getSpacePage } from "@/application/usecases/getSpacePage";
+import { deleteSpaceFile } from "@/application/usecases/deleteSpaceFile";
+import { uploadSpaceFiles } from "@/application/usecases/uploadSpaceFiles";
 import { listComments } from "@/application/usecases/listComments";
 import { listConversations } from "@/application/usecases/listConversations";
 import { listFeed } from "@/application/usecases/listFeed";
@@ -344,6 +346,14 @@ export const app = {
     files: File[] = [],
   ) => publishPost(feed, token, spaceId, message, files),
   getPostFile: (token: string, fileId: number) => getPostFile(feed, token, fileId),
+  uploadSpaceFiles: (
+    token: string,
+    spaceId: number,
+    files: File[],
+    description = "",
+  ) => uploadSpaceFiles(feed, token, spaceId, files, description),
+  deleteSpaceFile: (token: string, spaceId: number, fileId: number) =>
+    deleteSpaceFile(feed, spaces, auth, token, spaceId, fileId),
   listComments: (token: string, postId: number) =>
     listComments(feed, token, postId),
   addComment: (token: string, postId: number, message: string) =>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@/domain/ChatMessage";
 import { CHAT_FILE_ACCEPT, type ComposerPanel } from "@/shared/chatComposer";
+import { compressUploadFiles } from "@/shared/compressUpload";
 import { readApiError } from "@/shared/readApiError";
 import { ChatComposerAttachments } from "./ChatComposerAttachments";
 import { ChatComposerPanels } from "./ChatComposerPanels";
@@ -303,7 +304,7 @@ async function postMessage(
   if (replyToId) {
     form.append("replyToId", String(replyToId));
   }
-  for (const file of files) {
+  for (const file of await compressUploadFiles(files)) {
     form.append("files", file);
   }
 

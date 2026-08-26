@@ -43,7 +43,7 @@ export class HumhubFeedRepository implements FeedRepository {
       path: `/post/container/${space.contentcontainer_id}`,
       token,
       method: "POST",
-      body: { data: { message: message || " " } },
+      body: { data: { message } },
     });
 
     if (files.length > 0) {
@@ -52,6 +52,18 @@ export class HumhubFeedRepository implements FeedRepository {
     }
 
     return mapPost(dto, space.id, space.name);
+  }
+
+  /**
+   * Apaga uma publicação no HumHub REST.
+   * Chama DELETE `/post/{id}`; resposta vazia conta como sucesso.
+   */
+  async deletePost(token: string, postId: number): Promise<void> {
+    await humhubRequest<unknown>({
+      path: `/post/${postId}`,
+      token,
+      method: "DELETE",
+    });
   }
 
   async getPostFile(token: string, fileId: number): Promise<MediaFile> {
