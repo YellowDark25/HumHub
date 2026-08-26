@@ -1,4 +1,5 @@
 import type { ChannelSettings } from "@/domain/ChannelSettings";
+import type { ChatMember } from "@/domain/ChatMember";
 import type { ChatContact } from "@/domain/ChatContact";
 import type { ChatMutualServer } from "@/domain/ChatMutualServer";
 import type { ChatFile } from "@/domain/ChatFile";
@@ -83,6 +84,7 @@ export interface ChatRepository {
     token: string,
     conversationId: number,
   ): Promise<ChannelSettings>;
+  listChannelMembers(token: string, conversationId: number): Promise<ChatMember[]>;
   updateChannel(
     token: string,
     conversationId: number,

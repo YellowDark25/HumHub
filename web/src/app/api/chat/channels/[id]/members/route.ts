@@ -3,6 +3,26 @@ import { app } from "@/infrastructure/composition";
 import { jsonError } from "@/infrastructure/http/jsonError";
 import { requireAuthToken } from "@/infrastructure/http/requireAuth";
 
+/**
+ * Devolve o roster do canal para a lista lateral.
+ * Autentica, chama listChannelMembers e responde `{ members }`.
+ */
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const token = await requireAuthToken();
+    const members = await app.listChannelMembers(
+      token,
+      Number((await params).id),
+    );
+    return NextResponse.json({ members });
+  } catch (error) {
+    return jsonError(error, "Não foi possível carregar os membros.");
+  }
+}
+
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> },

@@ -7,6 +7,7 @@ import type {
   UpdateChannelInput,
 } from "@/application/ports/ChatRepository";
 import type { ChannelSettings } from "@/domain/ChannelSettings";
+import type { ChatMember } from "@/domain/ChatMember";
 import type { ChatFile } from "@/domain/ChatFile";
 import type { ChatMutualServer } from "@/domain/ChatMutualServer";
 import type {
@@ -29,6 +30,7 @@ import { nexchatFileRequest, nexchatRequest } from "./client";
 import {
   mapChannelSettings,
   mapChatContact,
+  mapChatMember,
   mapChatLiveSubscription,
   mapChatMutualServer,
   mapChatMessage,
@@ -39,6 +41,7 @@ import {
 } from "./mappers";
 import type {
   NexchatBootstrap,
+  NexchatChannelMembersResult,
   NexchatChannelSettingsResult,
   NexchatCreateChannelResult,
   NexchatMutualServersResult,
@@ -385,6 +388,32 @@ export class NexchatChatRepository implements ChatRepository {
       pendingInvites: result.pendingInvites,
       invitableUsers: result.invitableUsers,
     });
+  }
+
+  /**
+   * Busca o roster do canal no Nexchat.
+   * Chama GET channel-members, mapeia cada pessoa e descarta id inválido.
+   */
+  async listChannelMembers(
+    token: string,
+    conversationId: number,
+  ): Promise<ChatMember[]> {
+    const result = await nexchatRequest<NexchatChannelMembersResult>({
+      path: "channel-members",
+      token,
+      query: { id: conversationId },
+    });
+
+    if (!result.success) {
+      throw new ApplicationError(
+        result.error || "Não foi possível carregar os membros.",
+        400,
+      );
+    }
+
+    return (result.members ?? [])
+      .map(mapChatMember)
+      .filter((member) => member.userId > 0);
   }
 
   async updateChannel(

@@ -1,3 +1,6 @@
+export const HUMHUB_TRANSIENT_RETRY_ATTEMPTS = 3;
+export const HUMHUB_TRANSIENT_RETRY_DELAY_MS = 250;
+
 export const POST_PAGE_LIMIT = 30;
 export const SPACE_PAGE_LIMIT = 50;
 export const SPACE_VISIBILITY_NONE = 0;

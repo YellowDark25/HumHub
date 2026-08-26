@@ -209,6 +209,7 @@ export default async function ChatViewPage({
           }
           canManage={current.canManage}
           canCreateTopic={!isDirect}
+          membersConversationId={isDirect ? null : topicsConversationId}
           initialMessages={messages}
         />
       )}

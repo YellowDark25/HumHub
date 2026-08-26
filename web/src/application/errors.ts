@@ -20,6 +20,18 @@ export function isNotFound(error: unknown): boolean {
   return errorStatus(error) === 404;
 }
 
+/**
+ * Diz se o erro é uma falha temporária do servidor (5xx).
+ * Lê o status do ApplicationError; 500/502/503/504 entram, 401/403/404 não.
+ * @returns true quando vale repetir a chamada ao HumHub.
+ */
+export function isTransientServerError(error: unknown): boolean {
+  const status = errorStatus(error);
+  return (
+    status === 500 || status === 502 || status === 503 || status === 504
+  );
+}
+
 function errorStatus(error: unknown): number | null {
   if (typeof error !== "object" || error === null || !("status" in error)) {
     return null;

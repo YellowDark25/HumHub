@@ -7,6 +7,8 @@ import { chatWorkspaceHref } from "@/shared/chatWorkspace";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChatInviteFriendsModal } from "./ChatInviteFriendsModal";
+import { ChatMemberPanel } from "./ChatMemberPanel";
+import { ChatMembersButton } from "./ChatMembersButton";
 import { ChatServerHeaderActions } from "./ChatServerHeaderActions";
 import { ChatVoiceStage } from "./ChatVoiceStage";
 import { useVoiceCall } from "./useVoiceCall";
@@ -20,6 +22,10 @@ type ChatVoiceRoomProps = {
   notificationPreference?: ChatNotificationPreference | null;
 };
 
+/**
+ * Sala de voz do canal, com o mesmo ícone de membros do chat de texto.
+ * Entra na chamada ao montar e abre o roster à direita quando o ícone está ativo.
+ */
 export function ChatVoiceRoom({
   conversationId,
   channelName,
@@ -31,6 +37,7 @@ export function ChatVoiceRoom({
   const router = useRouter();
   const call = useVoiceCall();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
   const homeHref = chatWorkspaceHref(workspaceId);
 
   useEffect(() => {
@@ -43,6 +50,7 @@ export function ChatVoiceRoom({
   }
 
   return (
+    <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
     <ChatVoiceStage
       conversationId={conversationId}
       currentUser={currentUser}
@@ -59,12 +67,18 @@ export function ChatVoiceRoom({
         </>
       }
       headerTrailing={
-        <ChatServerHeaderActions
-          conversationId={conversationId}
-          conversationName={channelName}
-          workspaceId={workspaceId}
-          notificationPreference={notificationPreference}
-        />
+        <div className="flex items-center gap-1">
+          <ChatServerHeaderActions
+            conversationId={conversationId}
+            conversationName={channelName}
+            workspaceId={workspaceId}
+            notificationPreference={notificationPreference}
+          />
+          <ChatMembersButton
+            open={membersOpen}
+            onToggle={() => setMembersOpen((current) => !current)}
+          />
+        </div>
       }
       onLeave={() => void leaveCall()}
       onInvite={() => setInviteOpen(true)}
@@ -82,6 +96,22 @@ export function ChatVoiceRoom({
         ) : null
       }
     />
+      {membersOpen ? (
+        <>
+          <button
+            type="button"
+            aria-label="Fechar membros"
+            onClick={() => setMembersOpen(false)}
+            className="absolute inset-0 z-10 bg-zinc-900/20 lg:hidden"
+          />
+          <ChatMemberPanel
+            conversationId={conversationId}
+            currentUserId={currentUser.id}
+            onClose={() => setMembersOpen(false)}
+          />
+        </>
+      ) : null}
+    </div>
   );
 }
 

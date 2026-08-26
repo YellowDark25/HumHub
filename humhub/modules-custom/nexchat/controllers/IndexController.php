@@ -438,6 +438,29 @@ class IndexController extends Controller
         ];
     }
 
+    /**
+     * Lista os membros do canal com presença, para a barra lateral da intranet.
+     * Qualquer participante pode chamar; tópico vira o canal pai e junta membership + espaço aberto.
+     */
+    public function actionChannelMembers()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $conversation = $this->topicRoot(
+            $this->findConversation((int) Yii::$app->request->get('id', 0)),
+        );
+        if ($conversation->type !== Conversation::TYPE_CHANNEL) {
+            Yii::$app->response->statusCode = 400;
+
+            return ['success' => false, 'error' => 'Apenas canais têm lista de membros.'];
+        }
+
+        return [
+            'success' => true,
+            'members' => $this->channelRoster($conversation),
+        ];
+    }
+
     public function actionUpdateChannel()
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
@@ -499,6 +522,52 @@ class IndexController extends Controller
         }
 
         return $rows;
+    }
+
+    /**
+     * Monta o roster do canal com foto, cargo e se a pessoa está online.
+     * Junta os usuários ativos, marca admins e ordena pelo nome.
+     * @return array<int, array{userId: int, name: string, username: string, guid: string, title: string, isAdmin: bool, isOnline: bool}>
+     */
+    private function channelRoster(Conversation $conversation): array
+    {
+        $adminIds = array_fill_keys($this->channelAdminIds($conversation), true);
+        $rows = [];
+        foreach ($this->activeChannelUsers($conversation) as $user) {
+            $rows[] = [
+                'userId' => (int) $user->id,
+                'name' => (string) ($user->displayName ?? $user->username ?? 'Usuário'),
+                'username' => (string) ($user->username ?? ''),
+                'guid' => (string) ($user->guid ?? ''),
+                'title' => trim((string) ($user->profile?->title ?? '')),
+                'isAdmin' => isset($adminIds[(int) $user->id]),
+                'isOnline' => $this->isUserOnline($user),
+            ];
+        }
+
+        usort($rows, static fn(array $left, array $right) => strcasecmp($left['name'], $right['name']));
+
+        return $rows;
+    }
+
+    /**
+     * Ids dos administradores ativos do canal.
+     * Lê nexchat_membership com role admin; usado só para marcar o cargo no roster.
+     * @return int[]
+     */
+    private function channelAdminIds(Conversation $conversation): array
+    {
+        return array_map(
+            'intval',
+            Membership::find()
+                ->select('user_id')
+                ->where([
+                    'conversation_id' => $conversation->id,
+                    'role' => Membership::ROLE_ADMIN,
+                    'status' => Membership::STATUS_ACTIVE,
+                ])
+                ->column(),
+        );
     }
 
     /**
@@ -725,7 +794,7 @@ class IndexController extends Controller
                 'conversation_id' => $conversation->id,
                 'status' => Membership::STATUS_ACTIVE,
             ])
-            ->with('user')
+            ->with(['user.profile'])
             ->all();
 
         foreach ($memberships as $membership) {
@@ -740,7 +809,7 @@ class IndexController extends Controller
                     'space_id' => (int) $conversation->space_id,
                     'status' => SpaceMembership::STATUS_MEMBER,
                 ])
-                ->with('user')
+                ->with(['user.profile'])
                 ->all();
 
             foreach ($spaceMemberships as $spaceMembership) {

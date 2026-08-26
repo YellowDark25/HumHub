@@ -12,6 +12,8 @@ import Link from "next/link";
 import { subscribeChatMessages } from "./chatMessageEvents";
 import { ChatComposer } from "./ChatComposer";
 import { ChatMessageHistory } from "./ChatMessageHistory";
+import { ChatMemberPanel } from "./ChatMemberPanel";
+import { ChatMembersButton } from "./ChatMembersButton";
 import { ChatPaneHeader } from "./ChatPaneHeader";
 import { ChatTypingIndicator } from "./ChatTypingIndicator";
 import { useChatLive } from "./useChatLive";
@@ -27,12 +29,17 @@ type ChatConversationPaneProps = {
   banner?: ReactNode;
   overlay?: ReactNode;
   intro?: ReactNode;
+  membersConversationId?: number | null;
   placeholder: string;
   canManage?: boolean;
   canCreateTopic?: boolean;
   initialMessages: ChatMessage[];
 };
 
+/**
+ * Monta o painel da conversa e a lista lateral de membros do canal.
+ * Atualiza as mensagens pelo live; o ícone de pessoas abre o roster agrupado por status.
+ */
 export function ChatConversationPane({
   conversationId,
   currentUserId,
@@ -43,6 +50,7 @@ export function ChatConversationPane({
   banner,
   overlay,
   intro,
+  membersConversationId = null,
   placeholder,
   canManage = false,
   canCreateTopic = false,
@@ -50,6 +58,7 @@ export function ChatConversationPane({
 }: ChatConversationPaneProps) {
   const [messages, setMessages] = useState(initialMessages);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [membersOpen, setMembersOpen] = useState(false);
   const typers = useChatTypers(currentUserId);
   const historyRef = useRef<HTMLDivElement>(null);
 
@@ -78,7 +87,8 @@ export function ChatConversationPane({
   }, [messages]);
 
   return (
-    <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
+    <section className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <ChatPaneHeader
         title={
           <>
@@ -93,7 +103,17 @@ export function ChatConversationPane({
             {title}
           </>
         }
-        trailing={trailing}
+        trailing={
+          <div className="flex items-center gap-0.5">
+            {trailing}
+            {membersConversationId ? (
+              <ChatMembersButton
+                open={membersOpen}
+                onToggle={() => setMembersOpen((current) => !current)}
+              />
+            ) : null}
+          </div>
+        }
       />
       {banner ? <div className="contents">{banner}</div> : null}
       {overlay ? <div className="contents">{overlay}</div> : null}
@@ -131,5 +151,21 @@ export function ChatConversationPane({
         }
       />
     </section>
+      {membersConversationId && membersOpen ? (
+        <>
+          <button
+            type="button"
+            aria-label="Fechar membros"
+            onClick={() => setMembersOpen(false)}
+            className="absolute inset-0 z-10 bg-zinc-900/20 lg:hidden"
+          />
+          <ChatMemberPanel
+            conversationId={membersConversationId}
+            currentUserId={currentUserId}
+            onClose={() => setMembersOpen(false)}
+          />
+        </>
+      ) : null}
+    </div>
   );
 }

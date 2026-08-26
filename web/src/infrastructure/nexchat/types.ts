@@ -29,7 +29,15 @@ export type NexchatChannelPerson = {
   name: string;
   username?: string;
   guid?: string;
+  title?: string;
   isAdmin?: boolean;
+  isOnline?: boolean;
+};
+
+export type NexchatChannelMembersResult = {
+  success: boolean;
+  error?: string;
+  members?: NexchatChannelPerson[];
 };
 
 export type NexchatChannelSettingsResult = {

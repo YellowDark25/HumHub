@@ -1,5 +1,6 @@
 import { chatCallPreview } from "@/domain/ChatCallEvent";
 import type { ChannelMember, ChannelSettings } from "@/domain/ChannelSettings";
+import type { ChatMember } from "@/domain/ChatMember";
 import type { ChatAttachment } from "@/domain/ChatAttachment";
 import type { ChatContact } from "@/domain/ChatContact";
 import type { ChatMutualServer } from "@/domain/ChatMutualServer";
@@ -80,6 +81,30 @@ function mapChannelMember(person: {
     userId: person.userId,
     name: person.name,
     isAdmin: Boolean(person.isAdmin),
+  };
+}
+
+/**
+ * Converte o DTO do roster Nexchat no membro da intranet.
+ * Copia nome, cargo e presença; monta a foto a partir do guid do HumHub.
+ */
+export function mapChatMember(person: {
+  userId: number;
+  name: string;
+  username?: string;
+  guid?: string;
+  title?: string;
+  isAdmin?: boolean;
+  isOnline?: boolean;
+}): ChatMember {
+  return {
+    userId: person.userId,
+    name: person.name,
+    username: person.username ?? "",
+    imageUrl: contactImageUrl(person.guid),
+    title: person.title?.trim() ?? "",
+    isAdmin: Boolean(person.isAdmin),
+    isOnline: Boolean(person.isOnline),
   };
 }
 

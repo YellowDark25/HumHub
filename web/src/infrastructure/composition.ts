@@ -32,6 +32,7 @@ import { listNotifications } from "@/application/usecases/listNotifications";
 import type { CreateChannelInput } from "@/application/ports/ChatRepository";
 import { createChannel } from "@/application/usecases/createChannel";
 import { createTopic } from "@/application/usecases/createTopic";
+import { listChannelMembers } from "@/application/usecases/listChannelMembers";
 import { listTopics } from "@/application/usecases/listTopics";
 import { deleteChannel } from "@/application/usecases/deleteChannel";
 import { getChannelSettings } from "@/application/usecases/getChannelSettings";
@@ -490,6 +491,8 @@ export const app = {
   ) => createTopic(chat, token, input),
   getChannelSettings: (token: string, conversationId: number) =>
     getChannelSettings(chat, token, conversationId),
+  listChannelMembers: (token: string, conversationId: number) =>
+    listChannelMembers(chat, token, conversationId),
   updateChannel: (
     token: string,
     conversationId: number,
