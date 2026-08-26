@@ -29,8 +29,8 @@ export async function listSpaceFiles(
 
 /**
  * Converte publicações do espaço na lista de arquivos da seção Arquivos.
- * Percorre anexos, descarta duplicatas e define `canDelete` com o ator
- * (gestor ou autor da publicação).
+ * Percorre anexos (lista vazia se o post não trouxer), descarta duplicatas
+ * e define `canDelete` com o ator (gestor ou autor da publicação).
  */
 export function spaceFilesFromPosts(
   posts: Post[],
@@ -38,14 +38,16 @@ export function spaceFilesFromPosts(
 ): SpaceFile[] {
   const files = new Map<number, SpaceFile>();
 
-  for (const post of posts) {
-    for (const attachment of post.attachments) {
+  for (const post of posts ?? []) {
+    for (const attachment of post.attachments ?? []) {
       if (files.has(attachment.id)) {
         continue;
       }
 
       files.set(attachment.id, {
         id: attachment.id,
+        folderId: 0,
+        origin: "feed",
         name: attachment.name,
         url: attachment.url,
         mime: attachment.mime,
@@ -70,12 +72,12 @@ export function spaceFilesFromPosts(
  * Se a mensagem for só os nomes dos anexos (fallback do envio), devolve vazio.
  */
 function fileDescription(message: string, attachments: Post["attachments"]) {
-  const description = message.trim();
+  const description = (message ?? "").trim();
   if (!description) {
     return "";
   }
 
-  const fallback = attachments.map((file) => file.name).join(", ");
+  const fallback = (attachments ?? []).map((file) => file.name).join(", ");
   return description === fallback ? "" : description;
 }
 

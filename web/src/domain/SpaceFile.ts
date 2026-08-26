@@ -1,10 +1,13 @@
 /**
- * Arquivo publicado num espaço (anexo de uma publicação).
- * Serve a lista de Arquivos: metadados para download e se o usuário
- * autenticado pode excluir (autor da publicação ou gestor do espaço).
+ * Arquivo do drive do espaço (ou anexo antigo vindo do feed).
+ * `origin` separa o que está na pasta do que ainda veio de uma publicação.
  */
+export type SpaceFileOrigin = "drive" | "feed";
+
 export type SpaceFile = {
   id: number;
+  folderId: number;
+  origin: SpaceFileOrigin;
   name: string;
   url: string;
   mime: string;

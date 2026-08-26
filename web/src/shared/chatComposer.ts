@@ -51,8 +51,12 @@ export function isAudioFile(file: File): boolean {
   return file.type.startsWith("audio/") || /\.(webm|ogg|mp3|wav|m4a)$/i.test(file.name);
 }
 
+/**
+ * Selo de extensão do arquivo para miniatura sem preview.
+ * Sem nome devolve ARQ; lê o sufixo depois do último ponto.
+ */
 export function fileExtensionLabel(name: string): string {
-  const match = name.match(/\.([a-z0-9]+)$/i);
+  const match = (name ?? "").match(/\.([a-z0-9]+)$/i);
   return match?.[1]?.toUpperCase() ?? "ARQ";
 }
 

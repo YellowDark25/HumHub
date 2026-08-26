@@ -1,4 +1,11 @@
 import { chatCallPreview } from "@/domain/ChatCallEvent";
+import type {
+  SpaceDrive,
+  SpaceDriveAncestor,
+  SpaceFolder,
+} from "@/domain/SpaceDrive";
+import { SPACE_DRIVE_ROOT_ID, asDriveList } from "@/domain/SpaceDrive";
+import type { SpaceFile } from "@/domain/SpaceFile";
 import type { ChannelMember, ChannelSettings } from "@/domain/ChannelSettings";
 import type { ChatMember } from "@/domain/ChatMember";
 import type { ChatAttachment } from "@/domain/ChatAttachment";
@@ -27,6 +34,9 @@ import type {
   NexchatReplyTo,
   NexchatServerNotificationPreference,
   NexchatSubscribeToken,
+  NexchatDriveFile,
+  NexchatDriveFolder,
+  NexchatDriveResult,
   NexchatTopic,
 } from "./types";
 
@@ -249,5 +259,63 @@ function readNotificationLevel(value?: string): ChatNotificationLevel {
 
 function isAudioName(name: string): boolean {
   return /\.(webm|ogg|mp3|wav|m4a)$/i.test(name);
+}
+
+/**
+ * Converte o DTO da pasta aberta no drive da intranet.
+ * Copia caminho, subpastas e arquivos; a URL de download aponta para a API Next.
+ */
+export function mapSpaceDrive(dto: NexchatDriveResult, spaceId: number): SpaceDrive {
+  return {
+    folderId: dto.folderId ?? SPACE_DRIVE_ROOT_ID,
+    folderName: dto.folderName?.trim() || "Arquivos",
+    ancestors: asDriveList(dto.ancestors).map(mapDriveAncestor),
+    folders: asDriveList(dto.folders).map(mapSpaceFolder),
+    files: asDriveList(dto.files).map((file) => mapSpaceDriveFile(file, spaceId)),
+  };
+}
+
+/**
+ * Converte uma pasta do Nexchat no type do domínio.
+ */
+export function mapSpaceFolder(dto: NexchatDriveFolder): SpaceFolder {
+  return {
+    id: dto.id,
+    name: dto.name,
+    parentId: dto.parentId ?? SPACE_DRIVE_ROOT_ID,
+    authorName: dto.authorName?.trim() || "Usuário",
+    createdAt: dto.createdAt ?? null,
+    canDelete: Boolean(dto.canDelete),
+  };
+}
+
+function mapDriveAncestor(dto: { id: number; name: string }): SpaceDriveAncestor {
+  return { id: dto.id, name: dto.name };
+}
+
+/**
+ * Converte um arquivo do drive no type da intranet.
+ * Monta a URL de download em /api/spaces/:id/files/:fileId.
+ */
+export function mapSpaceDriveFile(
+  dto: NexchatDriveFile,
+  spaceId: number,
+): SpaceFile {
+  const ownerSpaceId = dto.spaceId || spaceId;
+  return {
+    id: dto.id,
+    folderId: dto.folderId ?? SPACE_DRIVE_ROOT_ID,
+    origin: "drive",
+    name: dto.name?.trim() || "arquivo",
+    url: `/api/spaces/${ownerSpaceId}/files/${dto.id}?origem=drive`,
+    mime: dto.mime ?? "",
+    sizeBytes: dto.sizeBytes ?? 0,
+    isImage: Boolean(dto.isImage),
+    isAudio: Boolean(dto.isAudio),
+    description: dto.description?.trim() ?? "",
+    authorName: dto.authorName?.trim() || "Usuário",
+    publishedAt: dto.publishedAt ?? null,
+    canDelete: Boolean(dto.canDelete),
+  };
 }
 

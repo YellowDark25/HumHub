@@ -149,6 +149,43 @@ export type NexchatSendResult = {
   message?: NexchatMessage;
 };
 
+export type NexchatDriveFolder = {
+  id: number;
+  name: string;
+  parentId?: number;
+  authorName?: string;
+  createdAt?: string | null;
+  canDelete?: boolean;
+};
+
+export type NexchatDriveFile = {
+  id: number;
+  folderId?: number;
+  origin?: string;
+  name: string;
+  mime?: string;
+  sizeBytes?: number;
+  isImage?: boolean;
+  isAudio?: boolean;
+  description?: string;
+  authorName?: string;
+  publishedAt?: string | null;
+  canDelete?: boolean;
+  spaceId?: number;
+};
+
+export type NexchatDriveResult = {
+  success?: boolean;
+  message?: string;
+  error?: string;
+  folderId?: number;
+  folderName?: string;
+  ancestors?: { id: number; name: string }[];
+  folders?: NexchatDriveFolder[];
+  files?: NexchatDriveFile[];
+  folder?: NexchatDriveFolder;
+};
+
 export type NexchatServerNotificationPreference = {
   success: boolean;
   error?: string;

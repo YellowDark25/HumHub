@@ -2,6 +2,23 @@ const MINUTE_IN_MS = 60_000;
 const HOUR_IN_MS = 60 * MINUTE_IN_MS;
 const DAY_IN_MS = 24 * HOUR_IN_MS;
 
+/**
+ * Data de alteração no estilo do drive (dia, mês e ano).
+ * Sem valor válido devolve travessão, como pasta sem tamanho.
+ */
+export function formatDriveDate(value: string | null | undefined): string {
+  const date = parseDate(value);
+  if (!date) {
+    return "—";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
 export function formatDate(value: string | null | undefined): string {
   const date = parseDate(value);
   if (!date) {

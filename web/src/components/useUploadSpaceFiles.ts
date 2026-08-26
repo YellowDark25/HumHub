@@ -1,12 +1,21 @@
-import { useRef, useState } from "react";
+import { type RefObject, useState } from "react";
 import { useRouter } from "next/navigation";
 import { compressUploadFiles } from "@/shared/compressUpload";
 import { POST_FILE_ACCEPT } from "@/shared/postComposer";
 import { readApiError } from "@/shared/readApiError";
 
-export function useUploadSpaceFiles(spaceId: number) {
+/**
+ * Rascunho e envio de arquivos para a pasta atual do drive.
+ * Comprime, manda FormData com folderId e recarrega a pasta no sucesso.
+ * O input de arquivo fica no componente: o ref só é lido no clique e no change.
+ */
+export function useUploadSpaceFiles(
+  spaceId: number,
+  folderId = 0,
+  onUploaded: () => Promise<void> = async () => {},
+  fileInputRef: RefObject<HTMLInputElement | null>,
+) {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
@@ -48,6 +57,7 @@ export function useUploadSpaceFiles(spaceId: number) {
 
     const form = new FormData();
     form.append("description", description);
+    form.append("folderId", String(folderId));
     for (const file of await compressUploadFiles(files)) {
       form.append("files", file);
     }
@@ -64,6 +74,7 @@ export function useUploadSpaceFiles(spaceId: number) {
       }
 
       cancelDraft();
+      await onUploaded();
       router.refresh();
     } catch {
       setError("Falha de rede ao enviar os arquivos.");
@@ -73,12 +84,11 @@ export function useUploadSpaceFiles(spaceId: number) {
   }
 
   return {
-    files,
+    files: files ?? [],
     description,
     setDescription,
     error,
     isSending,
-    fileInputRef,
     fileAccept: POST_FILE_ACCEPT,
     openFilePicker,
     addFiles,

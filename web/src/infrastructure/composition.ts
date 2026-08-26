@@ -23,7 +23,12 @@ import { getNotificationPreferences } from "@/application/usecases/getNotificati
 import { getPersonPage } from "@/application/usecases/getPersonPage";
 import { getProfilePage } from "@/application/usecases/getProfilePage";
 import { getSpacePage } from "@/application/usecases/getSpacePage";
+import { createSpaceFolder } from "@/application/usecases/createSpaceFolder";
+import { deleteSpaceDriveFile } from "@/application/usecases/deleteSpaceDriveFile";
 import { deleteSpaceFile } from "@/application/usecases/deleteSpaceFile";
+import { deleteSpaceFolder } from "@/application/usecases/deleteSpaceFolder";
+import { getSpaceDrive } from "@/application/usecases/getSpaceDrive";
+import { getSpaceDriveFile } from "@/application/usecases/getSpaceDriveFile";
 import { uploadSpaceFiles } from "@/application/usecases/uploadSpaceFiles";
 import { listComments } from "@/application/usecases/listComments";
 import { listConversations } from "@/application/usecases/listConversations";
@@ -156,6 +161,7 @@ import { HumhubMediaRepository } from "./humhub/HumhubMediaRepository";
 import { HumhubNotificationRepository } from "./humhub/HumhubNotificationRepository";
 import { HumhubSpaceRepository } from "./humhub/HumhubSpaceRepository";
 import { NexchatChatRepository } from "./nexchat/NexchatChatRepository";
+import { NexchatSpaceDriveRepository } from "./nexchat/NexchatSpaceDriveRepository";
 import { LiveKitVoiceRoomRepository } from "./voice/LiveKitVoiceRoomRepository";
 
 const auth = new HumhubAuthRepository();
@@ -169,6 +175,7 @@ const feed = new HumhubFeedRepository();
 const spaces = new HumhubSpaceRepository();
 const notifications = new HumhubNotificationRepository();
 const chat = new NexchatChatRepository();
+const spaceDrive = new NexchatSpaceDriveRepository();
 const voiceRooms = new LiveKitVoiceRoomRepository();
 const media = new HumhubMediaRepository();
 
@@ -347,14 +354,29 @@ export const app = {
     files: File[] = [],
   ) => publishPost(feed, token, spaceId, message, files),
   getPostFile: (token: string, fileId: number) => getPostFile(feed, token, fileId),
+  getSpaceDrive: (token: string, spaceId: number, folderId = 0) =>
+    getSpaceDrive(spaceDrive, feed, token, spaceId, folderId),
+  createSpaceFolder: (
+    token: string,
+    spaceId: number,
+    parentId: number,
+    name: string,
+  ) => createSpaceFolder(spaceDrive, token, spaceId, parentId, name),
+  deleteSpaceFolder: (token: string, spaceId: number, folderId: number) =>
+    deleteSpaceFolder(spaceDrive, token, spaceId, folderId),
   uploadSpaceFiles: (
     token: string,
     spaceId: number,
     files: File[],
     description = "",
-  ) => uploadSpaceFiles(feed, token, spaceId, files, description),
+    folderId = 0,
+  ) => uploadSpaceFiles(spaceDrive, token, spaceId, files, description, folderId),
   deleteSpaceFile: (token: string, spaceId: number, fileId: number) =>
     deleteSpaceFile(feed, spaces, auth, token, spaceId, fileId),
+  deleteSpaceDriveFile: (token: string, spaceId: number, fileId: number) =>
+    deleteSpaceDriveFile(spaceDrive, token, spaceId, fileId),
+  getSpaceDriveFile: (token: string, spaceId: number, fileId: number) =>
+    getSpaceDriveFile(spaceDrive, token, spaceId, fileId),
   listComments: (token: string, postId: number) =>
     listComments(feed, token, postId),
   addComment: (token: string, postId: number, message: string) =>

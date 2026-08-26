@@ -26,3 +26,29 @@ export function spaceSectionHref(spaceId: number, sectionId: SpaceSectionId) {
 
   return `/espacos/${spaceId}?secao=${sectionId}`;
 }
+
+/**
+ * Lê o id da pasta do drive na query `pasta`.
+ * Ausente ou inválido volta para a raiz (0).
+ */
+export function readSpaceFolderId(
+  searchParams: Record<string, string | string[] | undefined>,
+): number {
+  const raw = Array.isArray(searchParams.pasta)
+    ? searchParams.pasta[0]
+    : searchParams.pasta;
+  const folderId = Number(raw);
+
+  return Number.isFinite(folderId) && folderId > 0 ? folderId : 0;
+}
+
+/**
+ * Monta a URL da seção Arquivos numa pasta do drive.
+ */
+export function spaceDriveHref(spaceId: number, folderId = 0) {
+  if (folderId <= 0) {
+    return spaceSectionHref(spaceId, "arquivos");
+  }
+
+  return `/espacos/${spaceId}?secao=arquivos&pasta=${folderId}`;
+}

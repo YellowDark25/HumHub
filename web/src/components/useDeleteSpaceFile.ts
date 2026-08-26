@@ -8,7 +8,10 @@ import { readApiError } from "@/shared/readApiError";
  * Abre a confirmação, chama DELETE `/api/spaces/:id/files/:fileId` e
  * atualiza a página; erros de API ou rede ficam em `error`.
  */
-export function useDeleteSpaceFile(spaceId: number) {
+export function useDeleteSpaceFile(
+  spaceId: number,
+  onDeleted: () => Promise<void> = async () => {},
+) {
   const router = useRouter();
   const [pending, setPending] = useState<SpaceFile | null>(null);
   const [error, setError] = useState("");
@@ -43,8 +46,9 @@ export function useDeleteSpaceFile(spaceId: number) {
 
     setIsDeleting(true);
     try {
+      const origin = pending.origin === "drive" ? "drive" : "feed";
       const response = await fetch(
-        `/api/spaces/${spaceId}/files/${pending.id}`,
+        `/api/spaces/${spaceId}/files/${pending.id}?origem=${origin}`,
         { method: "DELETE" },
       );
       if (!response.ok) {
@@ -55,6 +59,7 @@ export function useDeleteSpaceFile(spaceId: number) {
       }
 
       setPending(null);
+      await onDeleted();
       router.refresh();
     } catch {
       setError("Falha de rede ao excluir o arquivo.");

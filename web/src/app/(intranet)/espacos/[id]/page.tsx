@@ -10,7 +10,6 @@ import { SpaceMenu } from "@/components/SpaceMenu";
 import type { Activity } from "@/domain/Activity";
 import type { Post } from "@/domain/Post";
 import type { Space } from "@/domain/Space";
-import type { SpaceFile } from "@/domain/SpaceFile";
 import type { SpaceMember } from "@/domain/SpaceMember";
 import type { SpaceMembershipSettings } from "@/domain/SpaceMembershipSettings";
 import { app } from "@/infrastructure/composition";
@@ -19,6 +18,7 @@ import {
   requirePageToken,
 } from "@/infrastructure/pageSession";
 import {
+  readSpaceFolderId,
   readSpaceSection,
   type SpaceSectionId,
 } from "@/shared/spaceSection";
@@ -37,12 +37,18 @@ type SpacePageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+/**
+ * Página do espaço: cabeçalho, menu e a seção pedida na query.
+ * Em Arquivos some a coluna de atividades para o drive usar a largura extra.
+ */
 export default async function SpaceFeedPage({
   params,
   searchParams,
 }: SpacePageProps) {
   const { id } = await params;
-  const section = readSpaceSection(await searchParams);
+  const query = await searchParams;
+  const section = readSpaceSection(query);
+  const folderId = readSpaceFolderId(query);
   const spaceId = Number(id);
   const token = await requirePageToken();
 
@@ -52,7 +58,6 @@ export default async function SpaceFeedPage({
 
   let space: Space | null = null;
   let posts: Post[] = [];
-  let files: SpaceFile[] = [];
   let members: SpaceMember[] = [];
   let activities: Activity[] = [];
   let canManage = false;
@@ -63,7 +68,6 @@ export default async function SpaceFeedPage({
     const page = await app.getSpacePage(token, spaceId);
     space = page.space;
     posts = page.posts;
-    files = page.files;
     members = page.members;
     activities = page.activities;
     canManage = page.canManage;
@@ -94,7 +98,13 @@ export default async function SpaceFeedPage({
         canManage={canManage}
         membership={membership}
       />
-      <div className="grid items-start gap-6 lg:grid-cols-[200px_minmax(0,1fr)_260px]">
+      <div
+        className={
+          section === "arquivos"
+            ? "grid items-start gap-6 lg:grid-cols-[200px_minmax(0,1fr)]"
+            : "grid items-start gap-6 lg:grid-cols-[200px_minmax(0,1fr)_260px]"
+        }
+      >
         <SpaceMenu spaceId={space.id} section={section} />
         <main className="flex min-w-0 flex-col gap-4">
           {loadError ? <LoadError message={loadError} /> : null}
@@ -102,29 +112,35 @@ export default async function SpaceFeedPage({
             section={section}
             space={space}
             posts={posts}
-            files={files}
+            folderId={folderId}
             members={members}
             loadError={loadError}
           />
         </main>
-        <LatestActivities activities={activities} />
+        {section === "arquivos" ? null : (
+          <LatestActivities activities={activities} />
+        )}
       </div>
     </div>
   );
 }
 
+/**
+ * Conteúdo central do espaço conforme a seção da query.
+ * Arquivos abre o drive; stream mostra compositor e publicações.
+ */
 function SpaceSection({
   section,
   space,
   posts,
-  files,
+  folderId,
   members,
   loadError,
 }: {
   section: SpaceSectionId;
   space: Space;
   posts: Post[];
-  files: SpaceFile[];
+  folderId: number;
   members: SpaceMember[];
   loadError: string;
 }) {
@@ -132,7 +148,7 @@ function SpaceSection({
     return (
       <SpaceFiles
         spaceId={space.id}
-        files={files}
+        folderId={folderId}
         canUpload={space.isMember}
       />
     );
