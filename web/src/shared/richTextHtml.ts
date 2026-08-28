@@ -4,6 +4,10 @@ import {
   type RichInline,
 } from "./richText";
 
+/**
+ * Converte o markdown da intranet em HTML para o editor rico.
+ * Parseia blocos e serializa cada um (parágrafo, título, lista, citação ou código).
+ */
 export function richTextToHtml(markdown: string): string {
   return parseRichText(markdown).map(blockToHtml).join("");
 }
@@ -25,24 +29,30 @@ export function htmlToRichText(html: string): string {
   return serializeChildren(root).replace(/\n{3,}/g, "\n\n").trim();
 }
 
+/**
+ * Serializa um bloco do markdown parseado em HTML.
+ * `switch` no `type` para o TypeScript distinguir lista (`items`) de texto (`children`).
+ */
 function blockToHtml(block: RichBlock): string {
-  if (block.type === "pre") {
-    return `<pre><code>${escapeHtml(block.value)}</code></pre>`;
+  switch (block.type) {
+    case "pre":
+      return `<pre><code>${escapeHtml(block.value)}</code></pre>`;
+    case "ul":
+    case "ol": {
+      const items = block.items
+        .map((item) => `<li>${inlineToHtml(item)}</li>`)
+        .join("");
+      return `<${block.type}>${items}</${block.type}>`;
+    }
+    case "quote":
+      return `<blockquote>${inlineToHtml(block.children)}</blockquote>`;
+    case "h1":
+    case "h2":
+    case "h3":
+      return `<${block.type}>${inlineToHtml(block.children)}</${block.type}>`;
+    case "p":
+      return `<p>${inlineToHtml(block.children)}</p>`;
   }
-  if (block.type === "ul" || block.type === "ol") {
-    const tag = block.type;
-    const items = block.items
-      .map((item) => `<li>${inlineToHtml(item)}</li>`)
-      .join("");
-    return `<${tag}>${items}</${tag}>`;
-  }
-  if (block.type === "quote") {
-    return `<blockquote>${inlineToHtml(block.children)}</blockquote>`;
-  }
-  if (block.type === "h1" || block.type === "h2" || block.type === "h3") {
-    return `<${block.type}>${inlineToHtml(block.children)}</${block.type}>`;
-  }
-  return `<p>${inlineToHtml(block.children)}</p>`;
 }
 
 function inlineToHtml(nodes: RichInline[]): string {

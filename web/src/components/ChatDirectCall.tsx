@@ -48,6 +48,11 @@ export function ChatDirectCallButton({
   );
 }
 
+/**
+ * Palco de vídeo da chamada direta, acima do histórico da conversa.
+ * Só renderiza quando esta DM está na chamada, há câmera ligada e o usuário local já entrou;
+ * adapta `VoiceParticipant` (`userId`) para o contrato do palco (`id`).
+ */
 export function ChatDirectCallStage({
   conversationId,
   conversationName,
@@ -64,7 +69,11 @@ export function ChatDirectCallStage({
     <div className="relative h-[min(46vh,26rem)] shrink-0 overflow-hidden border-b border-zinc-200">
       <ChatVoiceStage
         conversationId={conversationId}
-        currentUser={call.self}
+        currentUser={{
+          id: call.self.userId,
+          name: call.self.name,
+          imageUrl: call.self.imageUrl,
+        }}
         title={
           <span className="flex min-w-0 items-center gap-2">
             <CameraIcon off={false} />

@@ -154,6 +154,7 @@ export type NexchatDriveFolder = {
   name: string;
   parentId?: number;
   authorName?: string;
+  avatarUrl?: string;
   createdAt?: string | null;
   canDelete?: boolean;
 };
@@ -169,6 +170,7 @@ export type NexchatDriveFile = {
   isAudio?: boolean;
   description?: string;
   authorName?: string;
+  avatarUrl?: string;
   publishedAt?: string | null;
   canDelete?: boolean;
   spaceId?: number;

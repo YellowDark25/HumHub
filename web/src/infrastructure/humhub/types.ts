@@ -82,6 +82,22 @@ export type HumhubComment = {
   message: string;
   createdAt?: string;
   createdBy?: HumhubUserShort;
+  likes?: { total?: number };
+};
+
+/** Resposta de GET /nexchat/comment-like. */
+export type HumhubCommentLikes = {
+  items?: Array<{
+    id?: number;
+    likeCount?: number;
+    liked?: boolean;
+  }>;
+};
+
+/** Resposta de POST /nexchat/comment-like/toggle. */
+export type HumhubCommentLike = {
+  liked?: boolean;
+  likeCount?: number;
 };
 
 export type HumhubFile = {
@@ -110,6 +126,17 @@ export type HumhubPost = {
       url?: string;
     };
   };
+};
+
+/** Resposta de POST /nexchat/post-like/toggle. */
+export type HumhubPostLike = {
+  liked?: boolean;
+  likeCount?: number;
+};
+
+/** Resposta de GET /nexchat/post-like. */
+export type HumhubLikedPosts = {
+  likedIds?: number[];
 };
 
 export type HumhubNotification = {
@@ -148,9 +175,18 @@ export type HumhubActivity = {
   content?: { output?: string };
 };
 
-export type HumhubMembership = {
+/** Membro do espaço no payload do Nexchat (nome, foto e cargo). */
+export type HumhubSpaceMember = {
+  id: number;
+  name: string;
+  username?: string;
+  imageUrl?: string;
   role?: string;
-  user?: HumhubUserShort;
+};
+
+/** Resposta de GET /nexchat/spaces/members. */
+export type HumhubSpaceMembers = {
+  members?: HumhubSpaceMember[];
 };
 
 export type HumhubSpaceInvitee = {

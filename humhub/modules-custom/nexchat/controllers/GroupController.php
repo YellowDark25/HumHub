@@ -5,6 +5,7 @@ namespace humhub\modules\nexchat\controllers;
 use humhub\components\Controller;
 use humhub\libs\BasePermission;
 use humhub\modules\nexchat\components\BearerLogin;
+use humhub\modules\nexchat\permissions\ManageSpaceDrive;
 use humhub\modules\user\models\Group;
 use humhub\modules\user\models\GroupUser;
 use humhub\modules\user\models\User;
@@ -292,6 +293,10 @@ class GroupController extends Controller
         return $members;
     }
 
+    /**
+     * Lista as permissões de grupo da instalação, com título e seção da tela.
+     * Drive do espaço entra na seção Espaço já existente; o moduleId interno continua o do nexchat.
+     */
     private function permissionsOf(Group $group): array
     {
         $manager = Yii::$app->user->permissionManager;
@@ -306,7 +311,7 @@ class GroupController extends Controller
             $permissions[] = [
                 'id' => (string) $permission->getId(),
                 'moduleId' => (string) $permission->getModuleId(),
-                'moduleName' => $module ? (string) $module->getName() : (string) $permission->getModuleId(),
+                'moduleName' => $this->permissionSectionName($permission, $module),
                 'title' => (string) $permission->getTitle(),
                 'description' => (string) $permission->getDescription(),
                 'state' => $this->toState($manager->getGroupState($group->id, $permission, false)),
@@ -316,6 +321,20 @@ class GroupController extends Controller
         }
 
         return $permissions;
+    }
+
+    /**
+     * Nome da seção na tela de permissões do grupo.
+     * "Gerir arquivos do espaço" entra na seção Espaço que já existe.
+     */
+    private function permissionSectionName(BasePermission $permission, $module): string
+    {
+        if ($permission instanceof ManageSpaceDrive) {
+            $space = Yii::$app->getModule('space');
+            return $space ? (string) $space->getName() : 'Espaço';
+        }
+
+        return $module ? (string) $module->getName() : (string) $permission->getModuleId();
     }
 
     private function toState($state): string

@@ -5,7 +5,8 @@ import { ChatIncomingDirectCall } from "@/components/ChatIncomingDirectCall";
 import { ChatVoiceOccupancyProvider } from "@/components/ChatVoiceOccupancy";
 import { VoiceCallDock } from "@/components/VoiceCallDock";
 import { VoiceCallProvider } from "@/components/VoiceCallProvider";
-import { isForbidden, isUnauthorized } from "@/application/errors";
+import { errorMessage, isForbidden, isUnauthorized } from "@/application/errors";
+import { LoadError } from "@/components/LoadError";
 import type { User } from "@/domain/User";
 import { app } from "@/infrastructure/composition";
 import {
@@ -14,6 +15,11 @@ import {
 } from "@/infrastructure/pageSession";
 import { redirect } from "next/navigation";
 
+/**
+ * Layout autenticado da intranet: cabeçalho, voz e conteúdo.
+ * Lê o token e o usuário; senha obrigatória e 401 redirecionam;
+ * se o HumHub falhar (ex.: 500 na subida do Docker), mostra o erro em vez de derrubar a página.
+ */
 export default async function AppLayout({
   children,
 }: {
@@ -34,10 +40,31 @@ export default async function AppLayout({
       redirectToClearSession();
     }
 
-    throw error;
+    return (
+      <div className="flex h-dvh items-center justify-center bg-zinc-100 p-6">
+        <div className="w-full max-w-md">
+          <LoadError
+            message={errorMessage(
+              error,
+              "Não foi possível carregar a sessão no HumHub.",
+            )}
+          />
+          <a
+            href="/"
+            className="mt-4 inline-block text-sm font-medium text-teal-700"
+          >
+            Tentar de novo
+          </a>
+        </div>
+      </div>
+    );
   }
 }
 
+/**
+ * Casca autenticada: cabeçalho, provedores de voz e a área da página.
+ * Recebe o usuário já carregado e a quantidade de notificações não lidas.
+ */
 function IntranetShell({
   user,
   unseenCount,
@@ -71,6 +98,10 @@ function IntranetShell({
   );
 }
 
+/**
+ * Conta notificações não lidas sem derrubar o layout.
+ * Propaga só 401; outro erro vira 0 e vai para o log.
+ */
 async function loadUnseenCount(token: string): Promise<number> {
   try {
     return await app.countUnseenNotifications(token);

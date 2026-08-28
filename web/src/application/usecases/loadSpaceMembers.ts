@@ -1,7 +1,11 @@
 import type { SpaceMember } from "@/domain/SpaceMember";
-import { errorMessage, isForbidden, isUnauthorized } from "../errors";
+import { errorMessage, isUnauthorized } from "../errors";
 import type { SpaceRepository } from "../ports/SpaceRepository";
 
+/**
+ * Lista os membros do espaço sem derrubar a página.
+ * Propaga só 401; sem acesso ou outro erro, registra e devolve lista vazia.
+ */
 export async function loadSpaceMembers(
   spaces: SpaceRepository,
   token: string,
@@ -10,10 +14,6 @@ export async function loadSpaceMembers(
   try {
     return await spaces.listMembers(token, spaceId);
   } catch (error) {
-    if (isSpaceAdminOnlyError(error)) {
-      return [];
-    }
-
     if (isUnauthorized(error)) {
       throw error;
     }
@@ -23,11 +23,4 @@ export async function loadSpaceMembers(
     );
     return [];
   }
-}
-
-function isSpaceAdminOnlyError(error: unknown): boolean {
-  return (
-    isForbidden(error) ||
-    /cannot administer this space/i.test(errorMessage(error, ""))
-  );
 }

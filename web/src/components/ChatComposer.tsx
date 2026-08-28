@@ -22,6 +22,11 @@ type ChatComposerProps = {
   onSent?: (message: ChatMessage) => void;
 };
 
+/**
+ * Campo de envio da conversa: texto, anexos, tópicos e áudio.
+ * Monta o rascunho na tela; no submit ou Enter (sem Shift) chama POST /api/chat/send
+ * e avisa o pai com a mensagem gravada.
+ */
 export function ChatComposer({
   conversationId,
   workspaceId,
@@ -37,7 +42,6 @@ export function ChatComposer({
   const [panel, setPanel] = useState<ComposerPanel>("");
   const [topicsOpen, setTopicsOpen] = useState(false);
   const [error, setError] = useState("");
-  const [isSending, setIsSending] = useState(false);
   const recorder = useChatVoiceRecorder();
   const typing = useChatTyping(conversationId);
   const recordingRef = useRef(recorder);
@@ -69,6 +73,10 @@ export function ChatComposer({
     };
   }, []);
 
+  /**
+   * Envia o rascunho (texto e arquivos) para a conversa atual.
+   * Limpa o campo no sucesso; em falha de rede ou API, mostra o erro abaixo do campo.
+   */
   async function sendMessage(extraFiles: File[] = []) {
     const trimmed = content.trim();
     const outgoing = [...files, ...extraFiles];
@@ -77,7 +85,6 @@ export function ChatComposer({
     }
 
     setError("");
-    setIsSending(true);
     try {
       const response = await postMessage(
         conversationId,
@@ -101,8 +108,6 @@ export function ChatComposer({
       onSent?.(sent);
     } catch {
       setError("Falha de rede ao enviar.");
-    } finally {
-      setIsSending(false);
     }
   }
 
@@ -261,9 +266,6 @@ export function ChatComposer({
       </form>
       {error || recorder.error ? (
         <p className="px-2 pt-2 text-xs text-red-600">{error || recorder.error}</p>
-      ) : null}
-      {isSending ? (
-        <p className="px-2 pt-1 text-[11px] text-zinc-400">Enviando…</p>
       ) : null}
     </div>
   );

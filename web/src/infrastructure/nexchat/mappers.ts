@@ -277,6 +277,7 @@ export function mapSpaceDrive(dto: NexchatDriveResult, spaceId: number): SpaceDr
 
 /**
  * Converte uma pasta do Nexchat no type do domínio.
+ * Copia nome, dono e a URL do avatar para o proxy da intranet.
  */
 export function mapSpaceFolder(dto: NexchatDriveFolder): SpaceFolder {
   return {
@@ -284,6 +285,7 @@ export function mapSpaceFolder(dto: NexchatDriveFolder): SpaceFolder {
     name: dto.name,
     parentId: dto.parentId ?? SPACE_DRIVE_ROOT_ID,
     authorName: dto.authorName?.trim() || "Usuário",
+    authorImageUrl: toBrowserMediaUrl(dto.avatarUrl),
     createdAt: dto.createdAt ?? null,
     canDelete: Boolean(dto.canDelete),
   };
@@ -295,7 +297,7 @@ function mapDriveAncestor(dto: { id: number; name: string }): SpaceDriveAncestor
 
 /**
  * Converte um arquivo do drive no type da intranet.
- * Monta a URL de download em /api/spaces/:id/files/:fileId.
+ * Monta a URL de download em /api/spaces/:id/files/:fileId e o avatar do dono.
  */
 export function mapSpaceDriveFile(
   dto: NexchatDriveFile,
@@ -314,6 +316,7 @@ export function mapSpaceDriveFile(
     isAudio: Boolean(dto.isAudio),
     description: dto.description?.trim() ?? "",
     authorName: dto.authorName?.trim() || "Usuário",
+    authorImageUrl: toBrowserMediaUrl(dto.avatarUrl),
     publishedAt: dto.publishedAt ?? null,
     canDelete: Boolean(dto.canDelete),
   };

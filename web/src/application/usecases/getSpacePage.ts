@@ -5,13 +5,12 @@ import type { FeedRepository } from "../ports/FeedRepository";
 import type { SpaceRepository } from "../ports/SpaceRepository";
 import { canManageSpace } from "./canManageSpace";
 import { loadActivities } from "./loadActivities";
-import { spaceFilesFromPosts } from "./listSpaceFiles";
 import { loadSpaceMembers } from "./loadSpaceMembers";
 
 /**
  * Monta a página de um espaço (stream, arquivos, membros e atividades).
  * Carrega espaço, publicações, membros, usuário e atividades em paralelo;
- * deriva arquivos e se o usuário pode gerir o espaço.
+ * deriva se o usuário pode gerir o espaço.
  */
 export async function getSpacePage(
   token: string,
@@ -39,7 +38,6 @@ export async function getSpacePage(
     space,
     membership,
     posts,
-    files: spaceFilesFromPosts(posts, { userId: user.id, canManage }),
     members,
     activities,
     canManage,

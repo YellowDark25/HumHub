@@ -1,5 +1,5 @@
 export const SPACE_SECTIONS = [
-  { id: "stream", label: "Stream" },
+  { id: "stream", label: "Feed" },
   { id: "membros", label: "Membros" },
   { id: "arquivos", label: "Arquivos" },
   { id: "tarefas", label: "Tarefas" },

@@ -93,13 +93,14 @@ async function sendHumhubRequest<T>({
   const isJson = (response.headers.get("content-type") ?? "").includes(
     "application/json",
   );
+  const rawText = isJson ? "" : await response.text().catch(() => "");
   const payload = isJson
     ? ((await response.json().catch(() => null)) as T | { message?: string } | null)
     : null;
 
   if (!response.ok) {
     throw new ApplicationError(
-      readHumhubErrorMessage(payload, response.status),
+      readHumhubErrorMessage(payload, response.status, rawText),
       response.status,
     );
   }
@@ -147,7 +148,7 @@ function isNetworkError(error: unknown): boolean {
 }
 
 /**
- * Pausa entre tentativas com backoff linear (250 ms, 500 ms).
+ * Pausa entre tentativas com backoff linear (600 ms, 1,2 s, 1,8 s).
  */
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {

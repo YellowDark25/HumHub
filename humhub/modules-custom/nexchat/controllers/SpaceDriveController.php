@@ -4,9 +4,11 @@ namespace humhub\modules\nexchat\controllers;
 
 use humhub\components\Controller;
 use humhub\modules\nexchat\components\BearerLogin;
+use humhub\modules\nexchat\models\Message;
 use humhub\modules\nexchat\models\SpaceDriveFile;
 use humhub\modules\nexchat\models\SpaceFolder;
 use humhub\modules\nexchat\Module;
+use humhub\modules\nexchat\permissions\ManageSpaceDrive;
 use humhub\modules\space\models\Membership;
 use humhub\modules\space\models\Space;
 use humhub\modules\user\models\User;
@@ -503,22 +505,30 @@ class SpaceDriveController extends Controller
     }
 
     /**
-     * Serializa a pasta para a intranet: nome, dono, data e se pode apagar.
+     * Serializa a pasta para a intranet: nome, dono, foto, data e se pode apagar.
      */
     private function folderPayload(SpaceFolder $folder, bool $canManage): array
     {
+        $owner = $this->ownerFields((int) $folder->created_by);
+
         return [
             'id' => (int) $folder->id,
             'name' => (string) $folder->name,
             'parentId' => (int) ($folder->parent_id ?: 0),
-            'authorName' => $this->userName((int) $folder->created_by),
+            'authorName' => $owner['authorName'],
+            'avatarUrl' => $owner['avatarUrl'],
             'createdAt' => $folder->created_at,
             'canDelete' => $canManage || (int) $folder->created_by === (int) Yii::$app->user->id,
         ];
     }
 
+    /**
+     * Serializa o arquivo para a intranet: metadados, dono, foto e se pode apagar.
+     */
     private function filePayload(Space $space, SpaceDriveFile $file, bool $canManage): array
     {
+        $owner = $this->ownerFields((int) $file->created_by);
+
         return [
             'id' => (int) $file->id,
             'folderId' => (int) ($file->folder_id ?: 0),
@@ -529,25 +539,40 @@ class SpaceDriveController extends Controller
             'isImage' => (bool) $file->is_image,
             'isAudio' => $file->isAudio(),
             'description' => (string) ($file->description ?? ''),
-            'authorName' => $this->userName((int) $file->created_by),
+            'authorName' => $owner['authorName'],
+            'avatarUrl' => $owner['avatarUrl'],
             'publishedAt' => $file->created_at,
             'canDelete' => $canManage || (int) $file->created_by === (int) Yii::$app->user->id,
             'spaceId' => (int) $space->id,
         ];
     }
 
-    private function userName(int $userId): string
+    /**
+     * Nome e foto do dono da pasta ou arquivo.
+     * Busca o usuário uma vez; sem registro, nome genérico e URL vazia.
+     * @return array{authorName: string, avatarUrl: string}
+     */
+    private function ownerFields(int $userId): array
     {
         if ($userId <= 0) {
-            return 'Usuário';
+            return [
+                'authorName' => 'Usuário',
+                'avatarUrl' => '',
+            ];
         }
 
         $user = User::findOne($userId);
         if (!$user) {
-            return 'Usuário';
+            return [
+                'authorName' => 'Usuário',
+                'avatarUrl' => '',
+            ];
         }
 
-        return (string) ($user->displayName ?? $user->username ?? 'Usuário');
+        return [
+            'authorName' => (string) ($user->displayName ?? $user->username ?? 'Usuário'),
+            'avatarUrl' => Message::resolveAvatarUrl($user),
+        ];
     }
 
     private function canDeleteFolder(Space $space, SpaceFolder $folder): bool
@@ -562,9 +587,18 @@ class SpaceDriveController extends Controller
             || (int) $file->created_by === (int) Yii::$app->user->id;
     }
 
+    /**
+     * Diz se o ator pode gerir o drive (apagar o que não criou).
+     * Admin do sistema, permissão de grupo "Gerir arquivos do espaço",
+     * ou admin/moderador do próprio espaço.
+     */
     private function canManageSpace(Space $space): bool
     {
         if ($this->isSystemAdmin()) {
+            return true;
+        }
+
+        if (Yii::$app->user->can(new ManageSpaceDrive())) {
             return true;
         }
 
@@ -572,9 +606,32 @@ class SpaceDriveController extends Controller
             return true;
         }
 
-        $membership = $this->currentMembership($space);
+        if (method_exists($space, 'isModerator') && $space->isModerator()) {
+            return true;
+        }
 
-        return $membership && in_array((string) $membership->role, ['owner', 'admin', 'moderator'], true);
+        $membership = $this->currentMembership($space);
+        if (!$membership || !$membership->hasAttribute('group_id')) {
+            return false;
+        }
+
+        return in_array((string) $membership->group_id, $this->manageGroupIds(), true);
+    }
+
+    /**
+     * Grupos do espaço que podem gerir o drive.
+     * Lê as constantes do HumHub quando existem (owner, admin, moderator).
+     */
+    private function manageGroupIds(): array
+    {
+        $groups = [];
+        foreach (['USERGROUP_OWNER', 'USERGROUP_ADMIN', 'USERGROUP_MODERATOR'] as $constant) {
+            if (defined(Space::class . '::' . $constant)) {
+                $groups[] = (string) constant(Space::class . '::' . $constant);
+            }
+        }
+
+        return $groups;
     }
 
     private function canAccessSpace(Space $space): bool

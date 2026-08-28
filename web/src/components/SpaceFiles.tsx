@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { SpaceDriveAncestor, SpaceFolder } from "@/domain/SpaceDrive";
 import { SPACE_FOLDER_NAME_MAX, asDriveList } from "@/domain/SpaceDrive";
 import type { SpaceFile } from "@/domain/SpaceFile";
@@ -41,7 +42,7 @@ export function SpaceFiles({ spaceId, folderId, canUpload }: SpaceFilesProps) {
   const error = drive.error || deleter.error || uploader.error;
   const folders = asDriveList(drive.drive?.folders);
   const files = asDriveList(drive.drive?.files);
-  const draftFiles = asDriveList(uploader.files);
+  const draftFiles = uploader.files;
   const isEmpty = !drive.isLoading && folders.length === 0 && files.length === 0;
 
   async function confirmFolderDelete() {
@@ -79,7 +80,7 @@ export function SpaceFiles({ spaceId, folderId, canUpload }: SpaceFilesProps) {
                 draftFiles.length > 0 ? "Adicionar arquivos" : "Enviar arquivos"
               }
               className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg disabled:opacity-50 ${
-                draftFiles.length > 0
+                uploader.isSending || draftFiles.length > 0
                   ? "bg-teal-700 text-white hover:bg-teal-800"
                   : "text-zinc-500 hover:bg-zinc-100 hover:text-teal-700"
               }`}
@@ -95,6 +96,7 @@ export function SpaceFiles({ spaceId, folderId, canUpload }: SpaceFilesProps) {
         multiple
         hidden
         accept={uploader.fileAccept}
+        disabled={uploader.isSending}
         onChange={(event) => uploader.addFiles(event.target.files)}
       />
       {canUpload && draftFiles.length > 0 ? (
@@ -349,7 +351,7 @@ function FolderRow({
           <span className="truncate font-medium text-zinc-800">{folder.name}</span>
         </Link>
       </td>
-      <OwnerCell name={folder.authorName} />
+      <OwnerCell name={folder.authorName} imageUrl={folder.authorImageUrl} />
       <DateCell value={folder.createdAt} />
       <td className="hidden py-2.5 pr-4 text-zinc-500 md:table-cell">—</td>
       <ActionCell
@@ -361,7 +363,8 @@ function FolderRow({
 }
 
 /**
- * Rascunho dos arquivos escolhidos antes do envio.
+ * Rascunho dos arquivos escolhidos: descrição opcional e envio.
+ * É um form para o Enviar disparar o POST de verdade, como no compositor.
  */
 function UploadDraft({
   uploader,
@@ -369,9 +372,18 @@ function UploadDraft({
   uploader: ReturnType<typeof useUploadSpaceFiles>;
 }) {
   return (
-    <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 pb-3">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void uploader.upload();
+      }}
+      className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 pb-3"
+    >
+      <p className="px-3 pt-3 text-sm font-semibold text-zinc-800">
+        Pronto para enviar
+      </p>
       <ChatComposerAttachments
-        files={asDriveList(uploader.files)}
+        files={uploader.files}
         onRemove={uploader.removeFile}
       />
       <label className="mx-3 mt-3 block text-sm font-medium text-zinc-700">
@@ -382,6 +394,7 @@ function UploadDraft({
           maxLength={SPACE_FILE_DESCRIPTION_MAX}
           rows={3}
           disabled={uploader.isSending}
+          autoFocus
           placeholder="Opcional. Explique o que é este arquivo…"
           className="mt-1 w-full resize-none rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-teal-600"
         />
@@ -396,20 +409,20 @@ function UploadDraft({
           Cancelar
         </button>
         <button
-          type="button"
-          disabled={uploader.isSending}
-          onClick={() => void uploader.upload()}
+          type="submit"
+          disabled={uploader.isSending || uploader.files.length === 0}
           className="h-9 cursor-pointer rounded-lg bg-teal-700 px-3 text-sm font-semibold text-white disabled:opacity-50"
         >
           {uploader.isSending ? "Enviando…" : "Enviar"}
         </button>
       </div>
-    </div>
+    </form>
   );
 }
 
 /**
- * Linha de arquivo no estilo Drive: abre/baixa e pede exclusão no menu.
+ * Linha de arquivo no estilo Drive: nome e miniatura só informam.
+ * Ver, baixar e remover ficam no menu de ações.
  */
 function FileRow({
   file,
@@ -418,50 +431,50 @@ function FileRow({
   file: SpaceFile;
   onDelete?: () => void;
 }) {
+  const title = file.description.trim() || file.name;
+  const subtitle = file.description.trim() ? file.name : "";
+
   return (
     <tr className="group border-b border-zinc-100 hover:bg-zinc-50">
       <td className="py-2.5 pr-4">
-        <a
-          href={file.url}
-          target="_blank"
-          rel="noreferrer"
-          download={file.isImage || file.isAudio ? undefined : file.name}
-          className="flex min-w-0 items-center gap-3"
-        >
+        <div className="flex min-w-0 items-center gap-3">
           <FilePreview file={file} />
           <span className="min-w-0">
             <span className="block truncate font-medium text-zinc-800">
-              {file.name}
+              {title}
             </span>
-            {file.description ? (
+            {subtitle ? (
               <span className="block truncate text-xs text-zinc-500">
-                {file.description}
+                {subtitle}
               </span>
             ) : null}
           </span>
-        </a>
+        </div>
       </td>
-      <OwnerCell name={file.authorName} />
+      <OwnerCell name={file.authorName} imageUrl={file.authorImageUrl} />
       <DateCell value={file.publishedAt} />
       <td className="hidden py-2.5 pr-4 text-zinc-500 md:table-cell">
         {file.sizeBytes > 0 ? formatFileSize(file.sizeBytes) : "—"}
       </td>
-      <ActionCell onDelete={onDelete} label={`Excluir ${file.name}`} />
+      <td className="py-2.5 text-right">
+        <FileActionMenu file={file} onDelete={onDelete} />
+      </td>
     </tr>
   );
 }
 
 /**
- * Célula do dono: avatar com inicial e nome.
+ * Célula do dono: foto do perfil (ou iniciais) e nome.
+ * Usa a URL do avatar quando o drive envia; senão, as iniciais do nome.
  */
-function OwnerCell({ name }: { name: string }) {
+function OwnerCell({ name, imageUrl }: { name: string; imageUrl?: string }) {
   const label = name.trim() || "—";
 
   return (
     <td className="hidden py-2.5 pr-4 sm:table-cell">
       <span className="flex min-w-0 items-center gap-2 text-zinc-600">
         {label !== "—" ? (
-          <Avatar name={label} size="xs" shape="circle" />
+          <Avatar name={label} imageUrl={imageUrl} size="xs" shape="circle" />
         ) : null}
         <span className="truncate">{label}</span>
       </span>
@@ -480,8 +493,172 @@ function DateCell({ value }: { value: string | null }) {
   );
 }
 
+const FILE_MENU_WIDTH = 168;
+const FILE_MENU_GAP = 4;
+const FILE_MENU_PAD = 8;
+const FILE_MENU_HEIGHT = 132;
+const FILE_MENU_ITEM =
+  "flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50";
+
 /**
- * Menu de ações da linha: só aparece se o usuário puder excluir.
+ * Menu de ações da linha: Ver, Baixar e, se autorizado, Remover.
+ * Abre num portal para não ser cortado pelo scroll da tabela.
+ */
+function FileActionMenu({
+  file,
+  onDelete,
+}: {
+  file: SpaceFile;
+  onDelete?: () => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const title = file.description.trim() || file.name;
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    function placeMenu() {
+      if (!buttonRef.current) {
+        return;
+      }
+
+      const height = menuRef.current?.offsetHeight || FILE_MENU_HEIGHT;
+      setPosition(readFileMenuPosition(buttonRef.current, height));
+    }
+
+    function closeOnOutsideClick(event: MouseEvent) {
+      const target = event.target as Node;
+      if (
+        buttonRef.current?.contains(target) ||
+        menuRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      setIsOpen(false);
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    }
+
+    function closeOnScroll() {
+      setIsOpen(false);
+    }
+
+    placeMenu();
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", closeOnScroll);
+    const scrollTimer = window.setTimeout(() => {
+      window.addEventListener("scroll", closeOnScroll, true);
+    }, 0);
+    return () => {
+      window.clearTimeout(scrollTimer);
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", closeOnScroll);
+      window.removeEventListener("scroll", closeOnScroll, true);
+    };
+  }, [isOpen]);
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        title={`Ações de ${title}`}
+        aria-label={`Ações de ${title}`}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        onClick={() => setIsOpen((open) => !open)}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+      >
+        <MoreIcon />
+      </button>
+      {isOpen
+        ? createPortal(
+            <div
+              ref={menuRef}
+              role="menu"
+              aria-label={`Ações de ${title}`}
+              style={{
+                top: position.top,
+                left: position.left,
+                width: FILE_MENU_WIDTH,
+              }}
+              className="fixed z-50 overflow-hidden rounded-xl border border-zinc-200 bg-white py-1 shadow-lg"
+            >
+              <a
+                role="menuitem"
+                href={file.url}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setIsOpen(false)}
+                className={FILE_MENU_ITEM}
+              >
+                <EyeIcon />
+                Ver
+              </a>
+              <a
+                role="menuitem"
+                href={file.url}
+                download={file.name}
+                onClick={() => setIsOpen(false)}
+                className={FILE_MENU_ITEM}
+              >
+                <DownloadIcon />
+                Baixar
+              </a>
+              {onDelete ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onDelete();
+                  }}
+                  className={`${FILE_MENU_ITEM} text-red-700 hover:bg-red-50`}
+                >
+                  <TrashIcon />
+                  Remover
+                </button>
+              ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
+}
+
+/**
+ * Posiciona o menu ao lado do botão, abrindo para cima se faltar espaço.
+ */
+function readFileMenuPosition(button: HTMLElement, menuHeight: number) {
+  const rect = button.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - rect.bottom - FILE_MENU_PAD;
+  const openUpward = spaceBelow < menuHeight + FILE_MENU_GAP;
+  const top = openUpward
+    ? rect.top - menuHeight - FILE_MENU_GAP
+    : rect.bottom + FILE_MENU_GAP;
+  const maxLeft = window.innerWidth - FILE_MENU_WIDTH - FILE_MENU_PAD;
+
+  return {
+    top: Math.max(FILE_MENU_PAD, top),
+    left: Math.min(Math.max(FILE_MENU_PAD, rect.right - FILE_MENU_WIDTH), maxLeft),
+  };
+}
+
+/**
+ * Menu de ações da pasta: só aparece se o usuário puder excluir.
  */
 function ActionCell({
   onDelete,
@@ -590,6 +767,65 @@ function FolderIcon() {
         <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
       </svg>
     </span>
+  );
+}
+
+/**
+ * Ícone de olho da ação Ver.
+ */
+function EyeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="2.5" />
+    </svg>
+  );
+}
+
+/**
+ * Ícone de seta para baixo da ação Baixar.
+ */
+function DownloadIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 4v12" />
+      <path d="m7 11 5 5 5-5" />
+      <path d="M5 20h14" />
+    </svg>
+  );
+}
+
+/**
+ * Ícone de lixeira da ação Remover.
+ */
+function TrashIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path d="M4 7h16M9 7V5h6v2M8 7l1 12h6l1-12" />
+    </svg>
   );
 }
 

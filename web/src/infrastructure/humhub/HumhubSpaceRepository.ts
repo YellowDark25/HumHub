@@ -13,7 +13,6 @@ import type {
 } from "@/domain/SpaceMembershipSettings";
 import { humhubRequest } from "./client";
 import {
-  MEMBER_PAGE_LIMIT,
   SPACE_JOIN_POLICY_FREE,
   SPACE_JOIN_POLICY_NONE,
   SPACE_PAGE_LIMIT,
@@ -28,9 +27,9 @@ import {
   mapSpaceMembershipSettings,
 } from "./mappers";
 import type {
-  HumhubMembership,
   HumhubMemberSpaces,
   HumhubPage,
+  HumhubSpaceMembers,
   HumhubReceivedSpaceInvites,
   HumhubSpace,
   HumhubSpaceInvitees,
@@ -88,13 +87,18 @@ export class HumhubSpaceRepository implements SpaceRepository {
     };
   }
 
+  /**
+   * Lista os membros do espaço visíveis para o ator.
+   * Chama GET /nexchat/spaces/members — qualquer um com acesso ao espaço lê.
+   */
   async listMembers(token: string, spaceId: number): Promise<SpaceMember[]> {
-    const page = await humhubRequest<HumhubPage<HumhubMembership>>({
-      path: `/space/${spaceId}/membership?limit=${MEMBER_PAGE_LIMIT}`,
+    const payload = await humhubRequest<HumhubSpaceMembers>({
+      path: `/nexchat/spaces/members?id=${spaceId}`,
       token,
+      origin: "app",
     });
 
-    return (page.results ?? [])
+    return (payload.members ?? [])
       .map(mapSpaceMember)
       .filter((member): member is SpaceMember => member !== null);
   }

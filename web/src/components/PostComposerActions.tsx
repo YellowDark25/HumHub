@@ -5,6 +5,10 @@ type PostComposerActionsProps = {
   onPickFiles: () => void;
 };
 
+/**
+ * Ações do compositor: anexar JPEG, JPG ou PNG e publicar.
+ * O clipe abre o seletor; o selo mostra quantas imagens já estão no rascunho.
+ */
 export function PostComposerActions({
   isSending,
   canPublish,
@@ -15,8 +19,8 @@ export function PostComposerActions({
     <div className="flex items-center justify-end gap-2">
       <button
         type="button"
-        title="Anexar arquivos"
-        aria-label="Anexar arquivos"
+        title="Anexar JPEG, JPG ou PNG"
+        aria-label="Anexar JPEG, JPG ou PNG"
         disabled={isSending}
         onClick={onPickFiles}
         className="relative inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"

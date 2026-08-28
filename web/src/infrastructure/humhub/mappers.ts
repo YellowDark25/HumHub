@@ -22,12 +22,12 @@ import type {
 } from "@/domain/AccountGeneralSettings";
 import { emptyAccountProfile } from "@/domain/Account";
 import type { Activity } from "@/domain/Activity";
-import type { Comment } from "@/domain/Comment";
+import type { Comment, CommentLike, CommentPage } from "@/domain/Comment";
 import type { Notification } from "@/domain/Notification";
 import type { NotificationLiveSubscription } from "@/domain/NotificationLive";
 import type { NotificationPreferences } from "@/domain/NotificationPreferences";
 import type { AccountProfileModule } from "@/domain/AccountProfileModule";
-import type { Post } from "@/domain/Post";
+import type { Post, PostLike } from "@/domain/Post";
 import type { PostAttachment } from "@/domain/PostAttachment";
 import type { Space } from "@/domain/Space";
 import type { ReceivedSpaceInvite, SpaceInvitee } from "@/domain/SpaceInvite";
@@ -46,6 +46,7 @@ import {
   toBrowserMediaUrl,
 } from "./publicMediaUrl";
 import {
+  COMMENT_PAGE_LIMIT,
   HUMHUB_EDITOR_PLAIN,
   HUMHUB_EDITOR_RICH_TEXT,
   HUMHUB_USER_STATUS_DISABLED,
@@ -76,12 +77,16 @@ import type {
   HumhubAdminSettings,
   HumhubBlockedUser,
   HumhubComment,
+  HumhubCommentLike,
+  HumhubCommentLikes,
   HumhubCustomPage,
+  HumhubPage,
   HumhubCustomPages,
-  HumhubMembership,
+  HumhubSpaceMember,
   HumhubSpaceInvitee,
   HumhubDirectoryUser,
   HumhubReceivedSpaceInvite,
+  HumhubLikedPosts,
   HumhubNotification,
   HumhubNotificationLiveSubscription,
   HumhubNotificationPreferenceCategory,
@@ -89,6 +94,7 @@ import type {
   HumhubSelectOption,
   HumhubFile,
   HumhubPost,
+  HumhubPostLike,
   HumhubProfile,
   HumhubSpace,
   HumhubSpaceMembershipSettings,
@@ -391,6 +397,9 @@ export function mapSpaceMembershipSettings(
   };
 }
 
+/**
+ * Converte um comentário do HumHub para o tipo da intranet.
+ */
 export function mapComment(dto: HumhubComment): Comment {
   return {
     id: dto.id,
@@ -398,9 +407,97 @@ export function mapComment(dto: HumhubComment): Comment {
     authorImageUrl: mapUserImage(dto.createdBy),
     message: dto.message,
     publishedAt: dto.createdAt ?? null,
+    likeCount: dto.likes?.total ?? 0,
+    liked: false,
   };
 }
 
+/**
+ * Junta no fio as curtidas lidas no Nexchat (total e se o ator já curtiu).
+ */
+export function markCommentLikes(
+  comments: Comment[],
+  likes: Array<{ id: number; likeCount: number; liked: boolean }>,
+): Comment[] {
+  const byId = new Map(likes.map((like) => [like.id, like]));
+  return comments.map((comment) => {
+    const like = byId.get(comment.id);
+    if (!like) {
+      return comment;
+    }
+
+    return {
+      ...comment,
+      likeCount: like.likeCount,
+      liked: like.liked,
+    };
+  });
+}
+
+/**
+ * Converte o toggle de curtida do comentário para o tipo da intranet.
+ */
+export function mapCommentLike(dto: HumhubCommentLike): CommentLike {
+  return {
+    liked: Boolean(dto.liked),
+    likeCount: Number(dto.likeCount ?? 0),
+  };
+}
+
+/**
+ * Lê as curtidas de uma leva de comentários.
+ */
+export function mapCommentLikeItems(dto: HumhubCommentLikes) {
+  return (dto.items ?? [])
+    .map((item) => ({
+      id: Number(item.id ?? 0),
+      likeCount: Number(item.likeCount ?? 0),
+      liked: Boolean(item.liked),
+    }))
+    .filter((item) => item.id > 0);
+}
+
+/**
+ * Converte a página de comentários do HumHub para o tipo da intranet.
+ * Usa pages/total quando vêm; senão, página cheia indica que pode haver mais.
+ */
+export function mapCommentPage(
+  dto: HumhubPage<HumhubComment>,
+  page: number,
+): CommentPage {
+  const comments = (dto.results ?? []).map(mapComment);
+
+  return {
+    comments,
+    page,
+    hasMore: commentPageHasMore(dto, page, comments.length),
+  };
+}
+
+/**
+ * Diz se existe outra página depois desta.
+ * Prefere `pages` e `total` do HumHub; cai no tamanho da leva quando faltam.
+ */
+function commentPageHasMore(
+  dto: HumhubPage<HumhubComment>,
+  page: number,
+  count: number,
+): boolean {
+  if (typeof dto.pages === "number") {
+    return page < dto.pages;
+  }
+
+  if (typeof dto.total === "number") {
+    return page * COMMENT_PAGE_LIMIT < dto.total;
+  }
+
+  return count >= COMMENT_PAGE_LIMIT;
+}
+
+/**
+ * Converte uma publicação do HumHub para o tipo da intranet.
+ * `liked` começa falso; o feed preenche depois com as curtidas do ator.
+ */
 export function mapPost(
   dto: HumhubPost,
   spaceId: number | null,
@@ -416,10 +513,36 @@ export function mapPost(
     message: (dto.message ?? "").trim(),
     publishedAt: dto.content.metadata.created_at,
     likeCount: dto.content.likes?.total ?? 0,
+    liked: false,
     commentCount: dto.content.comments?.total ?? 0,
     latestComments: (dto.content.comments?.latest ?? []).map(mapComment),
     attachments: readPostFiles(dto).map(mapPostAttachment).filter(hasAttachmentId),
   };
+}
+
+/**
+ * Marca nos posts quais o ator atual já curtiu.
+ */
+export function markLikedPosts(posts: Post[], likedIds: number[]): Post[] {
+  const liked = new Set(likedIds);
+  return posts.map((post) => ({ ...post, liked: liked.has(post.id) }));
+}
+
+/**
+ * Converte o toggle de curtida do Nexchat para o tipo da intranet.
+ */
+export function mapPostLike(dto: HumhubPostLike): PostLike {
+  return {
+    liked: Boolean(dto.liked),
+    likeCount: Number(dto.likeCount ?? 0),
+  };
+}
+
+/**
+ * Lê os ids das publicações que o ator atual curtiu.
+ */
+export function mapLikedPostIds(dto: HumhubLikedPosts): number[] {
+  return (dto.likedIds ?? []).map(Number).filter((id) => id > 0);
 }
 
 function readPostFiles(dto: HumhubPost): HumhubFile[] {
@@ -784,13 +907,28 @@ function mapUserStatus(status?: number): AdminUserStatus {
   return "active";
 }
 
-export function mapSpaceMember(dto: HumhubMembership): SpaceMember | null {
-  if (!dto.user?.id) {
+/**
+ * Converte um membro do espaço no type da intranet.
+ * Copia id, nome, foto (via proxy) e cargo; campos extras do User ficam vazios.
+ */
+export function mapSpaceMember(dto: HumhubSpaceMember): SpaceMember | null {
+  if (!dto.id) {
     return null;
   }
 
   return {
-    user: mapUser(dto.user),
+    user: {
+      id: dto.id,
+      name: dto.name?.trim() || "Usuário",
+      title: "",
+      username: dto.username?.trim() ?? "",
+      email: "",
+      about: "",
+      tags: [],
+      imageUrl: toBrowserMediaUrl(dto.imageUrl),
+      isOnline: false,
+      isAdmin: false,
+    },
     role: dto.role ?? "",
   };
 }

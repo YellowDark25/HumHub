@@ -1,6 +1,5 @@
 import { errorMessage } from "@/application/errors";
 import { FeedCard } from "@/components/FeedCard";
-import { HomeComposer } from "@/components/HomeComposer";
 import { LatestActivities } from "@/components/LatestActivities";
 import { LoadError } from "@/components/LoadError";
 import type { Activity } from "@/domain/Activity";
@@ -13,6 +12,10 @@ import {
 } from "@/infrastructure/pageSession";
 import Link from "next/link";
 
+/**
+ * Página Início: feed das publicações, lista de espaços e últimas atividades.
+ * Carrega o feed autenticado; o compositor de publicação fica só no espaço e no perfil.
+ */
 export default async function FeedPage() {
   const token = await requirePageToken();
 
@@ -35,10 +38,9 @@ export default async function FeedPage() {
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
       <main className="flex flex-col gap-4">
         {loadError ? <LoadError message={loadError} /> : null}
-        <HomeComposer spaces={spaces} />
         {posts.length === 0 && !loadError ? (
           <p className="rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-sm text-zinc-500">
-            Nenhuma publicação ainda. Escreva acima ou abra um espaço.
+            Nenhuma publicação ainda. Abra um espaço para começar.
           </p>
         ) : (
           posts.map((post) => <FeedCard key={post.id} post={post} />)

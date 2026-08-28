@@ -28,6 +28,10 @@ class Module extends \humhub\components\Module
         ];
     }
 
+    /**
+     * Permissões de grupo do módulo (tela Administração → Grupos → Permissões).
+     * Só no nível da instalação; não há permissão por espaço/container.
+     */
     public function getPermissions($contentContainer = null)
     {
         if ($contentContainer) {
@@ -36,6 +40,7 @@ class Module extends \humhub\components\Module
 
         return [
             new permissions\EditOtherUsers(),
+            new permissions\ManageSpaceDrive(),
         ];
     }
 

@@ -1,10 +1,15 @@
 import {
+  isPostImageFile,
   POST_FILE_MAX_BYTES,
   POST_FILE_MAX_COUNT,
 } from "@/shared/postComposer";
 import { ApplicationError } from "../errors";
 import type { FeedRepository } from "../ports/FeedRepository";
 
+/**
+ * Publica no feed do espaço com texto e, se houver, só JPEG, JPG ou PNG.
+ * Valida espaço, mensagem (ou anexo), quantidade, tamanho e tipo; grava pelo feed.
+ */
 export function publishPost(
   feed: FeedRepository,
   token: string,
@@ -25,6 +30,14 @@ export function publishPost(
     );
   }
 
+  const notImage = files.find((file) => !isPostImageFile(file));
+  if (notImage) {
+    throw new ApplicationError(
+      "Só é possível anexar imagens JPEG, JPG ou PNG.",
+      400,
+    );
+  }
+
   const oversized = files.find((file) => file.size > POST_FILE_MAX_BYTES);
   if (oversized) {
     throw new ApplicationError(
@@ -36,6 +49,10 @@ export function publishPost(
   return feed.publishPost(token, spaceId, trimmed, files);
 }
 
+/**
+ * Normaliza o texto da publicação.
+ * Usa a mensagem se houver; senão, os nomes dos anexos; vazio sem anexo é erro.
+ */
 function readPostMessage(message: string, files: File[]) {
   const trimmed = message.trim();
   if (trimmed) {

@@ -1,8 +1,8 @@
 import type { FeedRepository } from "@/application/ports/FeedRepository";
 import type { Activity } from "@/domain/Activity";
-import type { Comment } from "@/domain/Comment";
+import type { Comment, CommentLike, CommentPage } from "@/domain/Comment";
 import type { MediaFile } from "@/domain/MediaFile";
-import type { Post } from "@/domain/Post";
+import type { Post, PostLike } from "@/domain/Post";
 import { ApplicationError } from "@/application/errors";
 import { getHumhubUrl } from "../config";
 import { humhubRequest } from "./client";
@@ -13,13 +13,28 @@ import {
   POST_PAGE_LIMIT,
   SPACE_PAGE_LIMIT,
 } from "./constants";
-import { mapActivity, mapComment, mapPost } from "./mappers";
+import {
+  mapActivity,
+  mapComment,
+  mapCommentLike,
+  mapCommentLikeItems,
+  mapCommentPage,
+  markCommentLikes,
+  mapLikedPostIds,
+  mapPost,
+  mapPostLike,
+  markLikedPosts,
+} from "./mappers";
 import { fetchSpaceDto } from "./HumhubSpaceRepository";
 import type {
   HumhubActivity,
   HumhubComment,
+  HumhubCommentLike,
+  HumhubCommentLikes,
+  HumhubLikedPosts,
   HumhubPage,
   HumhubPost,
+  HumhubPostLike,
   HumhubSpace,
 } from "./types";
 
@@ -104,14 +119,26 @@ export class HumhubFeedRepository implements FeedRepository {
     return (page.results ?? []).filter(Boolean).map(mapActivity);
   }
 
-  async listComments(token: string, postId: number): Promise<Comment[]> {
+  /**
+   * Lê uma página de comentários do post no HumHub (até COMMENT_PAGE_LIMIT).
+   * Resolve o contentId, pede a página e devolve o tipo da intranet com hasMore.
+   */
+  async listComments(
+    token: string,
+    postId: number,
+    page: number,
+  ): Promise<CommentPage> {
     const contentId = await resolveContentId(token, postId);
-    const page = await humhubRequest<HumhubPage<HumhubComment>>({
-      path: `/comment/content/${contentId}?limit=${COMMENT_PAGE_LIMIT}`,
+    const payload = await humhubRequest<HumhubPage<HumhubComment>>({
+      path: `/comment/content/${contentId}?limit=${COMMENT_PAGE_LIMIT}&page=${page}`,
       token,
     });
 
-    return (page.results ?? []).map(mapComment);
+    const current = mapCommentPage(payload, page);
+    return {
+      ...current,
+      comments: await withCommentLikes(token, current.comments),
+    };
   }
 
   async addComment(
@@ -131,6 +158,41 @@ export class HumhubFeedRepository implements FeedRepository {
     });
 
     return mapComment(dto);
+  }
+
+  /**
+   * Alterna a curtida do post no Nexchat.
+   * POST /nexchat/post-like/toggle e devolve liked + likeCount.
+   */
+  async togglePostLike(token: string, postId: number): Promise<PostLike> {
+    const dto = await humhubRequest<HumhubPostLike>({
+      path: "/nexchat/post-like/toggle",
+      token,
+      method: "POST",
+      origin: "app",
+      body: { postId },
+    });
+
+    return mapPostLike(dto);
+  }
+
+  /**
+   * Alterna a curtida do comentário no Nexchat.
+   * POST /nexchat/comment-like/toggle e devolve liked + likeCount.
+   */
+  async toggleCommentLike(
+    token: string,
+    commentId: number,
+  ): Promise<CommentLike> {
+    const dto = await humhubRequest<HumhubCommentLike>({
+      path: "/nexchat/comment-like/toggle",
+      token,
+      method: "POST",
+      origin: "app",
+      body: { commentId },
+    });
+
+    return mapCommentLike(dto);
   }
 }
 
@@ -154,7 +216,10 @@ async function listPostsInSpace(token: string, spaceId: number): Promise<Post[]>
     token,
   });
 
-  return (page.results ?? []).map((dto) => mapPost(dto, space.id, space.name));
+  return withLikedState(
+    token,
+    (page.results ?? []).map((dto) => mapPost(dto, space.id, space.name)),
+  );
 }
 
 async function listAllPosts(token: string): Promise<Post[]> {
@@ -173,10 +238,64 @@ async function listAllPosts(token: string): Promise<Post[]> {
     (spacePage.results ?? []).map((space) => [space.contentcontainer_id, space]),
   );
 
-  return (postPage.results ?? []).map((dto) => {
-    const space = spacesByContainer.get(dto.content.metadata.contentcontainer_id);
-    return mapPost(dto, space?.id ?? null, space?.name ?? null);
-  });
+  return withLikedState(
+    token,
+    (postPage.results ?? []).map((dto) => {
+      const space = spacesByContainer.get(dto.content.metadata.contentcontainer_id);
+      return mapPost(dto, space?.id ?? null, space?.name ?? null);
+    }),
+  );
+}
+
+/**
+ * Marca quais posts da lista o ator atual já curtiu.
+ * GET /nexchat/post-like?ids=…; se a leitura falhar, os posts ficam sem curtida própria.
+ */
+async function withLikedState(token: string, posts: Post[]): Promise<Post[]> {
+  if (posts.length === 0) {
+    return posts;
+  }
+
+  try {
+    const ids = posts.map((post) => post.id).join(",");
+    const dto = await humhubRequest<HumhubLikedPosts>({
+      path: `/nexchat/post-like?ids=${ids}`,
+      token,
+      origin: "app",
+    });
+
+    return markLikedPosts(posts, mapLikedPostIds(dto));
+  } catch (error) {
+    console.error("Não foi possível ler as curtidas do feed.", error);
+    return posts;
+  }
+}
+
+/**
+ * Junta no fio as curtidas de cada comentário.
+ * GET /nexchat/comment-like?ids=…; se a leitura falhar, mantém o que o REST trouxe.
+ */
+async function withCommentLikes(
+  token: string,
+  comments: Comment[],
+): Promise<Comment[]> {
+  if (comments.length === 0) {
+    return comments;
+  }
+
+  try {
+    const ids = comments.map((comment) => comment.id).join(",");
+    const dto = await humhubRequest<HumhubCommentLikes>({
+      path: `/nexchat/comment-like?ids=${ids}`,
+      token,
+      origin: "app",
+    });
+
+    return markCommentLikes(comments, mapCommentLikeItems(dto));
+  } catch (error) {
+    console.error("Não foi possível ler as curtidas dos comentários.", error);
+    return comments;
+  }
 }
 
 async function resolveContentId(token: string, postId: number): Promise<number> {

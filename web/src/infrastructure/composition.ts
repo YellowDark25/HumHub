@@ -31,6 +31,8 @@ import { getSpaceDrive } from "@/application/usecases/getSpaceDrive";
 import { getSpaceDriveFile } from "@/application/usecases/getSpaceDriveFile";
 import { uploadSpaceFiles } from "@/application/usecases/uploadSpaceFiles";
 import { listComments } from "@/application/usecases/listComments";
+import { toggleCommentLike } from "@/application/usecases/toggleCommentLike";
+import { togglePostLike } from "@/application/usecases/togglePostLike";
 import { listConversations } from "@/application/usecases/listConversations";
 import { listFeed } from "@/application/usecases/listFeed";
 import { listNotifications } from "@/application/usecases/listNotifications";
@@ -355,7 +357,7 @@ export const app = {
   ) => publishPost(feed, token, spaceId, message, files),
   getPostFile: (token: string, fileId: number) => getPostFile(feed, token, fileId),
   getSpaceDrive: (token: string, spaceId: number, folderId = 0) =>
-    getSpaceDrive(spaceDrive, feed, token, spaceId, folderId),
+    getSpaceDrive(spaceDrive, token, spaceId, folderId),
   createSpaceFolder: (
     token: string,
     spaceId: number,
@@ -377,10 +379,14 @@ export const app = {
     deleteSpaceDriveFile(spaceDrive, token, spaceId, fileId),
   getSpaceDriveFile: (token: string, spaceId: number, fileId: number) =>
     getSpaceDriveFile(spaceDrive, token, spaceId, fileId),
-  listComments: (token: string, postId: number) =>
-    listComments(feed, token, postId),
+  listComments: (token: string, postId: number, page = 1) =>
+    listComments(feed, token, postId, page),
   addComment: (token: string, postId: number, message: string) =>
     addComment(feed, token, postId, message),
+  togglePostLike: (token: string, postId: number) =>
+    togglePostLike(feed, token, postId),
+  toggleCommentLike: (token: string, commentId: number) =>
+    toggleCommentLike(feed, token, commentId),
   listSpaces: (token: string) => listSpaces(spaces, token),
   listVisibleSpaces: (token: string) => listVisibleSpaces(spaces, token),
   createSpace: (

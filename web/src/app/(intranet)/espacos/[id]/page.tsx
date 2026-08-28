@@ -10,7 +10,7 @@ import { SpaceMenu } from "@/components/SpaceMenu";
 import type { Activity } from "@/domain/Activity";
 import type { Post } from "@/domain/Post";
 import type { Space } from "@/domain/Space";
-import type { SpaceMember } from "@/domain/SpaceMember";
+import { spaceMemberRoleLabel, type SpaceMember } from "@/domain/SpaceMember";
 import type { SpaceMembershipSettings } from "@/domain/SpaceMembershipSettings";
 import { app } from "@/infrastructure/composition";
 import {
@@ -203,6 +203,10 @@ function spaceJoinHint(space: Space) {
   return "Este espaço é privado. Você precisa de um convite para participar.";
 }
 
+/**
+ * Lista os membros do espaço com foto, nome e cargo em português.
+ * Cargo vazio some; senão traduz admin/member/owner para o rótulo da intranet.
+ */
 function MemberList({ members }: { members: SpaceMember[] }) {
   if (members.length === 0) {
     return <p className="mt-3 text-sm text-zinc-500">Sem lista de membros.</p>;
@@ -210,26 +214,28 @@ function MemberList({ members }: { members: SpaceMember[] }) {
 
   return (
     <ul className="mt-3 flex flex-col gap-2">
-      {members.map((membership) => (
-        <li
-          key={membership.user.id}
-          className="flex items-center gap-2 text-sm text-zinc-700"
-        >
-          <Avatar
-            name={membership.user.name}
-            imageUrl={membership.user.imageUrl}
-            size="sm"
-          />
-          <span className="min-w-0 truncate">
-            {membership.user.name}
-            {membership.role ? (
-              <span className="ml-1 text-xs text-zinc-400">
-                {membership.role}
-              </span>
-            ) : null}
-          </span>
-        </li>
-      ))}
+      {members.map((membership) => {
+        const roleLabel = spaceMemberRoleLabel(membership.role);
+
+        return (
+          <li
+            key={membership.user.id}
+            className="flex items-center gap-2 text-sm text-zinc-700"
+          >
+            <Avatar
+              name={membership.user.name}
+              imageUrl={membership.user.imageUrl}
+              size="sm"
+            />
+            <span className="min-w-0 truncate">
+              {membership.user.name}
+              {roleLabel ? (
+                <span className="ml-1 text-xs text-zinc-400">{roleLabel}</span>
+              ) : null}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

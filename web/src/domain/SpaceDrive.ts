@@ -10,6 +10,7 @@ export type SpaceFolder = {
   name: string;
   parentId: number;
   authorName: string;
+  authorImageUrl: string;
   createdAt: string | null;
   canDelete: boolean;
 };

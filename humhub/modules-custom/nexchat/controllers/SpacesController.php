@@ -4,14 +4,22 @@ namespace humhub\modules\nexchat\controllers;
 
 use humhub\components\Controller;
 use humhub\modules\nexchat\components\BearerLogin;
+use humhub\modules\nexchat\models\Message;
 use humhub\modules\space\models\Membership;
 use humhub\modules\space\models\Space;
+use humhub\modules\user\models\User;
 use Yii;
 use yii\web\Response;
 
+/**
+ * Espaços da intranet: lista, detalhe, seguir, configurações e membros.
+ * Qualquer um com acesso ao espaço lê a lista de membros (não só o admin).
+ */
 class SpacesController extends Controller
 {
     private const SPACE_LIMIT = 50;
+
+    private const MEMBER_LIMIT = 50;
 
     public $enableCsrfValidation = false;
 
@@ -75,6 +83,28 @@ class SpacesController extends Controller
         return array_merge($this->spacePayload($space), [
             'membership' => $this->membershipSettings($space),
         ]);
+    }
+
+    /**
+     * Lista os membros ativos do espaço para quem pode vê-lo.
+     * Lê o id na query; recusa visitante sem acesso; devolve nome, foto e cargo.
+     */
+    public function actionMembers()
+    {
+        if (Yii::$app->user->isGuest) {
+            return $this->fail(401, 'Não autenticado.');
+        }
+
+        $space = $this->loadSpace((int) Yii::$app->request->get('id'));
+        if (!($space instanceof Space)) {
+            return $space;
+        }
+
+        if (!$this->canAccessSpace($space)) {
+            return $this->fail(403, 'Você não tem acesso a este espaço.');
+        }
+
+        return ['members' => $this->memberList($space)];
     }
 
     public function actionFollow()
@@ -293,6 +323,54 @@ class SpacesController extends Controller
                 'status' => Membership::STATUS_MEMBER,
             ])
             ->count();
+    }
+
+    /**
+     * Monta a lista de membros ativos: nome, foto e cargo no espaço.
+     * @return array<int, array{id: int, name: string, username: string, imageUrl: string, role: string}>
+     */
+    private function memberList(Space $space): array
+    {
+        $memberships = Membership::find()
+            ->where([
+                'space_id' => $space->id,
+                'status' => Membership::STATUS_MEMBER,
+            ])
+            ->with('user')
+            ->orderBy(['id' => SORT_ASC])
+            ->limit(self::MEMBER_LIMIT)
+            ->all();
+
+        $members = [];
+        foreach ($memberships as $membership) {
+            $user = $membership->user;
+            if (!$user instanceof User) {
+                continue;
+            }
+
+            $members[] = [
+                'id' => (int) $user->id,
+                'name' => (string) ($user->displayName ?? $user->username ?? 'Usuário'),
+                'username' => (string) ($user->username ?? ''),
+                'imageUrl' => Message::resolveAvatarUrl($user),
+                'role' => $this->memberRole($membership),
+            ];
+        }
+
+        return $members;
+    }
+
+    /**
+     * Cargo do membro no espaço (owner, admin, moderator, member).
+     * Prefere group_id do HumHub; senão o campo role.
+     */
+    private function memberRole(Membership $membership): string
+    {
+        if ($membership->hasAttribute('group_id') && (string) $membership->group_id !== '') {
+            return (string) $membership->group_id;
+        }
+
+        return (string) ($membership->role ?? '');
     }
 
     private function postCount(Space $space): int
