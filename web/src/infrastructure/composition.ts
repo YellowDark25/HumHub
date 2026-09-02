@@ -162,6 +162,12 @@ import { HumhubFeedRepository } from "./humhub/HumhubFeedRepository";
 import { HumhubMediaRepository } from "./humhub/HumhubMediaRepository";
 import { HumhubNotificationRepository } from "./humhub/HumhubNotificationRepository";
 import { HumhubSpaceRepository } from "./humhub/HumhubSpaceRepository";
+import { createSpaceEvent } from "@/application/usecases/createSpaceEvent";
+import { getSpaceEventImage } from "@/application/usecases/getSpaceEventImage";
+import { listSpaceEvents } from "@/application/usecases/listSpaceEvents";
+import { toggleSpaceEventInterest } from "@/application/usecases/toggleSpaceEventInterest";
+import type { CreateChatEventInput } from "@/domain/ChatEvent";
+import { NexchatChatEventRepository } from "./nexchat/NexchatChatEventRepository";
 import { NexchatChatRepository } from "./nexchat/NexchatChatRepository";
 import { NexchatSpaceDriveRepository } from "./nexchat/NexchatSpaceDriveRepository";
 import { LiveKitVoiceRoomRepository } from "./voice/LiveKitVoiceRoomRepository";
@@ -177,6 +183,7 @@ const feed = new HumhubFeedRepository();
 const spaces = new HumhubSpaceRepository();
 const notifications = new HumhubNotificationRepository();
 const chat = new NexchatChatRepository();
+const chatEvents = new NexchatChatEventRepository();
 const spaceDrive = new NexchatSpaceDriveRepository();
 const voiceRooms = new LiveKitVoiceRoomRepository();
 const media = new HumhubMediaRepository();
@@ -506,6 +513,14 @@ export const app = {
     openDirectMessage(chat, token, userId),
   createChannel: (token: string, input: CreateChannelInput) =>
     createChannel(chat, token, input),
+  listSpaceEvents: (token: string, spaceId: number) =>
+    listSpaceEvents(chatEvents, token, spaceId),
+  createSpaceEvent: (token: string, input: CreateChatEventInput) =>
+    createSpaceEvent(chatEvents, token, input),
+  getSpaceEventImage: (token: string, eventId: number) =>
+    getSpaceEventImage(chatEvents, token, eventId),
+  toggleSpaceEventInterest: (token: string, eventId: number) =>
+    toggleSpaceEventInterest(chatEvents, token, eventId),
   listTopics: (token: string, conversationId: number) =>
     listTopics(chat, token, conversationId),
   createTopic: (

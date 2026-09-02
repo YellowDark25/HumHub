@@ -11,6 +11,7 @@ import Link from "next/link";
 import { ChatChannelItem } from "./ChatChannelItem";
 import { ChatContactButton } from "./ChatContactButton";
 import { ChatCreateChannelButton } from "./ChatCreateChannelButton";
+import { ChatEventsNav } from "./ChatEventsNav";
 import { ChatPaneHeader } from "./ChatPaneHeader";
 import { ChatPersonRow } from "./ChatPersonRow";
 import { ChatUserPanel } from "./ChatUserPanel";
@@ -25,6 +26,10 @@ type ChatChannelSidebarProps = {
   hiddenOnMobile?: boolean;
 };
 
+/**
+ * Sidebar de canais, DMs e atalhos do servidor.
+ * No espaço, mostra Eventos abaixo do nome; gestores abrem o assistente por ali.
+ */
 export function ChatChannelSidebar({
   workspace,
   sections,
@@ -41,22 +46,36 @@ export function ChatChannelSidebar({
       } min-h-0 flex-col border-b border-zinc-200 bg-zinc-50 lg:border-r lg:border-b-0`}
     >
       <ChatPaneHeader title={<p className="truncate">{workspace.name}</p>} />
-      <div
-        className={`flex flex-1 flex-col overflow-y-auto p-2.5 ${
-          isHome ? "gap-1.5" : "gap-6 p-3.5"
-        }`}
-      >
-        {sections.map((section) => (
-          <SidebarSection
-            key={section.title}
-            section={section}
-            workspaceId={workspace.id}
-            workspaceName={workspace.name}
-            spaceId={workspace.spaceId}
-            hideTitle={isHome && section.title === workspace.name}
-            activeConversationId={activeConversationId}
-          />
-        ))}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {workspace.kind === "space" && workspace.spaceId ? (
+          <div className="shrink-0 px-3.5 pt-2">
+            <ChatEventsNav
+              spaceId={workspace.spaceId}
+              voiceChannels={voiceChannelsFrom(sections)}
+            />
+          </div>
+        ) : null}
+        <div
+          className={`flex flex-1 flex-col p-2.5 ${
+            isHome ? "gap-1.5" : "gap-6 p-3.5"
+          } ${
+            workspace.kind === "space"
+              ? "mt-1 border-t border-zinc-200 pt-4"
+              : ""
+          }`}
+        >
+          {sections.map((section) => (
+            <SidebarSection
+              key={section.title}
+              section={section}
+              workspaceId={workspace.id}
+              workspaceName={workspace.name}
+              spaceId={workspace.spaceId}
+              hideTitle={isHome && section.title === workspace.name}
+              activeConversationId={activeConversationId}
+            />
+          ))}
+        </div>
       </div>
       <ChatVoiceConnectionBar />
       {currentUser ? <ChatUserPanel user={currentUser} /> : null}
@@ -212,5 +231,24 @@ function DirectMessageLink({
 
 function isPersonItem(item: ChatSidebarItem) {
   return item.kind === "dm" || item.kind === "contact" || item.kind === "invite";
+}
+
+/**
+ * Extrai os canais de voz do sidebar para o assistente de eventos.
+ * Ignora itens sem conversa (só nome).
+ */
+function voiceChannelsFrom(sections: ChatSidebarSection[]) {
+  return sections
+    .filter((section) => section.createChannelType === "voice")
+    .flatMap((section) => section.items)
+    .flatMap((item) => [item, ...item.children])
+    .filter(
+      (item): item is ChatSidebarItem & { conversationId: number } =>
+        item.conversationId !== null && item.channelType === "voice",
+    )
+    .map((item) => ({
+      id: item.conversationId,
+      name: item.name,
+    }));
 }
 

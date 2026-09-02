@@ -1,0 +1,7 @@
+_ref
+humhub-data
+.env
+Caddyfile
+docker-compose.yml
+*.md
+.git

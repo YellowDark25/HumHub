@@ -1,0 +1,12 @@
+# Build do serviço HumHub a partir deste diretório.
+# O projeto (MySQL, volume, variáveis) fica em .railway/railway.ts.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = ["Dockerfile", "modules-custom/**", "caddy/**", "docker/**"]
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

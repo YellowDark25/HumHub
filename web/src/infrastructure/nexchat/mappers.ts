@@ -17,6 +17,12 @@ import type {
   ChatNotificationLevel,
   ChatNotificationPreference,
 } from "@/domain/ChatNotificationPreference";
+import type {
+  ChatEvent,
+  ChatEventFrequency,
+  ChatEventList,
+  ChatEventLocationKind,
+} from "@/domain/ChatEvent";
 import type { ChatTopic } from "@/domain/ChatTopic";
 import type {
   ChatChannelType,
@@ -37,6 +43,8 @@ import type {
   NexchatDriveFile,
   NexchatDriveFolder,
   NexchatDriveResult,
+  NexchatSpaceEvent,
+  NexchatSpaceEventListResult,
   NexchatTopic,
 } from "./types";
 
@@ -320,5 +328,53 @@ export function mapSpaceDriveFile(
     publishedAt: dto.publishedAt ?? null,
     canDelete: Boolean(dto.canDelete),
   };
+}
+
+/**
+ * Converte o DTO de um evento do Nexchat no type da intranet.
+ * Monta a URL da imagem no proxy /api/chat/events/:id/image.
+ */
+export function mapChatEvent(dto: NexchatSpaceEvent): ChatEvent {
+  return {
+    id: dto.id,
+    spaceId: dto.spaceId ?? 0,
+    title: dto.title?.trim() || "Evento",
+    description: dto.description?.trim() ?? "",
+    locationKind: mapEventLocationKind(dto.locationKind),
+    conversationId: dto.conversationId ?? null,
+    conversationName: dto.conversationName?.trim() ?? "",
+    locationText: dto.locationText?.trim() ?? "",
+    startsAt: dto.startsAt ?? "",
+    frequency: mapEventFrequency(dto.frequency),
+    imageUrl: dto.hasImage ? `/api/chat/events/${dto.id}/image` : "",
+    creatorName: dto.creatorName?.trim() || "Usuário",
+    creatorImageUrl: toBrowserMediaUrl(dto.creatorImageUrl),
+    interestedCount: dto.interestedCount ?? 0,
+    isInterested: Boolean(dto.isInterested),
+    canEdit: Boolean(dto.canEdit),
+  };
+}
+
+/**
+ * Converte a lista de eventos do Nexchat.
+ * Sem payload válido devolve lista vazia e sem permissão de criar.
+ */
+export function mapChatEventList(dto: NexchatSpaceEventListResult): ChatEventList {
+  return {
+    canCreate: Boolean(dto.canCreate),
+    events: (dto.events ?? []).map(mapChatEvent),
+  };
+}
+
+function mapEventLocationKind(value?: string): ChatEventLocationKind {
+  return value === "elsewhere" ? "elsewhere" : "voice";
+}
+
+function mapEventFrequency(value?: string): ChatEventFrequency {
+  if (value === "weekly" || value === "monthly") {
+    return value;
+  }
+
+  return "none";
 }
 

@@ -1,0 +1,22 @@
+# Imagem oficial do HumHub com nexchat/chatwoot/REST em path fixo.
+# /opt/modules-custom fica fora do volume /data; o entrypoint copia para /data/modules-custom.
+FROM humhub/humhub:stable-nightly
+
+COPY modules-custom /opt/modules-custom
+COPY modules-custom/nexchat /opt/humhub/protected/modules/nexchat
+COPY modules-custom/chatwoot /opt/humhub/protected/modules/chatwoot
+COPY caddy/railway-edge.caddyfile /etc/caddy/Caddyfile.d/railway-edge.caddyfile
+COPY docker/railway-entrypoint.sh /opt/railway-entrypoint.sh
+COPY docker/railway-enable-modules.sh /opt/railway-enable-modules.sh
+
+RUN chmod +x /opt/railway-entrypoint.sh /opt/railway-enable-modules.sh \
+    && (command -v curl >/dev/null 2>&1 || (apt-get update && apt-get install -y --no-install-recommends curl ca-certificates)) \
+    && mkdir -p /tmp/rest-src \
+    && curl -fsSL https://github.com/humhub/rest/archive/refs/tags/v0.12.2.tar.gz \
+      | tar -xz --strip-components=1 -C /tmp/rest-src \
+    && rm -rf /opt/modules-custom/rest \
+    && mv /tmp/rest-src /opt/modules-custom/rest \
+    && cp -a /opt/modules-custom/rest /opt/humhub/protected/modules/rest
+
+ENTRYPOINT ["/opt/railway-entrypoint.sh"]
+

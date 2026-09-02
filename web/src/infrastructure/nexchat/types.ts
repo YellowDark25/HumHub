@@ -196,3 +196,31 @@ export type NexchatServerNotificationPreference = {
   mutedUntil?: string | null;
   isMuted?: boolean;
 };
+
+export type NexchatSpaceEvent = {
+  id: number;
+  spaceId?: number;
+  title?: string;
+  description?: string;
+  locationKind?: string;
+  conversationId?: number | null;
+  conversationName?: string;
+  locationText?: string;
+  startsAt?: string;
+  frequency?: string;
+  hasImage?: boolean;
+  creatorName?: string;
+  creatorImageUrl?: string;
+  interestedCount?: number;
+  isInterested?: boolean;
+  canEdit?: boolean;
+};
+
+export type NexchatSpaceEventListResult = {
+  success?: boolean;
+  message?: string;
+  error?: string;
+  canCreate?: boolean;
+  events?: NexchatSpaceEvent[];
+  event?: NexchatSpaceEvent;
+};
