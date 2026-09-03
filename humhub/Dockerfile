@@ -8,8 +8,11 @@ COPY modules-custom/chatwoot /opt/humhub/protected/modules/chatwoot
 COPY caddy/railway-edge.caddyfile /etc/caddy/Caddyfile.d/railway-edge.caddyfile
 COPY docker/railway-entrypoint.sh /opt/railway-entrypoint.sh
 COPY docker/railway-enable-modules.sh /opt/railway-enable-modules.sh
+COPY docker/railway-import-local-db.sh /opt/railway-import-local-db.sh
+COPY docker/railway-run-migrations.sh /opt/railway-run-migrations.sh
+COPY docker/humhub-local.sql.gz /opt/humhub-local.sql.gz
 
-RUN chmod +x /opt/railway-entrypoint.sh /opt/railway-enable-modules.sh \
+RUN chmod +x /opt/railway-entrypoint.sh /opt/railway-enable-modules.sh /opt/railway-import-local-db.sh /opt/railway-run-migrations.sh \
     && (command -v curl >/dev/null 2>&1 || (apt-get update && apt-get install -y --no-install-recommends curl ca-certificates)) \
     && mkdir -p /tmp/rest-src \
     && curl -fsSL https://github.com/humhub/rest/archive/refs/tags/v0.12.2.tar.gz \

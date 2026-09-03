@@ -26,6 +26,14 @@ if [ -d /opt/modules-custom ]; then
   chmod -R a+rX /data/modules-custom || true
 fi
 
+if [ -x /opt/railway-import-local-db.sh ]; then
+  /opt/railway-import-local-db.sh
+fi
+
+if [ -x /opt/railway-run-migrations.sh ]; then
+  /opt/railway-run-migrations.sh
+fi
+
 if [ -x /opt/railway-enable-modules.sh ]; then
   /opt/railway-enable-modules.sh &
 fi
