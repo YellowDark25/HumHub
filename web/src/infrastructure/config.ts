@@ -20,6 +20,19 @@ export function getPublicHumhubUrl(): string {
   );
 }
 
+/**
+ * Diz se o LiveKit está configurado para emitir token e falar com o Room Service.
+ * Lê LIVEKIT_URL, LIVEKIT_API_KEY e LIVEKIT_API_SECRET; só é verdadeiro quando as três existem.
+ * @returns true quando dá para criar sessão e listar salas.
+ */
+export function isLiveKitConfigured(): boolean {
+  return Boolean(
+    process.env.LIVEKIT_URL?.trim() &&
+      process.env.LIVEKIT_API_KEY?.trim() &&
+      process.env.LIVEKIT_API_SECRET?.trim(),
+  );
+}
+
 export function getLiveKitUrl(): string {
   const url = process.env.LIVEKIT_URL?.trim();
 
