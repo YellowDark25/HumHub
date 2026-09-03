@@ -206,9 +206,51 @@ class Conversation extends ActiveRecord
             ->exists();
     }
 
+    /**
+     * Diz se o usuário pode abrir esta conversa.
+     * Exige membership (ou canal aberto do espaço) e, em DM, o outro participante ativo.
+     */
     public function canAccess(int $userId): bool
     {
-        return $this->isMember($userId) || $this->isOpenToSpaceMember($userId);
+        if (!$this->isMember($userId) && !$this->isOpenToSpaceMember($userId)) {
+            return false;
+        }
+
+        return $this->hasActivePeer($userId);
+    }
+
+    /**
+     * Diz se a DM ainda tem o outro participante habilitado.
+     * Canal sempre passa; na DM, o peer precisa existir com status ativo no HumHub.
+     */
+    public function hasActivePeer(int $viewerId): bool
+    {
+        if ($this->type !== self::TYPE_DM) {
+            return true;
+        }
+
+        $peerId = $this->peerUserId($viewerId);
+        if ($peerId === null) {
+            return false;
+        }
+
+        return User::find()->active()->andWhere(['id' => $peerId])->exists();
+    }
+
+    /**
+     * Devolve o id do outro participante da DM a partir da chave `a_b`.
+     * @return int|null id do peer, ou null quando a chave não tem outro usuário.
+     */
+    public function peerUserId(int $viewerId): ?int
+    {
+        foreach (explode('_', (string) $this->dm_key) as $part) {
+            $id = (int) $part;
+            if ($id > 0 && $id !== $viewerId) {
+                return $id;
+            }
+        }
+
+        return null;
     }
 
     public function isOpenToSpaceMember(int $userId): bool
@@ -258,6 +300,8 @@ class Conversation extends ActiveRecord
     }
 
     /**
+     * Lista conversas visíveis do usuário (canais e DMs).
+     * Inclui membership ativa e canais abertos do espaço; omite DMs cujo peer foi excluído ou desativado.
      * @return Conversation[]
      */
     public static function findForUser(int $userId): array
@@ -281,9 +325,14 @@ class Conversation extends ActiveRecord
             ]);
         }
 
-        return $query
+        $conversations = $query
             ->orderBy(['last_message_at' => SORT_DESC, 'id' => SORT_DESC])
             ->all();
+
+        return array_values(array_filter(
+            $conversations,
+            static fn(self $conversation) => $conversation->hasActivePeer($userId),
+        ));
     }
 
     /**

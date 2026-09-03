@@ -581,6 +581,7 @@ class IndexController extends Controller
             ->column();
 
         $users = User::find()
+            ->active()
             ->where(['!=', 'id', (int) Yii::$app->user->id])
             ->andFilterWhere(['not in', 'id', $linkedUserIds ?: [0]])
             ->orderBy(['username' => SORT_ASC])
@@ -597,7 +598,7 @@ class IndexController extends Controller
     public function actionStartDm()
     {
         $targetUserId = (int) Yii::$app->request->post('user_id', 0);
-        if ($targetUserId <= 0) {
+        if ($this->findActiveUser($targetUserId) === null) {
             Yii::$app->session->setFlash('error', 'Selecione um usuário.');
             return $this->redirect(['index']);
         }
@@ -618,8 +619,11 @@ class IndexController extends Controller
         Yii::$app->response->format = Response::FORMAT_JSON;
 
         $targetUserId = (int) Yii::$app->request->post('user_id', 0);
-        if ($targetUserId <= 0 || $targetUserId === (int) Yii::$app->user->id) {
-            return ['success' => false, 'error' => 'Usuário inválido.'];
+        if (
+            $targetUserId === (int) Yii::$app->user->id
+            || $this->findActiveUser($targetUserId) === null
+        ) {
+            return ['success' => false, 'error' => 'Este usuário não está mais disponível.'];
         }
 
         $denied = $this->requireFriendship((int) Yii::$app->user->id, $targetUserId);
@@ -1451,11 +1455,16 @@ class IndexController extends Controller
             'channelConversations' => $channelConversations,
             'dmConversations' => $dmConversations,
             'pendingInvites' => Conversation::findPendingInvitesForUser($userId),
-            'users' => User::find()->where(['!=', 'id', $userId])->orderBy(['username' => SORT_ASC])->all(),
+            'users' => User::find()
+                ->active()
+                ->where(['!=', 'id', $userId])
+                ->orderBy(['username' => SORT_ASC])
+                ->all(),
             'activeConversation' => $activeConversation,
             'memberships' => $memberships,
             'isChannelAdmin' => $isChannelAdmin,
             'invitableUsers' => User::find()
+                ->active()
                 ->where(['!=', 'id', $userId])
                 ->andFilterWhere(['not in', 'id', $linkedUserIds ?: [0]])
                 ->orderBy(['username' => SORT_ASC])
@@ -1464,6 +1473,8 @@ class IndexController extends Controller
     }
 
     /**
+     * Monta os contatos da sidebar de mensagens diretas.
+     * Lista só usuários ativos (exclui contas apagadas ou desativadas) e anexa preview da DM existente.
      * @return array<int, array{id: int, name: string, username: string, guid: string, title: string, lastPreview: string, isOnline: bool, conversationId: int|null}>
      */
     protected function listContacts(int $userId): array
@@ -1487,7 +1498,14 @@ class IndexController extends Controller
             : [];
 
         $contacts = [];
-        foreach (User::find()->where(['!=', 'id', $userId])->with('profile')->orderBy(['username' => SORT_ASC])->all() as $user) {
+        foreach (
+            User::find()
+                ->active()
+                ->where(['!=', 'id', $userId])
+                ->with('profile')
+                ->orderBy(['username' => SORT_ASC])
+                ->all() as $user
+        ) {
             $existing = $directMessages[Conversation::buildDmKey($userId, (int) $user->id)] ?? null;
             if ($restrictToFriends && $existing === null && !isset($friendIds[(int) $user->id])) {
                 continue;
@@ -1681,6 +1699,21 @@ class IndexController extends Controller
         }
 
         return $conversation;
+    }
+
+    /**
+     * Busca um usuário habilitado pelo id.
+     * Usa o escopo `active` do HumHub (status enabled); devolve null se o id for inválido ou a conta não estiver ativa.
+     */
+    private function findActiveUser(int $userId): ?User
+    {
+        if ($userId <= 0) {
+            return null;
+        }
+
+        $user = User::find()->active()->andWhere(['id' => $userId])->one();
+
+        return $user instanceof User ? $user : null;
     }
 
     private function conversationHasParentColumn(): bool
