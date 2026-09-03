@@ -9,6 +9,19 @@ export type NexchatConversation = {
   slowModeSeconds?: number;
   parentId?: number | null;
   isAdmin?: boolean;
+  lastMessageId?: number;
+  messageCount?: number;
+};
+
+export type NexchatConversationUpdate = {
+  id: number;
+  lastMessageId?: number;
+  messageCount?: number;
+};
+
+export type NexchatUpdatesResult = {
+  success: boolean;
+  conversations?: NexchatConversationUpdate[];
 };
 
 export type NexchatTopic = {

@@ -19,9 +19,9 @@ type VoiceMenu = "input" | "output" | "";
 type VoiceSubmenu = "device" | "profile" | "";
 
 /**
- * Barra de voz e áudio do usuário logado, sob o rail e a lista de canais.
+ * Barra de voz e áudio do usuário logado, sob a lista de canais.
  * Mostra avatar, mute/ensurdecer e os menus de dispositivo; o card arredondado
- * ocupa a largura inteira da coluna esquerda.
+ * fica na base do painel de canais.
  */
 export function ChatUserPanel({ user }: ChatUserPanelProps) {
   const audio = useChatAudioControls();

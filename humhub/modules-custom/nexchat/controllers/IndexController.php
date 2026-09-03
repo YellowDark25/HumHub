@@ -32,6 +32,9 @@ class IndexController extends Controller
 {
     private const MESSAGE_PAGE_SIZE = 50;
 
+    /** @var array<int, array{lastMessageId: int, messageCount: int}>|null */
+    private $messageStats;
+
     public function beforeAction($action)
     {
         BearerLogin::authenticate();
@@ -333,11 +336,24 @@ class IndexController extends Controller
     }
 
     /**
-     * @return array{id: int, type: string, name: string, spaceId: int|null, channelKind: string|null, isPrivate: bool}
+     * Serializa a conversa para o bootstrap da intranet.
+     * Inclui último id e total de mensagens para o badge de não lidas.
+     *
+     * @return array{
+     *   id: int,
+     *   type: string,
+     *   name: string,
+     *   spaceId: int|null,
+     *   channelKind: string|null,
+     *   isPrivate: bool,
+     *   lastMessageId: int,
+     *   messageCount: int
+     * }
      */
     private function conversationToItem(Conversation $conversation): array
     {
         $isChannel = $conversation->type === Conversation::TYPE_CHANNEL;
+        $stat = $this->messageStat((int) $conversation->id);
 
         return [
             'id' => (int) $conversation->id,
@@ -352,6 +368,8 @@ class IndexController extends Controller
             'slowModeSeconds' => $this->readOptionalInt($conversation, 'slow_mode_seconds') ?? 0,
             'parentId' => $this->readOptionalInt($conversation, 'parent_id'),
             'isAdmin' => $isChannel && $conversation->isAdmin((int) Yii::$app->user->id),
+            'lastMessageId' => $stat['lastMessageId'],
+            'messageCount' => $stat['messageCount'],
         ];
     }
 
@@ -1206,25 +1224,34 @@ class IndexController extends Controller
         ];
     }
 
+    /**
+     * Lista o último id e o total de mensagens de cada conversa do usuário.
+     * Uma query em lote; a intranet compara com o visto local para o badge.
+     */
     public function actionUpdates()
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
 
         $userId = (int) Yii::$app->user->id;
+        $conversations = Conversation::findForUser($userId);
+        $ids = array_map(
+            static fn(Conversation $conversation) => (int) $conversation->id,
+            $conversations,
+        );
+        $this->ensureMessageStats($ids);
+        $previews = $this->lastMessagePreviews($ids);
         $items = [];
 
-        foreach (Conversation::findForUser($userId) as $conversation) {
-            $lastMessage = Message::find()
-                ->where(['conversation_id' => $conversation->id])
-                ->orderBy(['id' => SORT_DESC])
-                ->one();
-
+        foreach ($conversations as $conversation) {
+            $id = (int) $conversation->id;
+            $stat = $this->messageStat($id);
             $items[] = [
-                'id' => (int) $conversation->id,
+                'id' => $id,
                 'type' => $conversation->type,
                 'name' => $conversation->getDisplayName(),
-                'lastMessageId' => $lastMessage ? (int) $lastMessage->id : 0,
-                'preview' => $lastMessage ? mb_substr($lastMessage->content, 0, 80) : '',
+                'lastMessageId' => $stat['lastMessageId'],
+                'messageCount' => $stat['messageCount'],
+                'preview' => $previews[$id] ?? '',
             ];
         }
 
@@ -1554,6 +1581,70 @@ class IndexController extends Controller
         }
 
         return $previews;
+    }
+
+    /**
+     * Devolve último id e total de mensagens da conversa.
+     * Usa o cache do request; na primeira falta, busca em lote.
+     *
+     * @return array{lastMessageId: int, messageCount: int}
+     */
+    private function messageStat(int $conversationId): array
+    {
+        $this->ensureMessageStats([$conversationId]);
+
+        return $this->messageStats[$conversationId] ?? [
+            'lastMessageId' => 0,
+            'messageCount' => 0,
+        ];
+    }
+
+    /**
+     * Preenche o cache de lastMessageId/messageCount das conversas pedidas.
+     * Uma query GROUP BY por request; ids já conhecidos são ignorados.
+     *
+     * @param int[] $conversationIds
+     */
+    private function ensureMessageStats(array $conversationIds): void
+    {
+        if ($this->messageStats === null) {
+            $this->messageStats = [];
+        }
+
+        $missing = [];
+        foreach ($conversationIds as $conversationId) {
+            $id = (int) $conversationId;
+            if ($id <= 0 || array_key_exists($id, $this->messageStats)) {
+                continue;
+            }
+            $missing[] = $id;
+            $this->messageStats[$id] = [
+                'lastMessageId' => 0,
+                'messageCount' => 0,
+            ];
+        }
+
+        if ($missing === []) {
+            return;
+        }
+
+        $rows = (new \yii\db\Query())
+            ->select([
+                'conversation_id',
+                'MAX(id) AS last_id',
+                'COUNT(*) AS message_count',
+            ])
+            ->from(Message::tableName())
+            ->where(['conversation_id' => $missing])
+            ->groupBy('conversation_id')
+            ->all();
+
+        foreach ($rows as $row) {
+            $this->messageStats[(int) $row['conversation_id']] = [
+                'lastMessageId' => (int) $row['last_id'],
+                'messageCount' => (int) $row['message_count'],
+            ];
+        }
     }
 
     private function requireFriendship(int $userId, int $targetUserId): ?string

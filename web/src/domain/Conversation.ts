@@ -13,6 +13,8 @@ export type Conversation = {
   topic: string;
   slowModeSeconds: number;
   canManage: boolean;
+  lastMessageId: number;
+  messageCount: number;
 };
 
 export function canJoinVoice(

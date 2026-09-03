@@ -8,6 +8,8 @@ import { useChatSession } from "./ChatSession";
 import { ChatTabLink } from "./ChatTabLink";
 import { ChatInviteFriendsModal } from "./ChatInviteFriendsModal";
 import { ChatVoiceOccupants, useVoiceCallDuration } from "./ChatVoiceOccupancy";
+import { ChatUnreadBadge } from "./ChatUnreadBadge";
+import { useChatUnreadCounts } from "./ChatUnread";
 import { useVoiceCall } from "./useVoiceCall";
 
 type ChatChannelItemProps = {
@@ -21,7 +23,7 @@ type ChatChannelItemProps = {
 
 /**
  * Item de canal na sidebar (texto, voz ou fórum) com tópicos e ações.
- * O link troca só o painel; em canal de voz também entra na chamada.
+ * O link troca só o painel; a pílula de não lidas encosta na borda da sidebar.
  */
 export function ChatChannelItem({
   item,
@@ -34,6 +36,8 @@ export function ChatChannelItem({
   const [settingsTab, setSettingsTab] = useState<"overview" | "invites" | "">("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const { openConversation } = useChatSession();
+  const { unreadOf } = useChatUnreadCounts();
+  const unreadCount = unreadOf(item.conversationId);
   const call = useVoiceCall();
   const callDuration = useVoiceCallDuration(
     item.channelType === "voice" ? item.conversationId : null,
@@ -50,12 +54,16 @@ export function ChatChannelItem({
 
   return (
     <div>
-      <div
-        className={`group flex items-center rounded-lg ${
-          isActive ? "bg-zinc-200" : "hover:bg-zinc-100"
-        }`}
-      >
-        <ChatTabLink
+      <div className="relative w-full">
+        {unreadCount > 0 && !isActive ? (
+          <span className="absolute top-1/2 left-0 z-10 h-2 w-1 -translate-y-1/2 rounded-r-full bg-zinc-800 dark:bg-white" />
+        ) : null}
+        <div
+          className={`group mx-2 flex items-center rounded-xl ${
+            isActive ? "bg-zinc-200" : "hover:bg-zinc-100"
+          }`}
+        >
+          <ChatTabLink
           onOpen={() => {
             openConversation(conversationId, workspaceId);
             if (item.channelType !== "voice") {
@@ -69,13 +77,22 @@ export function ChatChannelItem({
             });
           }}
           className={`flex min-w-0 flex-1 items-center gap-2.5 px-2 py-2 text-[15px] ${
-            isActive ? "font-medium text-zinc-900" : "text-zinc-600 group-hover:text-zinc-900"
+            isActive
+              ? "font-medium text-zinc-900"
+              : unreadCount > 0
+                ? "font-semibold text-zinc-900"
+                : "text-zinc-600 group-hover:text-zinc-900"
           }`}
         >
-          <span className="w-5 shrink-0 text-zinc-400">
+          <span
+            className={`w-5 shrink-0 ${
+              unreadCount > 0 && !isActive ? "text-zinc-800" : "text-zinc-400"
+            }`}
+          >
             <ChannelIcon type={item.channelType} />
           </span>
           <span className="truncate">{item.name}</span>
+          <ChatUnreadBadge count={unreadCount} />
         </ChatTabLink>
         {callDuration || item.canManage ? (
           <div className="relative mr-1 flex h-7 min-w-12 shrink-0 items-center justify-end">
@@ -130,6 +147,7 @@ export function ChatChannelItem({
             onClose={() => setSettingsTab("")}
           />
         ) : null}
+        </div>
       </div>
       {item.channelType === "voice" && item.conversationId ? (
         <ChatVoiceOccupants conversationId={item.conversationId} />
@@ -159,12 +177,14 @@ function ChannelTopicList({
   activeConversationId?: number;
 }) {
   const { openConversation } = useChatSession();
+  const { unreadOf } = useChatUnreadCounts();
 
   return (
     <ul>
       {topics.map((topic, index) => {
         const topicId = topic.conversationId;
         const isActive = topicId === activeConversationId;
+        const unreadCount = unreadOf(topicId);
 
         return (
           <li key={topic.key} className="relative flex min-h-8 items-center">
@@ -175,13 +195,16 @@ function ChannelTopicList({
             {topicId ? (
               <ChatTabLink
                 onOpen={() => openConversation(topicId, workspaceId)}
-                className={`min-w-0 flex-1 truncate rounded-md px-1.5 py-1 text-[13px] ${
+                className={`flex min-w-0 flex-1 items-center gap-2 truncate rounded-md px-1.5 py-1 text-[13px] ${
                   isActive
                     ? "bg-zinc-200 font-medium text-zinc-900"
-                    : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+                    : unreadCount > 0
+                      ? "font-semibold text-zinc-800"
+                      : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
                 }`}
               >
-                {topic.name}
+                <span className="truncate">{topic.name}</span>
+                <ChatUnreadBadge count={unreadCount} />
               </ChatTabLink>
             ) : (
               <span className="px-1.5 text-[13px] text-zinc-400">{topic.name}</span>

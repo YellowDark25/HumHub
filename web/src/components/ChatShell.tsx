@@ -26,6 +26,7 @@ import { ChatChannelSidebar } from "./ChatChannelSidebar";
 import { ChatMainPanel } from "./ChatMainPanel";
 import { ChatServerRail } from "./ChatServerRail";
 import { ChatSessionProvider, useChatSession } from "./ChatSession";
+import { ChatUnreadProvider } from "./ChatUnread";
 import { ChatUserPanel } from "./ChatUserPanel";
 
 type ChatShellProps = {
@@ -156,7 +157,7 @@ function ChatShellReady({
 
 /**
  * Renderiza rail, sidebar e o painel a partir da sessão e das listas.
- * A barra de voz fica sob as duas colunas da esquerda; o chat ocupa o resto.
+ * O rail fica de fora; canais e mensagens formam o painel arredondado.
  */
 function ChatShellFrame({
   workspaces,
@@ -184,31 +185,40 @@ function ChatShellFrame({
 
   return (
     <ChatShellContext.Provider value={{ currentWorkspace }}>
-      <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-white">
-        <div
-          className={`${
-            hideNavigationOnMobile ? "hidden lg:flex" : "flex"
-          } min-h-0 w-full shrink-0 flex-col lg:w-92`}
-        >
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-            <ChatServerRail
-              workspaces={workspaces}
-              currentWorkspaceId={currentWorkspace.id}
-              currentUser={currentUser}
-              spacesWithoutServer={spacesWithoutServer}
-            />
-            <ChatChannelSidebar
-              workspace={currentWorkspace}
-              sections={sections}
-              activeConversationId={conversationId}
-            />
+      <ChatUnreadProvider
+        lists={lists}
+        workspaces={workspaces}
+        activeConversationId={conversationId}
+      >
+        <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-zinc-100">
+          <ChatServerRail
+            workspaces={workspaces}
+            currentWorkspaceId={currentWorkspace.id}
+            currentUser={currentUser}
+            spacesWithoutServer={spacesWithoutServer}
+            hiddenOnMobile={hideNavigationOnMobile}
+          />
+          <div className="flex min-h-0 min-w-0 flex-1 p-2 lg:pl-0">
+            <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl bg-white">
+              <div
+                className={`${
+                  hideNavigationOnMobile ? "hidden lg:flex" : "flex"
+                } min-h-0 w-full shrink-0 flex-col lg:w-72`}
+              >
+                <ChatChannelSidebar
+                  workspace={currentWorkspace}
+                  sections={sections}
+                  activeConversationId={conversationId}
+                />
+                {currentUser ? <ChatUserPanel user={currentUser} /> : null}
+              </div>
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                <ChatMainPanel />
+              </div>
+            </div>
           </div>
-          {currentUser ? <ChatUserPanel user={currentUser} /> : null}
         </div>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <ChatMainPanel />
-        </div>
-      </div>
+      </ChatUnreadProvider>
     </ChatShellContext.Provider>
   );
 }

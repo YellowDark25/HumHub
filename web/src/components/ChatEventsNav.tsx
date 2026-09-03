@@ -13,7 +13,7 @@ type ChatEventsNavProps = {
 
 /**
  * Atalho de eventos no sidebar do servidor.
- * Mostra a quantidade (ex.: "1 Evento") e abre o painel com os cartões.
+ * Mostra a quantidade (ex.: "1 Evento") e abre o painel; o item tem canto arredondado.
  */
 export function ChatEventsNav({ spaceId, voiceChannels }: ChatEventsNavProps) {
   const [open, setOpen] = useState(false);
@@ -24,7 +24,7 @@ export function ChatEventsNav({ spaceId, voiceChannels }: ChatEventsNavProps) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-[15px] ${
+        className={`flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left text-[15px] ${
           open
             ? "bg-zinc-200 font-medium text-zinc-900"
             : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"

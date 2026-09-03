@@ -37,6 +37,7 @@ import { listComments } from "@/application/usecases/listComments";
 import { toggleCommentLike } from "@/application/usecases/toggleCommentLike";
 import { togglePostLike } from "@/application/usecases/togglePostLike";
 import { listConversations } from "@/application/usecases/listConversations";
+import { listConversationUpdates } from "@/application/usecases/listConversationUpdates";
 import { listFeed } from "@/application/usecases/listFeed";
 import { listNotifications } from "@/application/usecases/listNotifications";
 import type { CreateChannelInput } from "@/application/ports/ChatRepository";
@@ -463,6 +464,8 @@ export const app = {
   openNotificationLiveStream: (token: string) =>
     openNotificationLiveStream(notifications, token),
   listConversations: (token: string) => listConversations(chat, token),
+  listConversationUpdates: (token: string) =>
+    listConversationUpdates(chat, token),
   getChatNavigation: (token: string) =>
     getChatNavigation(chat, spaces, auth, token),
   getChatHomePage: (token: string, workspaceId: string) =>

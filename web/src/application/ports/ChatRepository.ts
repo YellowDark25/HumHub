@@ -16,6 +16,7 @@ import type {
 } from "@/domain/ChatNotificationPreference";
 import type { ChatTopic } from "@/domain/ChatTopic";
 import type { ChatChannelType, Conversation } from "@/domain/Conversation";
+import type { ConversationUnreadSnapshot } from "@/domain/ConversationUnread";
 
 export type ConversationLists = {
   channels: Conversation[];
@@ -27,6 +28,7 @@ export type ConversationLists = {
 
 export interface ChatRepository {
   listConversations(token: string): Promise<ConversationLists>;
+  listConversationUpdates(token: string): Promise<ConversationUnreadSnapshot[]>;
   listMutualServers(token: string, userId: number): Promise<ChatMutualServer[]>;
   listMessages(
     token: string,

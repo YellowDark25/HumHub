@@ -46,9 +46,43 @@ export function findListedConversation(
   lists: ConversationLists,
   conversationId: number,
 ) {
-  return [...lists.channels, ...lists.dms, ...lists.pendingInvites].find(
-    (item) => item.id === conversationId,
-  );
+  return listedConversations(lists).find((item) => item.id === conversationId);
+}
+
+/**
+ * Junta canais, DMs e convites numa lista plana.
+ * Usada para localizar conversa e somar não lidas por servidor.
+ */
+export function listedConversations(lists: ConversationLists): Conversation[] {
+  return [...lists.channels, ...lists.dms, ...lists.pendingInvites];
+}
+
+/**
+ * Soma as não lidas de cada workspace (home = DMs; servidor = canais dele).
+ * Percorre as conversas do workspace e acumula o contador já calculado.
+ */
+export function unreadCountByWorkspace(
+  lists: ConversationLists,
+  workspaces: ChatWorkspace[],
+  unreadByConversation: Record<number, number>,
+): Record<string, number> {
+  const totals: Record<string, number> = {};
+
+  for (const workspace of workspaces) {
+    const ids =
+      workspace.kind === "home"
+        ? homeUnreadConversationIds(lists)
+        : conversationsForWorkspace(lists, workspace).map(
+            (conversation) => conversation.id,
+          );
+    totals[workspace.id] = ids.reduce(
+      (total, conversationId) =>
+        total + (unreadByConversation[conversationId] ?? 0),
+      0,
+    );
+  }
+
+  return totals;
 }
 
 function homeWorkspace(): ChatWorkspace {
@@ -195,6 +229,34 @@ function topicsByParent(channels: Conversation[]) {
   }
 
   return childrenByParent;
+}
+
+function conversationsForWorkspace(
+  lists: ConversationLists,
+  workspace: ChatWorkspace,
+): Conversation[] {
+  if (workspace.kind === "home") {
+    return [...lists.dms, ...lists.pendingInvites];
+  }
+
+  return channelsForWorkspace(lists.channels, workspace);
+}
+
+/**
+ * Ids de conversa que entram no badge da home (DMs, convites e contatos).
+ * Contatos com DM aberta às vezes não vêm de novo em `lists.dms`.
+ */
+export function homeUnreadConversationIds(lists: ConversationLists): number[] {
+  const ids = new Set<number>();
+  for (const conversation of [...lists.dms, ...lists.pendingInvites]) {
+    ids.add(conversation.id);
+  }
+  for (const contact of lists.contacts) {
+    if (contact.conversationId) {
+      ids.add(contact.conversationId);
+    }
+  }
+  return [...ids];
 }
 
 function channelsForWorkspace(

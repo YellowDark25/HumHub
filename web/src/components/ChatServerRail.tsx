@@ -5,6 +5,8 @@ import { Avatar } from "./Avatar";
 import { ChatCreateServerButton } from "./ChatCreateServerButton";
 import { useChatSession } from "./ChatSession";
 import { ChatTabLink } from "./ChatTabLink";
+import { ChatUnreadBadge } from "./ChatUnreadBadge";
+import { useChatUnreadCounts } from "./ChatUnread";
 
 type ChatServerRailProps = {
   workspaces: ChatWorkspace[];
@@ -16,7 +18,7 @@ type ChatServerRailProps = {
 
 /**
  * Rail de servidores à esquerda do chat.
- * Cada ícone troca o workspace nesta aba, sem recarregar a página.
+ * Cada ícone troca o workspace e mostra o badge vermelho de não lidas.
  */
 export function ChatServerRail({
   workspaces,
@@ -32,7 +34,7 @@ export function ChatServerRail({
     <aside
       className={`${
         hiddenOnMobile ? "hidden lg:flex" : "flex"
-      } shrink-0 gap-2.5 overflow-x-auto border-b border-zinc-200 bg-zinc-100 p-2.5 lg:w-20 lg:flex-col lg:items-center lg:overflow-y-auto lg:border-r lg:border-b-0 lg:py-3`}
+      } shrink-0 gap-2.5 overflow-x-auto overflow-y-visible bg-zinc-100 p-2.5 lg:w-20 lg:flex-col lg:items-center lg:overflow-x-visible lg:overflow-y-auto lg:border-b-0 lg:py-3`}
     >
       {home ? (
         <ServerButton
@@ -61,7 +63,7 @@ export function ChatServerRail({
 
 /**
  * Ícone de um servidor ou da home na rail.
- * Troca o workspace nesta aba, sem recarregar o chat.
+ * Troca o workspace nesta aba e mostra o badge de não lidas no canto.
  */
 function ServerButton({
   workspace,
@@ -71,10 +73,17 @@ function ServerButton({
   isActive: boolean;
 }) {
   const { openWorkspace } = useChatSession();
+  const { unreadByWorkspace } = useChatUnreadCounts();
+  const unreadCount = unreadByWorkspace[workspace.id] ?? 0;
 
   return (
     <ChatTabLink
       title={workspace.name}
+      aria-label={
+        unreadCount > 0
+          ? `${workspace.name}, ${unreadCount} não lidas`
+          : workspace.name
+      }
       className="relative flex shrink-0 items-center justify-center"
       onOpen={() => openWorkspace(workspace.id)}
     >
@@ -84,14 +93,13 @@ function ServerButton({
         }`}
       />
       <span
-        className={`overflow-hidden transition-[border-radius] ${
-          isActive
-            ? "rounded-2xl ring-2 ring-teal-600 ring-offset-2 ring-offset-zinc-100"
-            : "rounded-full hover:rounded-2xl"
+        className={`overflow-hidden rounded-2xl ${
+          isActive ? "ring-2 ring-teal-600 ring-offset-2 ring-offset-zinc-100" : ""
         }`}
       >
         <ServerIcon workspace={workspace} />
       </span>
+      <ChatUnreadBadge count={unreadCount} placement="server" />
     </ChatTabLink>
   );
 }
@@ -118,7 +126,7 @@ function ServerIcon({ workspace }: { workspace: ChatWorkspace }) {
       name={workspace.name}
       imageUrl={workspace.imageUrl}
       size="server"
-      shape="circle"
+      shape="squircle"
     />
   );
 }

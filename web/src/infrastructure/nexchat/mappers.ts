@@ -29,6 +29,7 @@ import type {
   Conversation,
   ConversationKind,
 } from "@/domain/Conversation";
+import type { ConversationUnreadSnapshot } from "@/domain/ConversationUnread";
 import { isChatNotificationLevel } from "@/shared/chatNotification";
 import { mediaUrlFromGuid, toBrowserMediaUrl } from "../humhub/publicMediaUrl";
 import type {
@@ -45,9 +46,14 @@ import type {
   NexchatDriveResult,
   NexchatSpaceEvent,
   NexchatSpaceEventListResult,
+  NexchatConversationUpdate,
   NexchatTopic,
 } from "./types";
 
+/**
+ * Converte o DTO Nexchat na conversa da intranet.
+ * Copia canal, espaço e o instantâneo de mensagens para o badge de não lidas.
+ */
 export function mapConversation(
   dto: NexchatConversation,
   kind: ConversationKind,
@@ -63,6 +69,22 @@ export function mapConversation(
     topic: dto.topic ?? "",
     slowModeSeconds: dto.slowModeSeconds ?? 0,
     canManage: Boolean(dto.isAdmin),
+    lastMessageId: dto.lastMessageId ?? 0,
+    messageCount: dto.messageCount ?? 0,
+  };
+}
+
+/**
+ * Converte o item de /updates no instantâneo de não lidas.
+ * Copia último id e total; ids inválidos viram 0.
+ */
+export function mapConversationUnreadSnapshot(
+  dto: NexchatConversationUpdate,
+): ConversationUnreadSnapshot {
+  return {
+    conversationId: dto.id,
+    lastMessageId: dto.lastMessageId ?? 0,
+    messageCount: dto.messageCount ?? 0,
   };
 }
 

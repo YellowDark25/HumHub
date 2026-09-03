@@ -25,6 +25,7 @@ import type {
 } from "@/domain/ChatNotificationPreference";
 import type { ChatTopic } from "@/domain/ChatTopic";
 import type { Conversation } from "@/domain/Conversation";
+import type { ConversationUnreadSnapshot } from "@/domain/ConversationUnread";
 import { humhubRequest } from "../humhub/client";
 import { nexchatFileRequest, nexchatRequest } from "./client";
 import {
@@ -37,6 +38,7 @@ import {
   mapChatReaction,
   mapChatTopic,
   mapConversation,
+  mapConversationUnreadSnapshot,
   mapServerNotificationPreference,
 } from "./mappers";
 import type {
@@ -52,6 +54,7 @@ import type {
   NexchatServerNotificationPreference,
   NexchatSubscribeToken,
   NexchatTopic,
+  NexchatUpdatesResult,
 } from "./types";
 
 export class NexchatChatRepository implements ChatRepository {
@@ -72,6 +75,17 @@ export class NexchatChatRepository implements ChatRepository {
       contacts: (data.contacts ?? []).map(mapChatContact),
       spaceServerIds: data.spaceServerIds ?? [],
     };
+  }
+
+  async listConversationUpdates(
+    token: string,
+  ): Promise<ConversationUnreadSnapshot[]> {
+    const data = await nexchatRequest<NexchatUpdatesResult>({
+      path: "updates",
+      token,
+    });
+
+    return (data.conversations ?? []).map(mapConversationUnreadSnapshot);
   }
 
   async listMutualServers(

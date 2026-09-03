@@ -167,7 +167,7 @@ export function ChatComposer({
   }
 
   return (
-    <div ref={rootRef} className="relative shrink-0 px-5 pb-5">
+    <div ref={rootRef} className="relative shrink-0 px-5 pb-2">
       <ChatComposerPanels
         panel={panel}
         onSelectFile={openFilePicker}

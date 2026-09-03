@@ -36,7 +36,7 @@ export function ChatCreateServerButton({
         title="Adicionar um servidor"
         aria-label="Adicionar um servidor"
         onClick={() => setOpen(true)}
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-teal-700 transition-[border-radius,background-color,color] hover:rounded-2xl hover:bg-teal-700 hover:text-white"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-200 text-teal-700 transition-[background-color,color] hover:bg-teal-700 hover:text-white"
       >
         <PlusIcon />
       </button>

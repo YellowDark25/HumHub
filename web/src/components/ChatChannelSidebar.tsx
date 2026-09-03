@@ -13,6 +13,8 @@ import { ChatPaneHeader } from "./ChatPaneHeader";
 import { ChatPersonRow } from "./ChatPersonRow";
 import { useChatSession } from "./ChatSession";
 import { ChatTabLink } from "./ChatTabLink";
+import { ChatUnreadBadge } from "./ChatUnreadBadge";
+import { useChatUnreadCounts } from "./ChatUnread";
 import { ChatVoiceConnectionBar } from "./ChatVoiceConnectionBar";
 import { useVoiceOccupancy } from "./ChatVoiceOccupancy";
 
@@ -24,7 +26,7 @@ type ChatChannelSidebarProps = {
 
 /**
  * Sidebar de canais, DMs e atalhos do servidor.
- * No espaço, mostra Eventos abaixo do nome; gestores abrem o assistente por ali.
+ * No espaço, Eventos fica acima dos canais; o divisor não encosta nas bordas.
  */
 export function ChatChannelSidebar({
   workspace,
@@ -34,24 +36,23 @@ export function ChatChannelSidebar({
   const isHome = workspace.kind === "home";
 
   return (
-    <aside className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-zinc-200 bg-zinc-50 lg:border-r lg:border-b-0">
+    <aside className="flex min-h-0 min-w-0 flex-1 flex-col bg-zinc-50 lg:border-r lg:border-zinc-200">
       <ChatPaneHeader title={<p className="truncate">{workspace.name}</p>} />
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {workspace.kind === "space" && workspace.spaceId ? (
-          <div className="shrink-0 px-3.5 pt-2">
+          <div className="shrink-0 px-2 pt-2">
             <ChatEventsNav
               spaceId={workspace.spaceId}
               voiceChannels={voiceChannelsFrom(sections)}
             />
           </div>
         ) : null}
+        {workspace.kind === "space" ? (
+          <div className="mx-3.5 my-1.5 border-t border-zinc-200" />
+        ) : null}
         <div
-          className={`flex flex-1 flex-col p-2.5 ${
-            isHome ? "gap-1.5" : "gap-6 p-3.5"
-          } ${
-            workspace.kind === "space"
-              ? "mt-1 border-t border-zinc-200 pt-4"
-              : ""
+          className={`flex flex-1 flex-col ${
+            isHome ? "gap-1.5 p-2.5" : "gap-6 py-3"
           }`}
         >
           {sections.map((section) => (
@@ -92,7 +93,7 @@ function SidebarSection({
   return (
     <section>
       {hideTitle ? null : (
-        <h2 className="mb-2.5 flex items-center justify-between gap-2 px-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        <h2 className="mb-2.5 flex items-center justify-between gap-2 px-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">
           <span>{section.title}</span>
           {section.createChannelType ? (
             <ChatCreateChannelButton
@@ -183,7 +184,7 @@ function SidebarItem({
 
 /**
  * Link de uma DM na sidebar; troca só o painel, sem scroll da página.
- * Marca "Em chamada" quando o canal de voz da conversa tem ocupantes.
+ * Marca "Em chamada" quando há ocupantes e o badge quando há não lidas.
  */
 function DirectMessageLink({
   conversationId,
@@ -204,12 +205,18 @@ function DirectMessageLink({
 }) {
   const { openConversation } = useChatSession();
   const { occupantsByChannel } = useVoiceOccupancy();
+  const { unreadOf } = useChatUnreadCounts();
   const occupants = occupantsByChannel[conversationId] ?? [];
+  const unreadCount = unreadOf(conversationId);
 
   return (
     <ChatTabLink
-      className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left ${
-        isActive ? "bg-zinc-200" : "hover:bg-zinc-200/70"
+      className={`flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left ${
+        isActive
+          ? "bg-zinc-200"
+          : unreadCount > 0
+            ? "hover:bg-zinc-200/70"
+            : "hover:bg-zinc-200/70"
       }`}
       onOpen={() => openConversation(conversationId, workspaceId)}
     >
@@ -219,6 +226,7 @@ function DirectMessageLink({
         subtitle={occupants.length > 0 ? "Em chamada" : subtitle}
         isOnline={isOnline}
       />
+      <ChatUnreadBadge count={unreadCount} />
     </ChatTabLink>
   );
 }

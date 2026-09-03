@@ -16,10 +16,14 @@ type AvatarProps = {
   name: string;
   imageUrl?: string;
   size?: keyof typeof SIZE_CLASS;
-  shape?: "circle" | "square";
+  shape?: "circle" | "square" | "squircle";
   fit?: "cover" | "contain";
 };
 
+/**
+ * Foto ou iniciais do usuário/espaço.
+ * `squircle` é o quadrado com raio largo dos ícones de servidor (estilo Discord).
+ */
 export function Avatar({
   name,
   imageUrl = "",
@@ -29,7 +33,12 @@ export function Avatar({
 }: AvatarProps) {
   const [failedUrl, setFailedUrl] = useState("");
   const showImage = Boolean(imageUrl) && failedUrl !== imageUrl;
-  const shapeClass = shape === "circle" ? "rounded-full" : "rounded-lg";
+  const shapeClass =
+    shape === "circle"
+      ? "rounded-full"
+      : shape === "squircle"
+        ? "rounded-2xl"
+        : "rounded-lg";
   const fitClass = fit === "contain" ? "object-contain" : "object-cover";
 
   return (
