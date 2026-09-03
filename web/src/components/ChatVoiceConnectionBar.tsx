@@ -18,13 +18,14 @@ export function ChatVoiceConnectionBar() {
   }
 
   const conversationId = channel.conversationId;
+  const workspaceId = channel.workspaceId;
   const isDirect = channel.kind === "dm";
 
   async function disconnect() {
     const wasOnVoiceChannel = !isDirect && activeId === conversationId;
     await leave();
     if (wasOnVoiceChannel) {
-      openWorkspace(channel.workspaceId);
+      openWorkspace(workspaceId);
     }
   }
 
@@ -33,7 +34,7 @@ export function ChatVoiceConnectionBar() {
       <div className="flex items-center justify-between gap-2">
         <ChatTabLink
           className="min-w-0 text-left"
-          onOpen={() => openConversation(conversationId, channel.workspaceId)}
+          onOpen={() => openConversation(conversationId, workspaceId)}
         >
           <p className="text-sm font-semibold text-green-600">
             {isDirect ? "Em chamada" : "Voz conectada"}

@@ -39,7 +39,8 @@ export function ChatChannelItem({
     item.channelType === "voice" ? item.conversationId : null,
   );
 
-  if (!item.conversationId) {
+  const conversationId = item.conversationId;
+  if (!conversationId) {
     return (
       <span className="flex items-center gap-2 px-2 py-2 text-[15px] text-zinc-400">
         {item.name}
@@ -56,12 +57,12 @@ export function ChatChannelItem({
       >
         <ChatTabLink
           onOpen={() => {
-            openConversation(item.conversationId, workspaceId);
-            if (item.channelType !== "voice" || !item.conversationId) {
+            openConversation(conversationId, workspaceId);
+            if (item.channelType !== "voice") {
               return;
             }
             void call.join({
-              conversationId: item.conversationId,
+              conversationId,
               channelName: item.name,
               workspaceId,
               kind: "channel",
