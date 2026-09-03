@@ -1,6 +1,6 @@
-# Imagem oficial do HumHub com nexchat/chatwoot/REST em path fixo.
+# HumHub 1.18.5 — a mesma versão do dump local. nightly puxava 1.19 e quebrava o REST.
 # /opt/modules-custom fica fora do volume /data; o entrypoint copia para /data/modules-custom.
-FROM humhub/humhub:stable-nightly
+FROM humhub/humhub:1.18.5
 
 COPY modules-custom /opt/modules-custom
 COPY modules-custom/nexchat /opt/humhub/protected/modules/nexchat
@@ -22,4 +22,3 @@ RUN chmod +x /opt/railway-entrypoint.sh /opt/railway-enable-modules.sh /opt/rail
     && cp -a /opt/modules-custom/rest /opt/humhub/protected/modules/rest
 
 ENTRYPOINT ["/opt/railway-entrypoint.sh"]
-
