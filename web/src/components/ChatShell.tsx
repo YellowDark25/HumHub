@@ -26,6 +26,7 @@ import { ChatChannelSidebar } from "./ChatChannelSidebar";
 import { ChatMainPanel } from "./ChatMainPanel";
 import { ChatServerRail } from "./ChatServerRail";
 import { ChatSessionProvider, useChatSession } from "./ChatSession";
+import { ChatUserPanel } from "./ChatUserPanel";
 
 type ChatShellProps = {
   workspaces: ChatWorkspace[];
@@ -155,7 +156,7 @@ function ChatShellReady({
 
 /**
  * Renderiza rail, sidebar e o painel a partir da sessão e das listas.
- * Recalcula seções quando a aba ou o servidor mudam, sem remontar avatares.
+ * A barra de voz fica sob as duas colunas da esquerda; o chat ocupa o resto.
  */
 function ChatShellFrame({
   workspaces,
@@ -183,22 +184,28 @@ function ChatShellFrame({
 
   return (
     <ChatShellContext.Provider value={{ currentWorkspace }}>
-      <div className="grid h-full min-h-0 flex-1 overflow-hidden bg-white lg:grid-cols-[80px_288px_minmax(0,1fr)]">
-        <ChatServerRail
-          workspaces={workspaces}
-          currentWorkspaceId={currentWorkspace.id}
-          currentUser={currentUser}
-          spacesWithoutServer={spacesWithoutServer}
-          hiddenOnMobile={hideNavigationOnMobile}
-        />
-        <ChatChannelSidebar
-          workspace={currentWorkspace}
-          sections={sections}
-          currentUser={currentUser}
-          activeConversationId={conversationId}
-          hiddenOnMobile={hideNavigationOnMobile}
-        />
-        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-white">
+        <div
+          className={`${
+            hideNavigationOnMobile ? "hidden lg:flex" : "flex"
+          } min-h-0 w-full shrink-0 flex-col lg:w-92`}
+        >
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+            <ChatServerRail
+              workspaces={workspaces}
+              currentWorkspaceId={currentWorkspace.id}
+              currentUser={currentUser}
+              spacesWithoutServer={spacesWithoutServer}
+            />
+            <ChatChannelSidebar
+              workspace={currentWorkspace}
+              sections={sections}
+              activeConversationId={conversationId}
+            />
+          </div>
+          {currentUser ? <ChatUserPanel user={currentUser} /> : null}
+        </div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <ChatMainPanel />
         </div>
       </div>

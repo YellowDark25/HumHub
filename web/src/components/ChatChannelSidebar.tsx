@@ -5,7 +5,6 @@ import type {
   ChatSidebarSection,
   ChatWorkspace,
 } from "@/domain/ChatWorkspace";
-import type { User } from "@/domain/User";
 import { ChatChannelItem } from "./ChatChannelItem";
 import { ChatContactButton } from "./ChatContactButton";
 import { ChatCreateChannelButton } from "./ChatCreateChannelButton";
@@ -14,16 +13,13 @@ import { ChatPaneHeader } from "./ChatPaneHeader";
 import { ChatPersonRow } from "./ChatPersonRow";
 import { useChatSession } from "./ChatSession";
 import { ChatTabLink } from "./ChatTabLink";
-import { ChatUserPanel } from "./ChatUserPanel";
 import { ChatVoiceConnectionBar } from "./ChatVoiceConnectionBar";
 import { useVoiceOccupancy } from "./ChatVoiceOccupancy";
 
 type ChatChannelSidebarProps = {
   workspace: ChatWorkspace;
   sections: ChatSidebarSection[];
-  currentUser: User | null;
   activeConversationId?: number;
-  hiddenOnMobile?: boolean;
 };
 
 /**
@@ -33,18 +29,12 @@ type ChatChannelSidebarProps = {
 export function ChatChannelSidebar({
   workspace,
   sections,
-  currentUser,
   activeConversationId,
-  hiddenOnMobile = false,
 }: ChatChannelSidebarProps) {
   const isHome = workspace.kind === "home";
 
   return (
-    <aside
-      className={`${
-        hiddenOnMobile ? "hidden lg:flex" : "flex"
-      } min-h-0 flex-col border-b border-zinc-200 bg-zinc-50 lg:border-r lg:border-b-0`}
-    >
+    <aside className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-zinc-200 bg-zinc-50 lg:border-r lg:border-b-0">
       <ChatPaneHeader title={<p className="truncate">{workspace.name}</p>} />
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {workspace.kind === "space" && workspace.spaceId ? (
@@ -78,7 +68,6 @@ export function ChatChannelSidebar({
         </div>
       </div>
       <ChatVoiceConnectionBar />
-      {currentUser ? <ChatUserPanel user={currentUser} /> : null}
     </aside>
   );
 }

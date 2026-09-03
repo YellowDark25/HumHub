@@ -18,6 +18,11 @@ type ChatUserPanelProps = {
 type VoiceMenu = "input" | "output" | "";
 type VoiceSubmenu = "device" | "profile" | "";
 
+/**
+ * Barra de voz e áudio do usuário logado, sob o rail e a lista de canais.
+ * Mostra avatar, mute/ensurdecer e os menus de dispositivo; o card arredondado
+ * ocupa a largura inteira da coluna esquerda.
+ */
 export function ChatUserPanel({ user }: ChatUserPanelProps) {
   const audio = useChatAudioControls();
   const [openMenu, setOpenMenu] = useState<VoiceMenu>("");
@@ -49,7 +54,10 @@ export function ChatUserPanel({ user }: ChatUserPanelProps) {
   }
 
   return (
-    <div ref={rootRef} className="relative border-t border-zinc-200 bg-zinc-200/80 px-2 py-2">
+    <div
+      ref={rootRef}
+      className="relative mx-2 mb-2 rounded-xl border border-zinc-200 bg-zinc-200/80 px-2 py-2"
+    >
       <div className="flex items-center gap-1">
         <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-0.5">
           <span className="relative shrink-0">
