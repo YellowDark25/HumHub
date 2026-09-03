@@ -263,6 +263,18 @@ export class HumhubSpaceRepository implements SpaceRepository {
       body: { spaceId },
     });
   }
+
+  /**
+   * Remove o espaço no HumHub.
+   * Envia DELETE /space/{id} na API REST; o HumHub apaga o espaço e o conteúdo associado.
+   */
+  async delete(token: string, spaceId: number): Promise<void> {
+    await humhubRequest({
+      path: `/space/${spaceId}`,
+      token,
+      method: "DELETE",
+    });
+  }
 }
 
 async function uploadSpaceMedia(

@@ -10,6 +10,10 @@ import type {
   SpaceMembershipSettingsPatch,
 } from "@/domain/SpaceMembershipSettings";
 
+/**
+ * Porta de persistência dos espaços da intranet.
+ * A UI e os casos de uso falam com estes métodos; a implementação chama o HumHub.
+ */
 export interface SpaceRepository {
   list(token: string): Promise<Space[]>;
   listVisible(token: string): Promise<Space[]>;
@@ -39,4 +43,5 @@ export interface SpaceRepository {
     patch: SpaceMembershipSettingsPatch,
   ): Promise<SpaceMembershipSettings>;
   leave(token: string, spaceId: number): Promise<void>;
+  delete(token: string, spaceId: number): Promise<void>;
 };

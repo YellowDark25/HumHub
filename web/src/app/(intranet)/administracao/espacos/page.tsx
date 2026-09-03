@@ -1,5 +1,6 @@
 import { errorMessage } from "@/application/errors";
 import { AdminNote, AdminPanel, AdminTabs } from "@/components/AdminPanel";
+import { AdminSpaceList } from "@/components/AdminSpaceList";
 import { LoadError } from "@/components/LoadError";
 import type { Space } from "@/domain/Space";
 import { app } from "@/infrastructure/composition";
@@ -15,6 +16,11 @@ import {
 } from "@/shared/adminSection";
 import Link from "next/link";
 
+/**
+ * Página administrativa da lista de espaços.
+ * Lê o token e a aba da URL; na visão global busca todos os espaços e monta
+ * o painel com abas, erro de carga ou a lista com ações.
+ */
 export default async function AdminEspacosPage({
   searchParams,
 }: {
@@ -64,6 +70,11 @@ export default async function AdminEspacosPage({
   );
 }
 
+/**
+ * Conteúdo da aba ativa na administração de espaços.
+ * Configurações e permissões mostram um aviso; a visão global lista os espaços
+ * com ações de abrir e excluir.
+ */
 function SpaceTabContent({
   tab,
   spaces,
@@ -91,32 +102,13 @@ function SpaceTabContent({
     );
   }
 
-  if (spaces.length === 0) {
-    return <p className="text-sm text-zinc-500">Nenhum espaço encontrado.</p>;
-  }
-
-  return (
-    <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200">
-      {spaces.map((space) => (
-        <li key={space.id} className="flex items-center justify-between gap-3 px-4 py-4">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-zinc-900">{space.name}</p>
-            {space.description ? (
-              <p className="mt-1 text-sm text-zinc-500">{space.description}</p>
-            ) : null}
-          </div>
-          <Link
-            href={`/espacos/${space.id}`}
-            className="shrink-0 text-sm font-medium text-teal-700"
-          >
-            Abrir
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
+  return <AdminSpaceList spaces={spaces} />;
 }
 
+/**
+ * Texto de apoio do cabeçalho conforme a aba aberta.
+ * A visão global explica as ações da lista; as outras abas falam das regras padrão.
+ */
 function spaceTabDescription(tab: AdminSpaceTabId) {
   if (tab === "visao") {
     return "Esta Visão Global contém uma lista de ações para cada espaço como visualizar, editar e excluir espaços.";

@@ -125,6 +125,7 @@ import { listAdminProfileCatalog } from "@/application/usecases/listAdminProfile
 import { updateAdminProfileCategory } from "@/application/usecases/updateAdminProfileCategory";
 import { updateAdminProfileField } from "@/application/usecases/updateAdminProfileField";
 import { listAdminModules } from "@/application/usecases/listAdminModules";
+import { deleteAdminSpace } from "@/application/usecases/deleteAdminSpace";
 import { listAdminSpaces } from "@/application/usecases/listAdminSpaces";
 import { listAdminUsers } from "@/application/usecases/listAdminUsers";
 import { listCustomPages } from "@/application/usecases/listCustomPages";
@@ -350,6 +351,8 @@ export const app = {
   deleteAdminProfileField: (token: string, fieldId: number) =>
     deleteAdminProfileField(auth, adminProfiles, token, fieldId),
   listAdminSpaces: (token: string) => listAdminSpaces(auth, spaces, token),
+  deleteAdminSpace: (token: string, spaceId: number) =>
+    deleteAdminSpace(auth, spaces, token, spaceId),
   listAdminModules: (token: string) => listAdminModules(auth, adminSystem, token),
   enableAdminModule: (token: string, moduleId: string) =>
     enableAdminModule(auth, adminSystem, token, moduleId),
