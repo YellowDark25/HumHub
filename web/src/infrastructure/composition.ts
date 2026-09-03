@@ -8,9 +8,11 @@ import { enableSpaceServer } from "@/application/usecases/enableSpaceServer";
 import { getChatFile } from "@/application/usecases/getChatFile";
 import { getHumhubMedia } from "@/application/usecases/getHumhubMedia";
 import { getPostFile } from "@/application/usecases/getPostFile";
+import { getAppRelease } from "@/application/usecases/getAppRelease";
 import { getChatHomePage } from "@/application/usecases/getChatHomePage";
 import { getChatNavigation } from "@/application/usecases/getChatNavigation";
 import { getConversationPage } from "@/application/usecases/getConversationPage";
+import { getConversationView } from "@/application/usecases/getConversationView";
 import { getServerNotificationPreference } from "@/application/usecases/getServerNotificationPreference";
 import { saveServerNotificationPreference } from "@/application/usecases/saveServerNotificationPreference";
 import { getCurrentUser } from "@/application/usecases/getCurrentUser";
@@ -152,6 +154,7 @@ import {
   updateSpaceImage,
   type SpaceImageKind,
 } from "@/application/usecases/updateSpaceImage";
+import { EnvAppReleaseRepository } from "./app/EnvAppReleaseRepository";
 import { HumhubAccountModulesRepository } from "./humhub/HumhubAccountModulesRepository";
 import { HumhubAccountSettingsRepository } from "./humhub/HumhubAccountSettingsRepository";
 import { HumhubAdminGroupRepository } from "./humhub/HumhubAdminGroupRepository";
@@ -173,6 +176,7 @@ import { NexchatChatRepository } from "./nexchat/NexchatChatRepository";
 import { NexchatSpaceDriveRepository } from "./nexchat/NexchatSpaceDriveRepository";
 import { LiveKitVoiceRoomRepository } from "./voice/LiveKitVoiceRoomRepository";
 
+const appRelease = new EnvAppReleaseRepository();
 const auth = new HumhubAuthRepository();
 const accountSettings = new HumhubAccountSettingsRepository();
 const accountModules = new HumhubAccountModulesRepository();
@@ -191,6 +195,7 @@ const media = new HumhubMediaRepository();
 
 export const app = {
   login: (username: string, password: string) => login(auth, username, password),
+  getAppRelease: () => getAppRelease(appRelease),
   getCurrentUser: (token: string) => getCurrentUser(auth, token),
   getAccount: (token: string) => getAccount(auth, token),
   getAccountGeneralSettings: (token: string) =>
@@ -465,6 +470,12 @@ export const app = {
     workspaceId: string,
   ) =>
     getConversationPage(chat, spaces, auth, token, conversationId, workspaceId),
+  getConversationView: (
+    token: string,
+    conversationId: number,
+    workspaceId: string,
+  ) =>
+    getConversationView(chat, spaces, auth, token, conversationId, workspaceId),
   listMessages: (token: string, conversationId: number, since?: number) =>
     listMessages(chat, token, conversationId, since ?? 0),
   getChatLiveSubscription: (token: string, conversationId: number) =>

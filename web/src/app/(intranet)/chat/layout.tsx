@@ -9,10 +9,14 @@ import {
 import type { ReactNode } from "react";
 
 /**
- * Layout persistente do chat: rail, sidebar e avatares ficam montados.
- * Carrega a navegação compartilhada; as páginas só trocam o painel da conversa.
+ * Layout persistente do chat: rail, sidebar e painel ficam na mesma árvore.
+ * Carrega a navegação; a troca de conversa é aba no cliente, não página nova.
  */
-export default async function ChatLayout({ children }: { children: ReactNode }) {
+export default async function ChatLayout({
+  children: _page,
+}: {
+  children: ReactNode;
+}) {
   const token = await requirePageToken();
 
   try {
@@ -23,9 +27,7 @@ export default async function ChatLayout({ children }: { children: ReactNode }) 
         lists={navigation.lists}
         currentUser={navigation.currentUser}
         spacesWithoutServer={navigation.spacesWithoutServer}
-      >
-        {children}
-      </ChatShell>
+      />
     );
   } catch (error) {
     await redirectIfUnauthorized(error);

@@ -1,13 +1,16 @@
 "use client";
 
-import { chatConversationHref, chatWorkspaceHref } from "@/shared/chatWorkspace";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useChatSession } from "./ChatSession";
+import { ChatTabLink } from "./ChatTabLink";
 import { useVoiceCall } from "./useVoiceCall";
 
+/**
+ * Barra de voz na base da sidebar enquanto houver canal conectado.
+ * O nome volta à conversa nesta aba; desconectar no canal de voz volta ao servidor.
+ */
 export function ChatVoiceConnectionBar() {
-  const router = useRouter();
-  const pathname = usePathname();
+  const { conversationId: activeId, openConversation, openWorkspace } =
+    useChatSession();
   const { channel, leave } = useVoiceCall();
 
   if (!channel) {
@@ -16,26 +19,27 @@ export function ChatVoiceConnectionBar() {
 
   const conversationId = channel.conversationId;
   const isDirect = channel.kind === "dm";
-  const href = chatConversationHref(conversationId, channel.workspaceId);
-  const workspaceHref = chatWorkspaceHref(channel.workspaceId);
 
   async function disconnect() {
-    const wasOnVoiceChannel = !isDirect && pathname === `/chat/${conversationId}`;
+    const wasOnVoiceChannel = !isDirect && activeId === conversationId;
     await leave();
     if (wasOnVoiceChannel) {
-      router.push(workspaceHref);
+      openWorkspace(channel.workspaceId);
     }
   }
 
   return (
     <div className="border-t border-zinc-200 bg-zinc-100 px-3.5 py-2.5">
       <div className="flex items-center justify-between gap-2">
-        <Link href={href} className="min-w-0">
+        <ChatTabLink
+          className="min-w-0 text-left"
+          onOpen={() => openConversation(conversationId, channel.workspaceId)}
+        >
           <p className="text-sm font-semibold text-green-600">
             {isDirect ? "Em chamada" : "Voz conectada"}
           </p>
           <p className="truncate text-xs text-zinc-500">{channel.channelName}</p>
-        </Link>
+        </ChatTabLink>
         <button
           type="button"
           title="Desconectar"

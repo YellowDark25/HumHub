@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { readApiError } from "@/shared/readApiError";
 import { ChatPersonRow } from "./ChatPersonRow";
+import { useOpenChatConversation } from "./ChatSession";
 
 type ChatContactButtonProps = {
   userId: number;
@@ -13,6 +13,10 @@ type ChatContactButtonProps = {
   isOnline: boolean;
 };
 
+/**
+ * Abre (ou cria) a DM com um contato da lista.
+ * Depois do POST /api/chat/dm troca a aba no shell, sem recarregar o chat.
+ */
 export function ChatContactButton({
   userId,
   name,
@@ -20,7 +24,7 @@ export function ChatContactButton({
   subtitle,
   isOnline,
 }: ChatContactButtonProps) {
-  const router = useRouter();
+  const openChatConversation = useOpenChatConversation();
   const [error, setError] = useState("");
   const [isOpening, setIsOpening] = useState(false);
 
@@ -41,7 +45,7 @@ export function ChatContactButton({
       }
 
       const conversation = (await response.json()) as { id: number };
-      router.push(`/chat/${conversation.id}`);
+      openChatConversation(conversation.id);
     } catch {
       setError("Falha de rede ao abrir a conversa.");
     } finally {

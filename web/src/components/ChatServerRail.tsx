@@ -1,10 +1,10 @@
 import type { ChatWorkspace } from "@/domain/ChatWorkspace";
 import type { Space } from "@/domain/Space";
 import type { User } from "@/domain/User";
-import { chatWorkspaceHref } from "@/shared/chatWorkspace";
-import Link from "next/link";
 import { Avatar } from "./Avatar";
 import { ChatCreateServerButton } from "./ChatCreateServerButton";
+import { useChatSession } from "./ChatSession";
+import { ChatTabLink } from "./ChatTabLink";
 
 type ChatServerRailProps = {
   workspaces: ChatWorkspace[];
@@ -14,6 +14,10 @@ type ChatServerRailProps = {
   hiddenOnMobile?: boolean;
 };
 
+/**
+ * Rail de servidores à esquerda do chat.
+ * Cada ícone troca o workspace nesta aba, sem recarregar a página.
+ */
 export function ChatServerRail({
   workspaces,
   currentWorkspaceId,
@@ -55,6 +59,10 @@ export function ChatServerRail({
   );
 }
 
+/**
+ * Ícone de um servidor ou da home na rail.
+ * Troca o workspace nesta aba, sem recarregar o chat.
+ */
 function ServerButton({
   workspace,
   isActive,
@@ -62,11 +70,13 @@ function ServerButton({
   workspace: ChatWorkspace;
   isActive: boolean;
 }) {
+  const { openWorkspace } = useChatSession();
+
   return (
-    <Link
-      href={chatWorkspaceHref(workspace.id)}
+    <ChatTabLink
       title={workspace.name}
       className="relative flex shrink-0 items-center justify-center"
+      onOpen={() => openWorkspace(workspace.id)}
     >
       <span
         className={`absolute top-1/2 -left-2 hidden h-8 w-1 -translate-y-1/2 rounded-r-full bg-teal-700 transition-opacity lg:block ${
@@ -82,7 +92,7 @@ function ServerButton({
       >
         <ServerIcon workspace={workspace} />
       </span>
-    </Link>
+    </ChatTabLink>
   );
 }
 

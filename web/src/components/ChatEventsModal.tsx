@@ -2,16 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
 import type { ChatEvent, ChatEventChannelOption } from "@/domain/ChatEvent";
 import {
   canStartChatEvent,
   eventCountLabel,
   formatEventCountdown,
 } from "@/shared/chatEvent";
-import { chatConversationHref } from "@/shared/chatWorkspace";
 import { Avatar } from "./Avatar";
 import { ChatCreateEventModal } from "./ChatCreateEventModal";
+import { useOpenChatConversation } from "./ChatSession";
 import { useVoiceCall } from "./useVoiceCall";
 import type { ChatEventsState } from "./useChatEvents";
 
@@ -434,7 +433,7 @@ function StartEventConfirm({
   onCancel: () => void;
   onStarted: () => void;
 }) {
-  const router = useRouter();
+  const openChatConversation = useOpenChatConversation();
   const call = useVoiceCall();
   const location =
     event.locationKind === "voice"
@@ -460,7 +459,7 @@ function StartEventConfirm({
       });
     }
 
-    router.push(chatConversationHref(event.conversationId, workspaceId));
+    openChatConversation(event.conversationId, workspaceId);
     onStarted();
   }
 

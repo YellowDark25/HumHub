@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ChatChannelType } from "@/domain/Conversation";
-import { chatConversationHref } from "@/shared/chatWorkspace";
 import { readApiError } from "@/shared/readApiError";
+import { useOpenChatConversation } from "./ChatSession";
 
 type ChatCreateChannelButtonProps = {
   workspaceId: string;
@@ -76,6 +76,7 @@ function CreateChannelModal({
   onClose,
 }: ChatCreateChannelButtonProps & { onClose: () => void }) {
   const router = useRouter();
+  const openChatConversation = useOpenChatConversation();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [channelType, setChannelType] = useState<ChatChannelType>(defaultType);
   const [name, setName] = useState("");
@@ -125,7 +126,7 @@ function CreateChannelModal({
 
       const conversation = (await response.json()) as { id: number };
       onClose();
-      router.push(chatConversationHref(conversation.id, workspaceId));
+      openChatConversation(conversation.id, workspaceId);
       router.refresh();
     } catch {
       setError("Falha de rede ao criar o canal.");

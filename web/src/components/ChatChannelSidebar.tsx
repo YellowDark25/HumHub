@@ -6,14 +6,14 @@ import type {
   ChatWorkspace,
 } from "@/domain/ChatWorkspace";
 import type { User } from "@/domain/User";
-import { chatConversationHref } from "@/shared/chatWorkspace";
-import Link from "next/link";
 import { ChatChannelItem } from "./ChatChannelItem";
 import { ChatContactButton } from "./ChatContactButton";
 import { ChatCreateChannelButton } from "./ChatCreateChannelButton";
 import { ChatEventsNav } from "./ChatEventsNav";
 import { ChatPaneHeader } from "./ChatPaneHeader";
 import { ChatPersonRow } from "./ChatPersonRow";
+import { useChatSession } from "./ChatSession";
+import { ChatTabLink } from "./ChatTabLink";
 import { ChatUserPanel } from "./ChatUserPanel";
 import { ChatVoiceConnectionBar } from "./ChatVoiceConnectionBar";
 import { useVoiceOccupancy } from "./ChatVoiceOccupancy";
@@ -213,16 +213,16 @@ function DirectMessageLink({
   workspaceId: string;
   isActive: boolean;
 }) {
+  const { openConversation } = useChatSession();
   const { occupantsByChannel } = useVoiceOccupancy();
   const occupants = occupantsByChannel[conversationId] ?? [];
 
   return (
-    <Link
-      href={chatConversationHref(conversationId, workspaceId)}
-      scroll={false}
-      className={`flex items-center gap-2.5 rounded-lg px-2 py-2 ${
+    <ChatTabLink
+      className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left ${
         isActive ? "bg-zinc-200" : "hover:bg-zinc-200/70"
       }`}
+      onOpen={() => openConversation(conversationId, workspaceId)}
     >
       <ChatPersonRow
         name={name}
@@ -230,7 +230,7 @@ function DirectMessageLink({
         subtitle={occupants.length > 0 ? "Em chamada" : subtitle}
         isOnline={isOnline}
       />
-    </Link>
+    </ChatTabLink>
   );
 }
 

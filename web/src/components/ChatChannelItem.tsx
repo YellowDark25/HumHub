@@ -3,9 +3,9 @@
 import { useState, type ReactNode } from "react";
 import type { ChatSidebarItem } from "@/domain/ChatWorkspace";
 import type { ChatChannelType } from "@/domain/Conversation";
-import { chatConversationHref } from "@/shared/chatWorkspace";
-import Link from "next/link";
 import { ChatChannelSettings } from "./ChatChannelSettings";
+import { useChatSession } from "./ChatSession";
+import { ChatTabLink } from "./ChatTabLink";
 import { ChatInviteFriendsModal } from "./ChatInviteFriendsModal";
 import { ChatVoiceOccupants, useVoiceCallDuration } from "./ChatVoiceOccupancy";
 import { useVoiceCall } from "./useVoiceCall";
@@ -33,6 +33,7 @@ export function ChatChannelItem({
 }: ChatChannelItemProps) {
   const [settingsTab, setSettingsTab] = useState<"overview" | "invites" | "">("");
   const [inviteOpen, setInviteOpen] = useState(false);
+  const { openConversation } = useChatSession();
   const call = useVoiceCall();
   const callDuration = useVoiceCallDuration(
     item.channelType === "voice" ? item.conversationId : null,
@@ -53,10 +54,9 @@ export function ChatChannelItem({
           isActive ? "bg-zinc-200" : "hover:bg-zinc-100"
         }`}
       >
-        <Link
-          href={chatConversationHref(item.conversationId, workspaceId)}
-          scroll={false}
-          onClick={() => {
+        <ChatTabLink
+          onOpen={() => {
+            openConversation(item.conversationId, workspaceId);
             if (item.channelType !== "voice" || !item.conversationId) {
               return;
             }
@@ -75,7 +75,7 @@ export function ChatChannelItem({
             <ChannelIcon type={item.channelType} />
           </span>
           <span className="truncate">{item.name}</span>
-        </Link>
+        </ChatTabLink>
         {callDuration || item.canManage ? (
           <div className="relative mr-1 flex h-7 min-w-12 shrink-0 items-center justify-end">
             {callDuration ? (
@@ -157,10 +157,13 @@ function ChannelTopicList({
   workspaceId: string;
   activeConversationId?: number;
 }) {
+  const { openConversation } = useChatSession();
+
   return (
     <ul>
       {topics.map((topic, index) => {
-        const isActive = topic.conversationId === activeConversationId;
+        const topicId = topic.conversationId;
+        const isActive = topicId === activeConversationId;
 
         return (
           <li key={topic.key} className="relative flex min-h-8 items-center">
@@ -168,10 +171,9 @@ function ChannelTopicList({
               isFirst={index === 0}
               isLast={index === topics.length - 1}
             />
-            {topic.conversationId ? (
-              <Link
-                href={chatConversationHref(topic.conversationId, workspaceId)}
-                scroll={false}
+            {topicId ? (
+              <ChatTabLink
+                onOpen={() => openConversation(topicId, workspaceId)}
                 className={`min-w-0 flex-1 truncate rounded-md px-1.5 py-1 text-[13px] ${
                   isActive
                     ? "bg-zinc-200 font-medium text-zinc-900"
@@ -179,7 +181,7 @@ function ChannelTopicList({
                 }`}
               >
                 {topic.name}
-              </Link>
+              </ChatTabLink>
             ) : (
               <span className="px-1.5 text-[13px] text-zinc-400">{topic.name}</span>
             )}

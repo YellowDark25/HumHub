@@ -1,3 +1,4 @@
+import { AppUpdateBanner } from "@/components/AppUpdateBanner";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { APP_NAME } from "@/shared/appName";
 import { isDarkTheme, THEME_STORAGE_KEY } from "@/shared/theme";
@@ -22,6 +23,10 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Layout raiz: fonte, tema e o aviso de nova versão após deploy no Vercel.
+ * Lê o cookie do tema; o banner compara o build desta aba com /api/version.
+ */
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -36,7 +41,10 @@ export default async function RootLayout({
       className={`${geistSans.variable} h-full antialiased${isDarkTheme(theme) ? " dark" : ""}`}
     >
       <body className="min-h-full bg-zinc-100 font-sans text-zinc-900">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <AppUpdateBanner />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

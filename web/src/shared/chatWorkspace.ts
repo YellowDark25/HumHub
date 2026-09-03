@@ -31,6 +31,28 @@ export function chatConversationHref(
 }
 
 /**
+ * Lê workspace e conversa a partir do pathname e da query do chat.
+ * Usado no boot da sessão e no voltar/avançar do browser.
+ */
+export function readChatRoute(
+  pathname: string,
+  search: string,
+): {
+  conversationId?: number;
+  workspaceId: string;
+} {
+  const query = search.startsWith("?") ? search.slice(1) : search;
+  const params = new URLSearchParams(query);
+
+  return {
+    conversationId: readChatConversationId(pathname),
+    workspaceId: readChatWorkspaceId({
+      servidor: params.get("servidor") ?? undefined,
+    }),
+  };
+}
+
+/**
  * Lê o id da conversa a partir do pathname `/chat/:id`.
  * Ignora a home (`/chat`) e valores que não sejam um inteiro positivo.
  * @returns id da conversa, ou undefined quando a rota não é de uma conversa.

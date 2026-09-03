@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import type { ChatTopic } from "@/domain/ChatTopic";
-import { chatConversationHref } from "@/shared/chatWorkspace";
 import { TOPIC_MESSAGE_MAX, TOPIC_NAME_MAX } from "@/shared/chatTopic";
 import { formatRelativeDate } from "@/shared/format";
 import { readApiError } from "@/shared/readApiError";
 import { Avatar } from "./Avatar";
+import { useOpenChatConversation } from "./ChatSession";
+import { ChatTabLink } from "./ChatTabLink";
 import { ChatTopicIcon } from "./ChatTopicIcon";
 import { useChatTopics } from "./useChatTopics";
 
@@ -188,6 +188,10 @@ function TopicsList({
   );
 }
 
+/**
+ * Linha de um tópico na lista do modal.
+ * Abre o tópico nesta aba do chat e fecha o modal.
+ */
 function TopicRow({
   topic,
   workspaceId,
@@ -201,12 +205,16 @@ function TopicRow({
   const when = formatRelativeDate(topic.lastActivityAt);
   const subtitle = when ? `${preview} • ${when}` : preview;
 
+  const openChatConversation = useOpenChatConversation();
+
   return (
     <li>
-      <Link
-        href={chatConversationHref(topic.id, workspaceId)}
-        onClick={onClose}
-        className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-zinc-100"
+      <ChatTabLink
+        onOpen={() => {
+          onClose();
+          openChatConversation(topic.id, workspaceId);
+        }}
+        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-zinc-100"
       >
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-zinc-900">{topic.name}</p>
@@ -220,7 +228,7 @@ function TopicRow({
             shape="circle"
           />
         ) : null}
-      </Link>
+      </ChatTabLink>
     </li>
   );
 }
@@ -241,6 +249,7 @@ function CreateTopicForm({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const openChatConversation = useOpenChatConversation();
   const [name, setName] = useState("");
   const [message, setMessage] = useState(initialMessage);
   const [isPrivate, setIsPrivate] = useState(false);
@@ -271,7 +280,7 @@ function CreateTopicForm({
 
       const conversation = (await response.json()) as { id: number };
       onClose();
-      router.push(chatConversationHref(conversation.id, workspaceId));
+      openChatConversation(conversation.id, workspaceId);
       router.refresh();
     } catch {
       setError("Falha de rede ao criar o tópico.");

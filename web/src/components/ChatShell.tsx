@@ -5,11 +5,11 @@ import {
   findListedConversation,
   resolveChatWorkspace,
 } from "@/application/usecases/assembleChatNavigation";
+import type { ConversationLists } from "@/application/ports/ChatRepository";
 import type { ChatWorkspace } from "@/domain/ChatWorkspace";
 import { HOME_WORKSPACE_ID } from "@/domain/ChatWorkspace";
 import type { Space } from "@/domain/Space";
 import type { User } from "@/domain/User";
-import type { ConversationLists } from "@/application/ports/ChatRepository";
 import {
   readChatConversationId,
   readChatWorkspaceId,
@@ -23,14 +23,16 @@ import {
   type ReactNode,
 } from "react";
 import { ChatChannelSidebar } from "./ChatChannelSidebar";
+import { ChatMainPanel } from "./ChatMainPanel";
 import { ChatServerRail } from "./ChatServerRail";
+import { ChatSessionProvider, useChatSession } from "./ChatSession";
 
 type ChatShellProps = {
   workspaces: ChatWorkspace[];
   lists: ConversationLists;
   currentUser: User | null;
   spacesWithoutServer: Space[];
-  children: ReactNode;
+  children?: ReactNode;
 };
 
 type ChatShellContextValue = {
@@ -53,29 +55,25 @@ export function useChatWorkspace(): ChatWorkspace {
 }
 
 /**
- * Casca persistente do chat: rail de servidores, sidebar e o painel.
- * Resolve o workspace e a conversa ativa pela URL para o layout não remontar
- * os avatares ao trocar de DM.
+ * Casca persistente do chat: rail, sidebar e o painel da aba ativa.
+ * A URL muda com history.pushState; o Next não troca de página ao clicar numa DM.
  */
 export function ChatShell({
   workspaces,
   lists,
   currentUser,
   spacesWithoutServer,
-  children,
 }: ChatShellProps) {
   return (
     <Suspense
       fallback={
-        <ChatShellFrame
+        <ChatShellReady
           workspaces={workspaces}
           lists={lists}
           currentUser={currentUser}
           spacesWithoutServer={spacesWithoutServer}
-          requestedWorkspaceId={HOME_WORKSPACE_ID}
-        >
-          {children}
-        </ChatShellFrame>
+          initialWorkspaceId={HOME_WORKSPACE_ID}
+        />
       }
     >
       <ChatShellFromUrl
@@ -83,77 +81,105 @@ export function ChatShell({
         lists={lists}
         currentUser={currentUser}
         spacesWithoutServer={spacesWithoutServer}
-      >
-        {children}
-      </ChatShellFromUrl>
+      />
     </Suspense>
   );
 }
 
 /**
- * Lê pathname e search params e monta o frame com o workspace correto.
- * Isolado para o useSearchParams poder suspender sem desmontar o fallback.
+ * Lê a URL do Next só no primeiro paint (refresh ou entrada pelo menu).
+ * Isolado para o useSearchParams poder suspender.
  */
 function ChatShellFromUrl({
   workspaces,
   lists,
   currentUser,
   spacesWithoutServer,
-  children,
 }: ChatShellProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const requestedWorkspaceId = readChatWorkspaceId({
-    servidor: searchParams.get("servidor") ?? undefined,
-  });
-  const activeConversationId = readChatConversationId(pathname);
 
   return (
-    <ChatShellFrame
+    <ChatShellReady
       workspaces={workspaces}
       lists={lists}
       currentUser={currentUser}
       spacesWithoutServer={spacesWithoutServer}
-      requestedWorkspaceId={requestedWorkspaceId}
-      activeConversationId={activeConversationId}
-    >
-      {children}
-    </ChatShellFrame>
+      initialWorkspaceId={readChatWorkspaceId({
+        servidor: searchParams.get("servidor") ?? undefined,
+      })}
+      initialConversationId={readChatConversationId(pathname)}
+      nextPathname={pathname}
+      nextSearch={searchParams.toString()}
+    />
   );
 }
 
 /**
- * Renderiza rail, sidebar e o painel a partir das listas já carregadas.
- * Recalcula seções e workspace no cliente sem remontar a árvore do layout.
+ * Encaixa a sessão do chat no frame (rail + sidebar + painel).
+ * O provider guarda a aba; o frame só desenha.
+ */
+function ChatShellReady({
+  workspaces,
+  lists,
+  currentUser,
+  spacesWithoutServer,
+  initialWorkspaceId,
+  initialConversationId,
+  nextPathname,
+  nextSearch,
+}: ChatShellProps & {
+  initialWorkspaceId: string;
+  initialConversationId?: number;
+  nextPathname?: string;
+  nextSearch?: string;
+}) {
+  return (
+    <ChatSessionProvider
+      initialRoute={{
+        workspaceId: initialWorkspaceId,
+        conversationId: initialConversationId,
+      }}
+      nextPathname={nextPathname}
+      nextSearch={nextSearch}
+    >
+      <ChatShellFrame
+        workspaces={workspaces}
+        lists={lists}
+        currentUser={currentUser}
+        spacesWithoutServer={spacesWithoutServer}
+      />
+    </ChatSessionProvider>
+  );
+}
+
+/**
+ * Renderiza rail, sidebar e o painel a partir da sessão e das listas.
+ * Recalcula seções quando a aba ou o servidor mudam, sem remontar avatares.
  */
 function ChatShellFrame({
   workspaces,
   lists,
   currentUser,
   spacesWithoutServer,
-  requestedWorkspaceId,
-  activeConversationId,
-  children,
-}: ChatShellProps & {
-  requestedWorkspaceId: string;
-  activeConversationId?: number;
-}) {
+}: Omit<ChatShellProps, "children">) {
+  const { conversationId, workspaceId } = useChatSession();
   const currentWorkspace = useMemo(
     () =>
       resolveChatWorkspace({
         workspaces,
-        requestedId: requestedWorkspaceId,
-        conversation: activeConversationId
-          ? findListedConversation(lists, activeConversationId)
+        requestedId: workspaceId,
+        conversation: conversationId
+          ? findListedConversation(lists, conversationId)
           : undefined,
       }),
-    [workspaces, requestedWorkspaceId, lists, activeConversationId],
+    [workspaces, workspaceId, lists, conversationId],
   );
   const sections = useMemo(
     () => chatSidebarSections(lists, currentWorkspace),
     [lists, currentWorkspace],
   );
-  const hideNavigationOnMobile = Boolean(activeConversationId);
+  const hideNavigationOnMobile = Boolean(conversationId);
 
   return (
     <ChatShellContext.Provider value={{ currentWorkspace }}>
@@ -169,11 +195,11 @@ function ChatShellFrame({
           workspace={currentWorkspace}
           sections={sections}
           currentUser={currentUser}
-          activeConversationId={activeConversationId}
+          activeConversationId={conversationId}
           hiddenOnMobile={hideNavigationOnMobile}
         />
         <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
-          {children}
+          <ChatMainPanel />
         </div>
       </div>
     </ChatShellContext.Provider>

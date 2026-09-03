@@ -1,9 +1,7 @@
-import { ChatWelcome } from "@/components/ChatWelcome";
-
 /**
- * Home do chat: texto de boas-vindas no painel.
- * A navegação (servidores e DMs) vem do layout persistente.
+ * Rota /chat: o painel de boas-vindas é o ChatMainPanel do layout.
+ * O arquivo existe para o Next aceitar a URL; o shell cuida da aba.
  */
 export default function ChatPage() {
-  return <ChatWelcome />;
+  return null;
 }
