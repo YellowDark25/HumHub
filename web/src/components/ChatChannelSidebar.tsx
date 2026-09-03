@@ -192,6 +192,10 @@ function SidebarItem({
   );
 }
 
+/**
+ * Link de uma DM na sidebar; troca só o painel, sem scroll da página.
+ * Marca "Em chamada" quando o canal de voz da conversa tem ocupantes.
+ */
 function DirectMessageLink({
   conversationId,
   name,
@@ -215,6 +219,7 @@ function DirectMessageLink({
   return (
     <Link
       href={chatConversationHref(conversationId, workspaceId)}
+      scroll={false}
       className={`flex items-center gap-2.5 rounded-lg px-2 py-2 ${
         isActive ? "bg-zinc-200" : "hover:bg-zinc-200/70"
       }`}

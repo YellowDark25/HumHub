@@ -9,7 +9,6 @@ import {
 import { ChatDmIntro } from "@/components/ChatDmIntro";
 import { ChatPeerProfilePreview } from "@/components/ChatPeerProfilePreview";
 import { ChatServerHeaderActions } from "@/components/ChatServerHeaderActions";
-import { ChatShell } from "@/components/ChatShell";
 import { ChatTopicIcon } from "@/components/ChatTopicIcon";
 import { ChatVoiceRoom } from "@/components/ChatVoiceRoom";
 import { LoadError } from "@/components/LoadError";
@@ -19,7 +18,6 @@ import type { ChatNotificationPreference } from "@/domain/ChatNotificationPrefer
 import type { ChatSidebarSection, ChatWorkspace } from "@/domain/ChatWorkspace";
 import type { Conversation } from "@/domain/Conversation";
 import type { Person } from "@/domain/Person";
-import type { Space } from "@/domain/Space";
 import type { User } from "@/domain/User";
 import { app } from "@/infrastructure/composition";
 import {
@@ -35,6 +33,10 @@ type ChatViewProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+/**
+ * Painel de uma conversa (mensagens, voz ou tópico).
+ * A sidebar fica no layout; aqui só carrega a conversa e o peer.
+ */
 export default async function ChatViewPage({
   params,
   searchParams,
@@ -49,11 +51,9 @@ export default async function ChatViewPage({
   }
 
   let current: Conversation | undefined;
-  let workspaces: ChatWorkspace[] = [];
   let currentWorkspace: ChatWorkspace | null = null;
   let sections: ChatSidebarSection[] = [];
   let currentUser: User | null = null;
-  let spacesWithoutServer: Space[] = [];
   let notificationPreference: ChatNotificationPreference | null = null;
   let messages: ChatMessage[] = [];
   let channels: Conversation[] = [];
@@ -68,11 +68,9 @@ export default async function ChatViewPage({
       workspaceId,
     );
     current = page.current;
-    workspaces = page.workspaces;
     currentWorkspace = page.currentWorkspace;
     sections = page.sections;
     currentUser = page.currentUser;
-    spacesWithoutServer = page.spacesWithoutServer;
     notificationPreference = page.notificationPreference;
     messages = page.messages;
     channels = page.lists.channels;
@@ -134,89 +132,81 @@ export default async function ChatViewPage({
     />
   );
 
-  return (
-    <ChatShell
-      workspaces={workspaces}
-      currentWorkspace={currentWorkspace}
-      sections={sections}
+  return current.channelType === "voice" && currentUser ? (
+    <ChatVoiceRoom
+      conversationId={conversationId}
+      channelName={current.name}
+      workspaceId={currentWorkspace.id}
+      workspaceName={currentWorkspace.name}
       currentUser={currentUser}
-      spacesWithoutServer={spacesWithoutServer}
-      activeConversationId={conversationId}
-      hideNavigationOnMobile
-    >
-      {current.channelType === "voice" && currentUser ? (
-        <ChatVoiceRoom
-          conversationId={conversationId}
-          channelName={current.name}
-          workspaceId={currentWorkspace.id}
-          workspaceName={currentWorkspace.name}
-          currentUser={currentUser}
-          notificationPreference={notificationPreference}
+      notificationPreference={notificationPreference}
+    />
+  ) : (
+    <ChatConversationPane
+      key={conversationId}
+      conversationId={conversationId}
+      currentUserId={currentUser?.id ?? 0}
+      workspaceId={currentWorkspace.id}
+      conversationName={topicsConversationName}
+      title={
+        <ConversationTitle
+          conversation={current}
+          parentName={parentChannel?.name ?? null}
+          imageUrl={isDirect ? peer?.imageUrl ?? "" : ""}
         />
-      ) : (
-        <ChatConversationPane
-          key={conversationId}
-          conversationId={conversationId}
-          currentUserId={currentUser?.id ?? 0}
-          workspaceId={currentWorkspace.id}
-          conversationName={topicsConversationName}
-          title={
-            <ConversationTitle
-              conversation={current}
-              parentName={parentChannel?.name ?? null}
-              imageUrl={isDirect ? peer?.imageUrl ?? "" : ""}
-            />
-          }
-          trailing={headerActions}
-          intro={
-            isDirect ? (
-              <ChatDmIntro
-                name={current.name}
-                username={peer?.username ?? ""}
-                imageUrl={peer?.imageUrl ?? ""}
-                userId={peer?.userId ?? null}
-                mutualServers={mutualServers}
-                peer={peerPerson}
-              />
-            ) : null
-          }
-          banner={
-            isDirect ? (
-              <ChatDirectCallBar
-                key="direct-call-bar"
-                conversationId={conversationId}
-                conversationName={current.name}
-                workspaceId={currentWorkspace.id}
-                peerImageUrl={peer?.imageUrl ?? ""}
-              />
-            ) : null
-          }
-          overlay={
-            isDirect ? (
-              <ChatDirectCallStage
-                key="direct-call-stage"
-                conversationId={conversationId}
-                conversationName={current.name}
-              />
-            ) : null
-          }
-          placeholder={
-            isChatTopic(current)
-              ? `Conversar em '${current.name}'`
-              : current.kind === "channel"
-                ? `Conversar em #${current.name}`
-                : `Conversar em @${current.name}`
-          }
-          canManage={current.canManage}
-          canCreateTopic={!isDirect}
-          membersConversationId={isDirect ? null : topicsConversationId}
-          initialMessages={messages}
-        />
-      )}
-    </ChatShell>
+      }
+      trailing={headerActions}
+      intro={
+        isDirect ? (
+          <ChatDmIntro
+            name={current.name}
+            username={peer?.username ?? ""}
+            imageUrl={peer?.imageUrl ?? ""}
+            userId={peer?.userId ?? null}
+            mutualServers={mutualServers}
+            peer={peerPerson}
+          />
+        ) : null
+      }
+      banner={
+        isDirect ? (
+          <ChatDirectCallBar
+            key="direct-call-bar"
+            conversationId={conversationId}
+            conversationName={current.name}
+            workspaceId={currentWorkspace.id}
+            peerImageUrl={peer?.imageUrl ?? ""}
+          />
+        ) : null
+      }
+      overlay={
+        isDirect ? (
+          <ChatDirectCallStage
+            key="direct-call-stage"
+            conversationId={conversationId}
+            conversationName={current.name}
+          />
+        ) : null
+      }
+      placeholder={
+        isChatTopic(current)
+          ? `Conversar em '${current.name}'`
+          : current.kind === "channel"
+            ? `Conversar em #${current.name}`
+            : `Conversar em @${current.name}`
+      }
+      canManage={current.canManage}
+      canCreateTopic={!isDirect}
+      membersConversationId={isDirect ? null : topicsConversationId}
+      initialMessages={messages}
+    />
   );
 }
 
+/**
+ * Título do cabeçalho da conversa (DM, canal ou tópico).
+ * No tópico mostra o canal pai; na DM, o avatar do peer.
+ */
 function ConversationTitle({
   conversation,
   parentName,

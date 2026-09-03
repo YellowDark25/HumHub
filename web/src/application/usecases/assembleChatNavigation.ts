@@ -10,6 +10,10 @@ import {
 import type { Space } from "@/domain/Space";
 import type { ConversationLists } from "../ports/ChatRepository";
 
+/**
+ * Monta workspaces, seções e o servidor atual a partir das listas do chat.
+ * Resolve o workspace pedido (ou o da conversa) e filtra as seções da sidebar.
+ */
 export function assembleChatNavigation(
   lists: ConversationLists,
   spaces: Space[],
@@ -34,6 +38,19 @@ export function assembleChatNavigation(
   };
 }
 
+/**
+ * Localiza a conversa nas listas já carregadas (canais, DMs e convites).
+ * Percorre os três grupos e devolve o primeiro id correspondente.
+ */
+export function findListedConversation(
+  lists: ConversationLists,
+  conversationId: number,
+) {
+  return [...lists.channels, ...lists.dms, ...lists.pendingInvites].find(
+    (item) => item.id === conversationId,
+  );
+}
+
 function homeWorkspace(): ChatWorkspace {
   return {
     id: HOME_WORKSPACE_ID,
@@ -44,6 +61,10 @@ function homeWorkspace(): ChatWorkspace {
   };
 }
 
+/**
+ * Monta a lista de workspaces (home + servidores com chat ativo).
+ * Sem servidores, inclui o atalho de canais soltos.
+ */
 export function buildChatWorkspaces(
   spaces: Space[],
   spaceServerIds: number[],
@@ -76,6 +97,10 @@ export function buildChatWorkspaces(
   ];
 }
 
+/**
+ * Escolhe o workspace visível a partir da URL e, se houver, da conversa.
+ * DM/convite forçam a home; canal usa o servidor pedido ou o primeiro.
+ */
 export function resolveChatWorkspace(input: {
   workspaces: ChatWorkspace[];
   requestedId: string;
@@ -104,6 +129,10 @@ export function resolveChatWorkspace(input: {
   return requested ?? home;
 }
 
+/**
+ * Monta as seções da sidebar do workspace atual.
+ * Na home lista convites e DMs; no servidor, canais de texto e voz.
+ */
 export function chatSidebarSections(
   lists: ConversationLists,
   workspace: ChatWorkspace,

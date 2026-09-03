@@ -1,10 +1,13 @@
-import type { ChatWorkspace } from "@/domain/ChatWorkspace";
+"use client";
 
-type ChatWelcomeProps = {
-  workspace: ChatWorkspace;
-};
+import { useChatWorkspace } from "./ChatShell";
 
-export function ChatWelcome({ workspace }: ChatWelcomeProps) {
+/**
+ * Painel de boas-vindas quando nenhuma conversa está aberta.
+ * Lê o workspace ativo do ChatShell e adapta o texto para DMs ou servidor.
+ */
+export function ChatWelcome() {
+  const workspace = useChatWorkspace();
   const isHome = workspace.kind === "home";
 
   return (

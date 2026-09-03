@@ -29,3 +29,22 @@ export function chatConversationHref(
 
   return `/chat/${conversationId}?servidor=${workspaceId}`;
 }
+
+/**
+ * Lê o id da conversa a partir do pathname `/chat/:id`.
+ * Ignora a home (`/chat`) e valores que não sejam um inteiro positivo.
+ * @returns id da conversa, ou undefined quando a rota não é de uma conversa.
+ */
+export function readChatConversationId(pathname: string): number | undefined {
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments[0] !== "chat" || !segments[1]) {
+    return undefined;
+  }
+
+  const conversationId = Number(segments[1]);
+  if (!Number.isFinite(conversationId) || conversationId <= 0) {
+    return undefined;
+  }
+
+  return conversationId;
+}

@@ -19,6 +19,10 @@ type ChatChannelItemProps = {
   activeConversationId?: number;
 };
 
+/**
+ * Item de canal na sidebar (texto, voz ou fórum) com tópicos e ações.
+ * O link troca só o painel; em canal de voz também entra na chamada.
+ */
 export function ChatChannelItem({
   item,
   workspaceId,
@@ -51,6 +55,7 @@ export function ChatChannelItem({
       >
         <Link
           href={chatConversationHref(item.conversationId, workspaceId)}
+          scroll={false}
           onClick={() => {
             if (item.channelType !== "voice" || !item.conversationId) {
               return;
@@ -139,6 +144,10 @@ export function ChatChannelItem({
   );
 }
 
+/**
+ * Lista os tópicos de um canal com o ramo visual à esquerda.
+ * Cada tópico navega sem scroll da página.
+ */
 function ChannelTopicList({
   topics,
   workspaceId,
@@ -162,6 +171,7 @@ function ChannelTopicList({
             {topic.conversationId ? (
               <Link
                 href={chatConversationHref(topic.conversationId, workspaceId)}
+                scroll={false}
                 className={`min-w-0 flex-1 truncate rounded-md px-1.5 py-1 text-[13px] ${
                   isActive
                     ? "bg-zinc-200 font-medium text-zinc-900"

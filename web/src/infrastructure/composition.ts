@@ -9,6 +9,7 @@ import { getChatFile } from "@/application/usecases/getChatFile";
 import { getHumhubMedia } from "@/application/usecases/getHumhubMedia";
 import { getPostFile } from "@/application/usecases/getPostFile";
 import { getChatHomePage } from "@/application/usecases/getChatHomePage";
+import { getChatNavigation } from "@/application/usecases/getChatNavigation";
 import { getConversationPage } from "@/application/usecases/getConversationPage";
 import { getServerNotificationPreference } from "@/application/usecases/getServerNotificationPreference";
 import { saveServerNotificationPreference } from "@/application/usecases/saveServerNotificationPreference";
@@ -454,6 +455,8 @@ export const app = {
   openNotificationLiveStream: (token: string) =>
     openNotificationLiveStream(notifications, token),
   listConversations: (token: string) => listConversations(chat, token),
+  getChatNavigation: (token: string) =>
+    getChatNavigation(chat, spaces, auth, token),
   getChatHomePage: (token: string, workspaceId: string) =>
     getChatHomePage(chat, spaces, auth, token, workspaceId),
   getConversationPage: (
