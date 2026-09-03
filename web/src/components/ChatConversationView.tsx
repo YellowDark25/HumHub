@@ -17,12 +17,13 @@ import { ChatDmIntro } from "./ChatDmIntro";
 import { ChatPeerProfilePreview } from "./ChatPeerProfilePreview";
 import { ChatServerHeaderActions } from "./ChatServerHeaderActions";
 import { ChatTopicIcon } from "./ChatTopicIcon";
+import { ChatConversationSkeleton } from "./ChatConversationSkeleton";
 import { ChatVoiceRoom } from "./ChatVoiceRoom";
 import { LoadError } from "./LoadError";
 
 /**
  * Painel da conversa ativa: busca GET /api/chat/conversation ao trocar de aba.
- * Mostra loading ou erro só no painel; a sidebar permanece montada.
+ * Enquanto busca, mostra o skeleton com shimmer; a sidebar permanece montada.
  */
 export function ChatConversationView({
   conversationId,
@@ -71,11 +72,7 @@ export function ChatConversationView({
   }
 
   if (!view) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-sm text-zinc-400">
-        Carregando conversa…
-      </div>
-    );
+    return <ChatConversationSkeleton />;
   }
 
   return <ConversationPanel view={view} />;
