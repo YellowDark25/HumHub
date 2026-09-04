@@ -9,7 +9,7 @@ import type {
 import { getAnthropicApiKey } from "../config";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-6";
+const MODEL = "claude-haiku-4-5";
 
 type AnthropicContent =
   | { type: "text"; text?: string }

@@ -7,7 +7,7 @@ from config import anthropic_api_key
 from errors import AgentError
 
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
-MODEL = "claude-sonnet-4-6"
+MODEL = "claude-haiku-4-5"
 
 
 def is_configured() -> bool:
