@@ -57,6 +57,25 @@ class IndexController extends Controller
         return parent::beforeAction($action);
     }
 
+    /**
+     * Libera as actions do cano da secretária para o Next (sem sessão de usuário).
+     * O segredo do serviço continua obrigatório em cada action.
+     */
+    protected function getAccessRules()
+    {
+        return [
+            [
+                'guestAccess' => [
+                    'secretary-reply',
+                    'secretary-history',
+                    'secretary-file',
+                    'secretary-google',
+                    'secretary-typing',
+                ],
+            ],
+        ];
+    }
+
     public function actionIndex()
     {
         $data = $this->buildPageData();

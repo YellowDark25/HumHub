@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { app } from "@/infrastructure/composition";
 import { jsonError } from "@/infrastructure/http/jsonError";
 import { requireServiceSecret } from "@/infrastructure/http/requireServiceSecret";
@@ -8,14 +8,20 @@ export const maxDuration = 60;
 
 /**
  * Recebe o recado disparado pelo HumHub e processa o turno da secretária.
- * Autentica pelo header X-Kaizzen-Secret; responde na mesma DM.
+ * Autentica pelo header X-Kaizzen-Secret; devolve 202 e conclui o turno depois.
  */
 export async function POST(request: Request) {
   try {
     requireServiceSecret(request);
     const input = await readTurnInput(request);
-    await app.handleSecretaryTurn(input);
-    return NextResponse.json({ ok: true });
+    after(async () => {
+      try {
+        await app.handleSecretaryTurn(input);
+      } catch (error) {
+        console.error("Turno da secretária falhou:", error);
+      }
+    });
+    return NextResponse.json({ ok: true }, { status: 202 });
   } catch (error) {
     return jsonError(error, "Não foi possível processar o recado da secretária.");
   }
