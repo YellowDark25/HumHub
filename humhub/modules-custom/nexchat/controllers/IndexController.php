@@ -42,6 +42,8 @@ class IndexController extends Controller
         'secretary-file',
         'secretary-google',
         'secretary-typing',
+        'secretary-state',
+        'secretary-memory',
     ];
 
     /** @var array<int, array{lastMessageId: int, messageCount: int}>|null */
@@ -91,7 +93,7 @@ class IndexController extends Controller
     }
 
     /**
-     * Confere o segredo compartilhado nas actions chamadas pelo Next.
+     * Confere o segredo compartilhado nas actions chamadas pelo agente Python.
      * Sem match devolve 403; nas demais actions este validador não se aplica.
      */
     public function validateSecretaryService($rule, $access): bool
@@ -130,7 +132,7 @@ class IndexController extends Controller
     private function secretaryServiceBody(): array
     {
         $body = Yii::$app->request->getBodyParams();
-        if (is_array($body) && ($body['conversationId'] ?? $body['content'] ?? $body['isTyping'] ?? null) !== null) {
+        if (is_array($body) && $body !== []) {
             return $body;
         }
 
@@ -773,7 +775,7 @@ class IndexController extends Controller
 
     /**
      * Envia mensagem (texto e/ou anexo) e avisa o Mercure.
-     * Se a DM for com a secretária, dispara o turno no Next depois de publicar.
+     * Se a DM for com a secretária, dispara o turno no agente Python depois de publicar.
      */
     public function actionSend()
     {
@@ -873,7 +875,7 @@ class IndexController extends Controller
     }
 
     /**
-     * Recebe a fala da secretária (serviço Next) e grava na DM.
+     * Recebe a fala da secretária (agente Python) e grava na DM.
      * Autentica pelo header X-Kaizzen-Secret e responde como o usuário da secretária.
      */
     public function actionSecretaryReply()
@@ -896,15 +898,16 @@ class IndexController extends Controller
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
         $conversationId = (int) Yii::$app->request->get('conversationId', Yii::$app->request->get('id', 0));
+        $limit = (int) Yii::$app->request->get('limit', 0);
 
         return [
             'success' => true,
-            'messages' => SecretaryBridge::history($conversationId),
+            'messages' => SecretaryBridge::history($conversationId, $limit),
         ];
     }
 
     /**
-     * Anexo da DM para o Next transcrever.
+     * Anexo da DM para o agente transcrever.
      * Autentica pelo segredo do serviço.
      */
     public function actionSecretaryFile($id)
@@ -940,6 +943,71 @@ class IndexController extends Controller
         );
 
         return ['success' => true];
+    }
+
+    /**
+     * Lê ou grava o resumo rolante da DM da secretária.
+     * GET devolve o estado; POST atualiza summary, cursor e turnCount.
+     */
+    public function actionSecretaryState()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        $method = strtoupper((string) Yii::$app->request->method);
+        if ($method === 'POST') {
+            $body = $this->secretaryServiceBody();
+            $state = SecretaryBridge::saveConversationState(
+                (int) ($body['conversationId'] ?? 0),
+                (string) ($body['summary'] ?? ''),
+                (int) ($body['summarizedUpToMessageId'] ?? 0),
+                (int) ($body['turnCount'] ?? 0),
+            );
+
+            return ['success' => true, 'state' => $state];
+        }
+
+        $conversationId = (int) Yii::$app->request->get('conversationId', 0);
+
+        return [
+            'success' => true,
+            'state' => SecretaryBridge::conversationState($conversationId),
+        ];
+    }
+
+    /**
+     * Lista, grava ou apaga uma preferência estruturada do usuário.
+     * GET lista; POST lembra; DELETE esquece.
+     */
+    public function actionSecretaryMemory()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        $method = strtoupper((string) Yii::$app->request->method);
+        if ($method === 'GET') {
+            $userId = (int) Yii::$app->request->get('userId', 0);
+
+            return [
+                'success' => true,
+                'items' => SecretaryBridge::listMemory($userId),
+            ];
+        }
+
+        $body = $this->secretaryServiceBody();
+        $userId = (int) ($body['userId'] ?? Yii::$app->request->get('userId', 0));
+        $key = trim((string) ($body['key'] ?? Yii::$app->request->get('key', '')));
+        if ($method === 'DELETE') {
+            return [
+                'success' => true,
+                'forgotten' => SecretaryBridge::forgetMemory($userId, $key),
+            ];
+        }
+
+        return [
+            'success' => true,
+            'item' => SecretaryBridge::rememberMemory(
+                $userId,
+                $key,
+                (string) ($body['value'] ?? ''),
+            ),
+        ];
     }
 
     /**

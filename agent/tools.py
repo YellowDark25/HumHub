@@ -6,7 +6,12 @@ Controla a agenda e as tarefas do usuário no Google Calendar e no Google Tasks.
 Quando faltar horário, duração ou título, pergunte antes de criar.
 Confirme o que fez depois de cada alteração.
 Não invente eventos ou tarefas que as tools não devolveram.
-Fuso horário padrão: America/Sao_Paulo."""
+Fuso horário padrão: America/Sao_Paulo.
+Quando o usuário afirmar uma preferência estável (duração padrão de reunião, horário de trabalho, como nomear tarefas, forma de tratamento), grave com lembrar_preferencia.
+Se pedir para esquecer, use esquecer_preferencia.
+Não grave recados pontuais — um evento ou tarefa de uma data — como preferência.
+Use o resumo da conversa e as preferências já gravadas; não peça de novo o que já está lá.
+Várias mensagens seguidas do usuário, sem resposta sua no meio, são o mesmo recado — junte o sentido e responda uma vez."""
 
 SECRETARY_NOT_CONNECTED = (
     f"Ainda não conectei sua conta Google. Abra {GOOGLE_CONNECT_HREF} em "
@@ -16,7 +21,7 @@ SECRETARY_NOT_CONNECTED = (
 
 
 def secretary_tool_definitions() -> list[dict]:
-    """Tools de Calendar e Tasks que o modelo pode chamar neste corte."""
+    """Tools de Calendar, Tasks e preferências que o modelo pode chamar neste corte."""
     return [
         {
             "name": "list_events",
@@ -90,6 +95,41 @@ def secretary_tool_definitions() -> list[dict]:
                 "type": "object",
                 "properties": {"taskId": {"type": "string"}},
                 "required": ["taskId"],
+            },
+        },
+        {
+            "name": "lembrar_preferencia",
+            "description": (
+                "Grava uma preferência estável do usuário para os próximos turnos. "
+                "Use chave curta em slug (ex. duracao_reuniao, horario_trabalho)."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "chave": {
+                        "type": "string",
+                        "description": "Identificador curto da preferência.",
+                    },
+                    "valor": {
+                        "type": "string",
+                        "description": "O que deve ser lembrado.",
+                    },
+                },
+                "required": ["chave", "valor"],
+            },
+        },
+        {
+            "name": "esquecer_preferencia",
+            "description": "Apaga uma preferência gravada pela chave.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "chave": {
+                        "type": "string",
+                        "description": "Identificador da preferência a esquecer.",
+                    },
+                },
+                "required": ["chave"],
             },
         },
     ]

@@ -24,6 +24,7 @@ services:
       - KAIZZEN_SERVICE_SECRET=kaizzen-local-service-secret
       - KAIZZEN_NEXT_URL=http://host.docker.internal:3001
       - KAIZZEN_AGENT_URL=http://agent:8000
+      - KAIZZEN_SECRETARY_HISTORY_LIMIT=8
 
   agent:
     build:
@@ -39,6 +40,8 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - KAIZZEN_SECRETARY_HISTORY_LIMIT=8
+      - KAIZZEN_SECRETARY_DEBOUNCE_SECONDS=1.2
     depends_on:
       humhub:
         condition: service_healthy

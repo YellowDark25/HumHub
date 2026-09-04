@@ -45,3 +45,23 @@ def gemini_api_key() -> str:
 def openai_api_key() -> str:
     """Chave da OpenAI, fallback do Whisper se não houver Gemini."""
     return _read("OPENAI_API_KEY")
+
+
+def secretary_history_limit() -> int:
+    """Quantas mensagens cruas entram no prompt junto com o resumo."""
+    raw = _read("KAIZZEN_SECRETARY_HISTORY_LIMIT")
+    if not raw.isdigit():
+        return 8
+    return max(4, min(40, int(raw)))
+
+
+def secretary_debounce_seconds() -> float:
+    """Espera após o último recado antes de responder, para juntar pedaços da mesma fala."""
+    raw = _read("KAIZZEN_SECRETARY_DEBOUNCE_SECONDS")
+    if not raw:
+        return 1.2
+    try:
+        value = float(raw.replace(",", "."))
+    except ValueError:
+        return 1.2
+    return max(0.4, min(5.0, value))

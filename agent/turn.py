@@ -7,6 +7,7 @@ import httpx
 import anthropic_llm
 import google_workspace
 import humhub_client
+import memory
 import speech
 from errors import AgentError
 from tools import SECRETARY_NOT_CONNECTED, SECRETARY_SYSTEM_PROMPT, secretary_tool_definitions
@@ -33,10 +34,17 @@ async def handle_secretary_turn(http: httpx.AsyncClient, payload: dict[str, Any]
 
 
 async def _run_secretary_turn(http: httpx.AsyncClient, payload: dict[str, Any]) -> None:
-    """Corpo do turno: texto, Google, modelo e resposta."""
+    """Corpo do turno: texto, memória, modelo, resposta e resumo rolante."""
     conversation_id = int(payload["conversationId"])
+    user_id = int(payload["userId"])
     spoken = await _resolve_user_text(http, payload)
-    if not spoken:
+    account = await humhub_client.get_google_account(http, user_id)
+    if not account:
+        await humhub_client.reply(http, conversation_id, SECRETARY_NOT_CONNECTED)
+        return
+
+    state, preferences, history = await _load_prompt_context(http, conversation_id, user_id)
+    if not spoken and not _trailing_user_contents(history):
         await humhub_client.reply(
             http,
             conversation_id,
@@ -44,33 +52,73 @@ async def _run_secretary_turn(http: httpx.AsyncClient, payload: dict[str, Any]) 
         )
         return
 
-    account = await humhub_client.get_google_account(http, int(payload["userId"]))
-    if not account:
-        await humhub_client.reply(http, conversation_id, SECRETARY_NOT_CONNECTED)
-        return
-
     if not anthropic_llm.is_configured():
-        await humhub_client.reply(http, conversation_id, f"Recebi: {spoken}")
+        echo = spoken or "\n".join(_trailing_user_contents(history))
+        await humhub_client.reply(http, conversation_id, f"Recebi: {echo}")
         return
 
-    history = await humhub_client.list_history(http, conversation_id)
+    system = memory.build_system_prompt(SECRETARY_SYSTEM_PROMPT, state["summary"], preferences)
+    messages = _history_to_messages(history, spoken)
+    reply = await _collect_model_reply(http, system, messages, account["refreshToken"], user_id)
+    await humhub_client.reply(http, conversation_id, reply)
+    await _refresh_memory_after_turn(http, conversation_id)
+
+
+async def _load_prompt_context(
+    http: httpx.AsyncClient,
+    conversation_id: int,
+    user_id: int,
+) -> tuple[dict[str, Any], list[dict[str, str]], list[dict[str, Any]]]:
+    """Lê resumo, preferências e as últimas falas cruas que entram no prompt."""
+    state = await humhub_client.get_conversation_state(http, conversation_id)
+    preferences = await humhub_client.list_memory(http, user_id)
+    history = await humhub_client.list_history(
+        http,
+        conversation_id,
+        memory.prompt_history_limit(),
+    )
+    return state, preferences, history
+
+
+def _history_to_messages(history: list[dict[str, Any]], spoken: str) -> list[dict[str, str]]:
+    """Converte o histórico em mensagens do modelo e garante o recado atual."""
     messages = [
         {"role": "assistant" if item["isSecretary"] else "user", "content": item["content"]}
         for item in history
         if item["content"]
     ]
-    if not any(item["role"] == "user" and item["content"] == spoken for item in messages):
+    if spoken and not any(item["role"] == "user" and item["content"] == spoken for item in messages):
         messages.append({"role": "user", "content": spoken})
+    return messages
 
-    tools = secretary_tool_definitions()
-    reply = ""
-    for _ in range(MAX_TOOL_ROUNDS):
-        completion = await anthropic_llm.complete(http, SECRETARY_SYSTEM_PROMPT, messages, tools)
-        if not completion["toolCalls"]:
-            reply = completion["text"].strip()
+
+def _trailing_user_contents(history: list[dict[str, Any]]) -> list[str]:
+    """Textos do usuário depois da última fala da secretária — os pedaços desta fala."""
+    texts: list[str] = []
+    for item in reversed(history):
+        if item["isSecretary"]:
             break
+        if item["content"]:
+            texts.append(item["content"])
+    texts.reverse()
+    return texts
+
+
+async def _collect_model_reply(
+    http: httpx.AsyncClient,
+    system: str,
+    messages: list[dict[str, str]],
+    refresh_token: str,
+    user_id: int,
+) -> str:
+    """Roda o loop de tools e só aceita como resposta o texto de uma rodada sem tool calls."""
+    tools = secretary_tool_definitions()
+    for _ in range(MAX_TOOL_ROUNDS):
+        completion = await anthropic_llm.complete(http, system, messages, tools)
+        if not completion["toolCalls"]:
+            return memory.pick_final_reply(completion["text"])
         tool_lines = [
-            await _run_secretary_tool(http, account["refreshToken"], call)
+            await _run_secretary_tool(http, refresh_token, user_id, call)
             for call in completion["toolCalls"]
         ]
         messages.append({
@@ -81,13 +129,15 @@ async def _run_secretary_turn(http: httpx.AsyncClient, payload: dict[str, Any]) 
             "role": "user",
             "content": "Resultado das ferramentas:\n" + "\n".join(tool_lines),
         })
-        reply = completion["text"].strip()
+    return memory.pick_final_reply("")
 
-    await humhub_client.reply(
-        http,
-        conversation_id,
-        reply or "Pronto. Se quiser, peço outro ajuste na agenda ou nas tarefas.",
-    )
+
+async def _refresh_memory_after_turn(http: httpx.AsyncClient, conversation_id: int) -> None:
+    """Atualiza o resumo depois da resposta; falha aqui não desfaz o recado já enviado."""
+    try:
+        await memory.refresh_after_turn(http, conversation_id)
+    except Exception as error:
+        logging.error("Não atualizei o resumo da conversa: %s", error)
 
 
 async def _resolve_user_text(http: httpx.AsyncClient, payload: dict[str, Any]) -> str:
@@ -102,12 +152,17 @@ async def _resolve_user_text(http: httpx.AsyncClient, payload: dict[str, Any]) -
     return (await speech.transcribe(http, file)).strip()
 
 
-async def _run_secretary_tool(http: httpx.AsyncClient, refresh_token: str, call: dict[str, Any]) -> str:
-    """Executa uma tool do Google e devolve um resumo em texto para o modelo."""
+async def _run_secretary_tool(
+    http: httpx.AsyncClient,
+    refresh_token: str,
+    user_id: int,
+    call: dict[str, Any],
+) -> str:
+    """Executa uma tool (Google ou memória) e devolve um resumo em texto para o modelo."""
     name = call.get("name") or ""
     arguments = call.get("arguments") or {}
     try:
-        result = await _dispatch_tool(http, refresh_token, name, arguments)
+        result = await _dispatch_tool(http, refresh_token, user_id, name, arguments)
         return json.dumps(result, ensure_ascii=False)
     except Exception as error:
         message = str(error) if isinstance(error, Exception) else "falha na ferramenta"
@@ -117,10 +172,21 @@ async def _run_secretary_tool(http: httpx.AsyncClient, refresh_token: str, call:
 async def _dispatch_tool(
     http: httpx.AsyncClient,
     refresh_token: str,
+    user_id: int,
     name: str,
     arguments: dict[str, Any],
 ) -> Any:
-    """Encaminha o nome da tool para a função do Google correspondente."""
+    """Encaminha o nome da tool para a função do Google ou da memória."""
+    if name == "lembrar_preferencia":
+        return await humhub_client.remember_memory(
+            http,
+            user_id,
+            str(arguments.get("chave") or ""),
+            str(arguments.get("valor") or ""),
+        )
+    if name == "esquecer_preferencia":
+        forgotten = await humhub_client.forget_memory(http, user_id, str(arguments.get("chave") or ""))
+        return {"key": str(arguments.get("chave") or ""), "forgotten": forgotten}
     if name == "list_events":
         return await google_workspace.list_events(
             http, refresh_token, str(arguments.get("timeMin") or ""), str(arguments.get("timeMax") or ""),
