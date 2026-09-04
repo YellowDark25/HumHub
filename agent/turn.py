@@ -163,6 +163,7 @@ async def _run_secretary_tool(
     arguments = call.get("arguments") or {}
     try:
         result = await _dispatch_tool(http, refresh_token, user_id, name, arguments)
+        logging.info("Tool da secretária ok: %s", name)
         return json.dumps(result, ensure_ascii=False)
     except Exception as error:
         message = str(error) if isinstance(error, Exception) else "falha na ferramenta"
@@ -221,7 +222,13 @@ async def _dispatch_tool(
             _optional_string(arguments.get("due")),
         )
     if name == "complete_task":
-        return await google_workspace.complete_task(http, refresh_token, str(arguments.get("taskId") or ""))
+        return await google_workspace.complete_task(
+            http,
+            refresh_token,
+            _optional_string(arguments.get("taskId")),
+            _optional_string(arguments.get("title")),
+            _optional_string(arguments.get("listId")),
+        )
     return f"Ferramenta desconhecida: {name}"
 
 
