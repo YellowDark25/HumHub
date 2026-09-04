@@ -19,6 +19,7 @@ services:
       - HUMHUB_CONFIG__COMPONENTS__DB__DSN=mysql:host=db;dbname=humhub
       - HUMHUB_CONFIG__COMPONENTS__DB__USERNAME=humhub
       - HUMHUB_CONFIG__COMPONENTS__DB__PASSWORD=humhub_senha_local
+      - 'HUMHUB_CONFIG__COMPONENTS__LOG__TARGETS={"yii\\log\\DbTarget":{"enabled":false}}'
 
   db:
     image: mariadb:11

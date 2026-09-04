@@ -69,4 +69,10 @@ else
   echo "[railway-migrate] coluna user.user_source já existe"
 fi
 
+if "$CLIENT" $client_args "$dbname" -N -e \
+  "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'log';" | grep -qx '1'; then
+  echo "[railway-migrate] esvaziando tabela log (não é dado de usuário)"
+  "$CLIENT" $client_args "$dbname" -e "TRUNCATE TABLE \`log\`;"
+fi
+
 echo "[railway-migrate] concluído"

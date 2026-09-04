@@ -12,8 +12,15 @@ use Yii;
 
 class Events
 {
+    /**
+     * Autentica Bearer nas rotas nexchat e desliga o log em banco.
+     * O Yii grava warning/erro na tabela `log`; isso enche o volume do MySQL.
+     * Desliga o DbTarget em todo request (web e console) e só então aplica o login.
+     */
     public static function onBeforeRequest(): void
     {
+        self::disableDatabaseLogTarget();
+
         $request = Yii::$app->request;
         if (!$request instanceof \yii\web\Request) {
             return;
@@ -25,6 +32,23 @@ class Events
         }
 
         BearerLogin::authenticate();
+    }
+
+    /**
+     * Impede o Yii de gravar na tabela `log`.
+     * Percorre os targets do logger e desliga só o DbTarget; o FileTarget segue ativo.
+     */
+    public static function disableDatabaseLogTarget(): void
+    {
+        if (!Yii::$app->has('log')) {
+            return;
+        }
+
+        foreach (Yii::$app->log->targets as $target) {
+            if ($target instanceof \yii\log\DbTarget) {
+                $target->enabled = false;
+            }
+        }
     }
 
     public static function onGateInit($event): void

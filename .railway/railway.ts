@@ -31,6 +31,8 @@ export default defineRailway(() => {
       HUMHUB_CONFIG__COMPONENTS__DB__USERNAME: db.env.MYSQLUSER,
       HUMHUB_CONFIG__COMPONENTS__DB__PASSWORD: db.env.MYSQLPASSWORD,
       HUMHUB_CONFIG__PARAMS__MODULE_AUTOLOAD_PATHS: '["/opt/modules-custom"]',
+      HUMHUB_CONFIG__COMPONENTS__LOG__TARGETS:
+        '{"yii\\\\log\\\\DbTarget":{"enabled":false}}',
     },
   });
 
