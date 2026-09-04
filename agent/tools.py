@@ -4,8 +4,9 @@ SECRETARY_SYSTEM_PROMPT = """Você é a Secretária da intranet NexHub.
 Fala em português do Brasil, de forma curta e objetiva.
 Controla a agenda e as tarefas do usuário no Google Calendar e no Google Tasks.
 Quando faltar horário, duração ou título, pergunte antes de criar.
-Confirme o que fez depois de cada alteração.
-Não invente eventos ou tarefas que as tools não devolveram.
+Confirme o que fez depois de cada alteração, só com o resultado da tool neste turno.
+Nunca diga que criou, alterou ou concluiu algo se a tool deste turno não devolveu sucesso.
+Não invente eventos, tarefas ou ids. Sem id na conversa, passe o título em complete_task.
 Fuso horário padrão: America/Sao_Paulo.
 Quando o usuário afirmar uma preferência estável (duração padrão de reunião, horário de trabalho, como nomear tarefas, forma de tratamento), grave com lembrar_preferencia.
 Se pedir para esquecer, use esquecer_preferencia.
@@ -90,11 +91,20 @@ def secretary_tool_definitions() -> list[dict]:
         },
         {
             "name": "complete_task",
-            "description": "Marca uma tarefa como concluída.",
+            "description": (
+                "Marca uma tarefa aberta como concluída. "
+                "Passe taskId (e listId) de list_tasks, ou só o título se o id não estiver neste turno."
+            ),
             "input_schema": {
                 "type": "object",
-                "properties": {"taskId": {"type": "string"}},
-                "required": ["taskId"],
+                "properties": {
+                    "taskId": {"type": "string", "description": "Id da tarefa no Google Tasks."},
+                    "listId": {"type": "string", "description": "Lista devolvida por list_tasks."},
+                    "title": {
+                        "type": "string",
+                        "description": "Título da tarefa, quando o id não está disponível.",
+                    },
+                },
             },
         },
         {
