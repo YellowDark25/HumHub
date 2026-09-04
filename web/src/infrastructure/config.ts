@@ -111,27 +111,6 @@ export function getPublicAppUrl(): string {
 }
 
 /**
- * Chave da API Anthropic (Claude). Vazia quando o eco do cano ainda vale.
- */
-export function getAnthropicApiKey(): string {
-  return process.env.ANTHROPIC_API_KEY?.trim() ?? "";
-}
-
-/**
- * Chave do Gemini usada no STT dos recados.
- */
-export function getGeminiApiKey(): string {
-  return process.env.GEMINI_API_KEY?.trim() ?? "";
-}
-
-/**
- * Chave da OpenAI, fallback do STT (Whisper) se não houver Gemini.
- */
-export function getOpenAiApiKey(): string {
-  return process.env.OPENAI_API_KEY?.trim() ?? "";
-}
-
-/**
  * Client id OAuth do Google.
  */
 export function getGoogleClientId(): string {

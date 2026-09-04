@@ -6,21 +6,24 @@ use humhub\modules\nexchat\models\Attachment;
 use humhub\modules\nexchat\models\Conversation;
 use humhub\modules\nexchat\models\GoogleAccount;
 use humhub\modules\nexchat\models\Message;
+use humhub\modules\nexchat\models\SecretaryConversationState;
+use humhub\modules\nexchat\models\SecretaryUserMemory;
 use Yii;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 
 /**
- * Ponte da secretária no HumHub: dispara o Next, grava a resposta no fio de sistema e expõe histórico.
+ * Ponte da secretária no HumHub: dispara o agente Python, grava a resposta e expõe histórico e memória.
  * Autentica pelo segredo do serviço; não assume outro usuário HumHub.
  */
 class SecretaryBridge
 {
-    private const HISTORY_LIMIT = 20;
+    private const HISTORY_LIMIT_MIN = 4;
+    private const HISTORY_LIMIT_MAX = 40;
     private const TYPING_ACTOR_ID = 0;
 
     /**
-     * Depois de uma mensagem no fio da secretária, avisa o Next e marca digitando.
+     * Depois de uma mensagem no fio da secretária, avisa o agente Python e marca digitando.
      * Ignora eco da própria secretária, canal e configuração incompleta.
      */
     public static function dispatchAfterSend(Conversation $conversation, Message $message): void
@@ -33,14 +36,14 @@ class SecretaryBridge
             return;
         }
 
-        if (KaizzenConfig::serviceSecret() === '') {
+        if (KaizzenConfig::serviceSecret() === '' || KaizzenConfig::agentUrl() === '') {
             return;
         }
 
         $audioFileId = self::firstAudioFileId($message);
         self::publishTyping((int) $conversation->id, true);
 
-        self::postToNext('/api/secretary/turn', [
+        self::postToAgent('/api/secretary/turn', [
             'conversationId' => (int) $conversation->id,
             'messageId' => (int) $message->id,
             'userId' => (int) $message->user_id,
@@ -94,20 +97,23 @@ class SecretaryBridge
     }
 
     /**
-     * Últimas mensagens do fio para o turno da secretária.
+     * Últimas mensagens cruas do fio para complementar o resumo no prompt.
      * Exige o segredo e que a conversa seja da secretária.
      *
      * @return array<int, array<string, mixed>>
      */
-    public static function history(int $conversationId): array
+    public static function history(int $conversationId, int $limit = 0): array
     {
         KaizzenConfig::requireServiceSecret();
         self::requireSecretaryConversation($conversationId);
 
+        $resolvedLimit = $limit > 0 ? $limit : KaizzenConfig::secretaryHistoryLimit();
+        $resolvedLimit = max(self::HISTORY_LIMIT_MIN, min(self::HISTORY_LIMIT_MAX, $resolvedLimit));
+
         $messages = Message::find()
             ->where(['conversation_id' => $conversationId])
             ->orderBy(['id' => SORT_DESC])
-            ->limit(self::HISTORY_LIMIT)
+            ->limit($resolvedLimit)
             ->all();
 
         $payloads = array_map(static fn(Message $message) => [
@@ -123,7 +129,7 @@ class SecretaryBridge
     }
 
     /**
-     * Serve um anexo da DM da secretária para o Next transcrever.
+     * Serve um anexo da DM da secretária para o agente transcrever.
      * Exige o segredo; o arquivo precisa pertencer a uma conversa da secretária.
      */
     public static function file(int $fileId): \yii\web\Response
@@ -175,6 +181,95 @@ class SecretaryBridge
     }
 
     /**
+     * Lê o resumo rolante da conversa da secretária.
+     *
+     * @return array{conversationId: int, summary: string, summarizedUpToMessageId: int, turnCount: int}
+     */
+    public static function conversationState(int $conversationId): array
+    {
+        KaizzenConfig::requireServiceSecret();
+        self::requireSecretaryConversation($conversationId);
+
+        return SecretaryConversationState::payloadFor($conversationId);
+    }
+
+    /**
+     * Grava o resumo rolante depois do turno.
+     *
+     * @return array{conversationId: int, summary: string, summarizedUpToMessageId: int, turnCount: int}
+     */
+    public static function saveConversationState(
+        int $conversationId,
+        string $summary,
+        int $summarizedUpToMessageId,
+        int $turnCount,
+    ): array {
+        KaizzenConfig::requireServiceSecret();
+        self::requireSecretaryConversation($conversationId);
+
+        return SecretaryConversationState::upsert(
+            $conversationId,
+            $summary,
+            $summarizedUpToMessageId,
+            $turnCount,
+        );
+    }
+
+    /**
+     * Preferências estruturadas do usuário para o system prompt.
+     *
+     * @return array<int, array{key: string, value: string}>
+     */
+    public static function listMemory(int $userId): array
+    {
+        KaizzenConfig::requireServiceSecret();
+        if ($userId <= 0) {
+            throw new \yii\web\BadRequestHttpException('Usuário da memória inválido.');
+        }
+
+        return SecretaryUserMemory::listForUser($userId);
+    }
+
+    /**
+     * Grava ou atualiza uma preferência do usuário.
+     *
+     * @return array{key: string, value: string}
+     */
+    public static function rememberMemory(int $userId, string $key, string $value): array
+    {
+        KaizzenConfig::requireServiceSecret();
+        if ($userId <= 0) {
+            throw new \yii\web\BadRequestHttpException('Usuário da memória inválido.');
+        }
+
+        $normalizedKey = SecretaryUserMemory::normalizeKey($key);
+        $trimmedValue = mb_substr(trim($value), 0, SecretaryUserMemory::VALUE_MAX_LENGTH);
+        if ($normalizedKey === '' || $trimmedValue === '') {
+            throw new \yii\web\BadRequestHttpException('Preferência inválida.');
+        }
+
+        return SecretaryUserMemory::remember($userId, $normalizedKey, $trimmedValue);
+    }
+
+    /**
+     * Apaga uma preferência do usuário. False se a chave não existia.
+     */
+    public static function forgetMemory(int $userId, string $key): bool
+    {
+        KaizzenConfig::requireServiceSecret();
+        if ($userId <= 0) {
+            throw new \yii\web\BadRequestHttpException('Usuário da memória inválido.');
+        }
+
+        $normalizedKey = SecretaryUserMemory::normalizeKey($key);
+        if ($normalizedKey === '') {
+            throw new \yii\web\BadRequestHttpException('Preferência inválida.');
+        }
+
+        return SecretaryUserMemory::forget($userId, $normalizedKey);
+    }
+
+    /**
      * Publica o estado de digitação da secretária no Mercure.
      */
     public static function setTyping(int $conversationId, bool $isTyping): void
@@ -221,11 +316,11 @@ class SecretaryBridge
     }
 
     /**
-     * POST curto para o Next; o timeout só precisa entregar o corpo.
+     * POST curto para o agente Python; o timeout só precisa entregar o corpo.
      *
      * @param array<string, mixed> $payload
      */
-    private static function postToNext(string $path, array $payload): void
+    private static function postToAgent(string $path, array $payload): void
     {
         $url = KaizzenConfig::agentUrl() . $path;
         $secret = KaizzenConfig::serviceSecret();
@@ -259,14 +354,14 @@ class SecretaryBridge
         curl_close($handle);
 
         if ($error !== '') {
-            Yii::warning('Secretária: falha ao avisar o Next — ' . $error, 'nexchat');
+            Yii::warning('Secretária: falha ao avisar o agente — ' . $error, 'nexchat');
             return;
         }
 
         if ($status < 200 || $status >= 300) {
             $snippet = is_string($raw) ? substr($raw, 0, 180) : '';
             Yii::warning(
-                'Secretária: Next respondeu ' . $status . ' em ' . $url . ($snippet !== '' ? ' — ' . $snippet : ''),
+                'Secretária: agente respondeu ' . $status . ' em ' . $url . ($snippet !== '' ? ' — ' . $snippet : ''),
                 'nexchat',
             );
         }

@@ -5,7 +5,7 @@ namespace humhub\modules\nexchat\components;
 use Yii;
 
 /**
- * Lê as variáveis Kaizzen (secretária, serviço e URL do Next).
+ * Lê as variáveis Kaizzen (secretária, serviço e URL do agente Python).
  * Consulta getenv, $_ENV e Yii params; devolve 0/string vazia quando não há valor.
  */
 class KaizzenConfig
@@ -22,7 +22,7 @@ class KaizzenConfig
     }
 
     /**
-     * Segredo compartilhado entre HumHub e o Next para o cano da secretária.
+     * Segredo compartilhado entre HumHub e o agente Python da secretária.
      * Lê KAIZZEN_SERVICE_SECRET.
      */
     public static function serviceSecret(): string
@@ -46,16 +46,25 @@ class KaizzenConfig
 
     /**
      * URL do agente Python da secretária (sem barra final).
-     * Lê KAIZZEN_AGENT_URL; se vazia, cai no Next.
+     * Lê KAIZZEN_AGENT_URL; vazia significa que o turno não dispara.
      */
     public static function agentUrl(): string
     {
-        $url = trim(self::read('KAIZZEN_AGENT_URL', 'kaizzenAgentUrl'));
-        if ($url === '') {
-            return self::nextUrl();
+        return rtrim(trim(self::read('KAIZZEN_AGENT_URL', 'kaizzenAgentUrl')), '/');
+    }
+
+    /**
+     * Quantas mensagens cruas complementam o resumo no prompt.
+     * Lê KAIZZEN_SECRETARY_HISTORY_LIMIT; padrão 8, limitado entre 4 e 40.
+     */
+    public static function secretaryHistoryLimit(): int
+    {
+        $raw = trim(self::read('KAIZZEN_SECRETARY_HISTORY_LIMIT', 'kaizzenSecretaryHistoryLimit'));
+        if ($raw === '' || !ctype_digit($raw)) {
+            return 8;
         }
 
-        return rtrim($url, '/');
+        return max(4, min(40, (int) $raw));
     }
 
     /**

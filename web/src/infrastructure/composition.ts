@@ -180,16 +180,10 @@ import { LiveKitVoiceRoomRepository } from "./voice/LiveKitVoiceRoomRepository";
 import { disconnectGoogleAccount } from "@/application/usecases/disconnectGoogleAccount";
 import { finishGoogleConnect } from "@/application/usecases/finishGoogleConnect";
 import { getGoogleAccountStatus } from "@/application/usecases/getGoogleAccountStatus";
-import { handleSecretaryTurn } from "@/application/usecases/handleSecretaryTurn";
 import { openSecretaryDm } from "@/application/usecases/openSecretaryDm";
 import { startGoogleConnect } from "@/application/usecases/startGoogleConnect";
-import type { SecretaryTurnInput } from "@/domain/SecretaryTurn";
 import { GoogleOAuthRepository } from "./google/GoogleOAuthRepository";
-import { GoogleWorkspaceRepository } from "./google/GoogleWorkspaceRepository";
-import { AnthropicLlmRepository } from "./llm/AnthropicLlmRepository";
-import { GeminiSpeechToTextRepository } from "./llm/GeminiSpeechToTextRepository";
 import { NexchatGoogleAccountRepository } from "./nexchat/NexchatGoogleAccountRepository";
-import { NexchatSecretaryDispatchRepository } from "./nexchat/NexchatSecretaryDispatchRepository";
 
 const appRelease = new EnvAppReleaseRepository();
 const auth = new HumhubAuthRepository();
@@ -207,10 +201,6 @@ const chatEvents = new NexchatChatEventRepository();
 const spaceDrive = new NexchatSpaceDriveRepository();
 const voiceRooms = new LiveKitVoiceRoomRepository();
 const media = new HumhubMediaRepository();
-const secretaryDispatch = new NexchatSecretaryDispatchRepository();
-const secretaryLlm = new AnthropicLlmRepository();
-const secretarySpeech = new GeminiSpeechToTextRepository();
-const googleWorkspace = new GoogleWorkspaceRepository();
 const googleAccounts = new NexchatGoogleAccountRepository();
 const googleOAuth = new GoogleOAuthRepository();
 
@@ -551,14 +541,6 @@ export const app = {
   openDirectMessage: (token: string, userId: number) =>
     openDirectMessage(chat, token, userId),
   openSecretaryDm: (token: string) => openSecretaryDm(chat, token),
-  handleSecretaryTurn: (input: SecretaryTurnInput) =>
-    handleSecretaryTurn(
-      secretaryDispatch,
-      secretaryLlm,
-      secretarySpeech,
-      googleWorkspace,
-      input,
-    ),
   getGoogleAccountStatus: (token: string) =>
     getGoogleAccountStatus(googleAccounts, token),
   startGoogleConnect: (token: string) =>

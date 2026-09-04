@@ -29,13 +29,7 @@ async def complete(
             "x-api-key": anthropic_api_key(),
             "anthropic-version": "2023-06-01",
         },
-        json={
-            "model": MODEL,
-            "max_tokens": 1024,
-            "system": system,
-            "messages": messages,
-            "tools": tools,
-        },
+        json=_completion_payload(system, messages, tools),
     )
     data = response.json()
     if response.status_code >= 400:
@@ -56,3 +50,20 @@ async def complete(
                 "arguments": block.get("input") or {},
             })
     return {"text": "\n".join(text).strip(), "toolCalls": tool_calls}
+
+
+def _completion_payload(
+    system: str,
+    messages: list[dict[str, str]],
+    tools: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Monta o corpo da Messages API; omite tools quando a rodada é só texto."""
+    payload: dict[str, Any] = {
+        "model": MODEL,
+        "max_tokens": 1024,
+        "system": system,
+        "messages": messages,
+    }
+    if tools:
+        payload["tools"] = tools
+    return payload

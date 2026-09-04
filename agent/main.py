@@ -1,16 +1,38 @@
 import logging
+from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
-from fastapi import BackgroundTasks, FastAPI, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from config import service_secret
+from config import secretary_debounce_seconds, service_secret
 from errors import AgentError
+from inbox import ConversationTurnInbox
 from turn import handle_secretary_turn
 
 logging.basicConfig(level=logging.INFO)
-app = FastAPI(title="NexHub Secretária")
+
+inbox: ConversationTurnInbox | None = None
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Cria a caixa de entrada da secretária e cancela esperas no shutdown."""
+    global inbox
+    inbox = ConversationTurnInbox(_run_turn_safe, secretary_debounce_seconds())
+    logging.info(
+        "Caixa da secretária pronta: debounce=%.1fs (um turno por conversa)",
+        secretary_debounce_seconds(),
+    )
+    try:
+        yield
+    finally:
+        await inbox.aclose()
+        inbox = None
+
+
+app = FastAPI(title="NexHub Secretária", lifespan=lifespan)
 
 
 @app.get("/health")
@@ -20,11 +42,13 @@ async def health() -> dict[str, bool]:
 
 
 @app.post("/api/secretary/turn")
-async def secretary_turn(request: Request, background: BackgroundTasks) -> JSONResponse:
-    """Recebe o recado disparado pelo HumHub e processa o turno em segundo plano."""
+async def secretary_turn(request: Request) -> JSONResponse:
+    """Recebe o recado do HumHub, agrupa na conversa e devolve 202 sem esperar a resposta."""
     _require_service_secret(request)
     payload = await _read_turn_input(request)
-    background.add_task(_run_turn_safe, payload)
+    if inbox is None:
+        raise AgentError("Agente da secretária ainda não está pronto.", 503)
+    await inbox.enqueue(payload)
     return JSONResponse({"ok": True}, status_code=202)
 
 
