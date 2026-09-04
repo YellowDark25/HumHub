@@ -58,17 +58,18 @@ export function useChatUnread(input: {
   }, []);
 
   useEffect(() => {
-    if (!input.activeConversationId) {
+    const conversationId = input.activeConversationId;
+    if (!conversationId) {
       return;
     }
 
-    const snapshot = snapshots[input.activeConversationId];
+    const snapshot = snapshots[conversationId];
     if (!snapshot || (snapshot.lastMessageId <= 0 && snapshot.messageCount <= 0)) {
       return;
     }
 
     setSeenByConversation((current) =>
-      markConversationSeen(current, input.activeConversationId, snapshot),
+      markConversationSeen(current, conversationId, snapshot),
     );
   }, [input.activeConversationId, snapshots]);
 

@@ -191,15 +191,19 @@ export function chatSidebarSections(
       });
     }
 
-    sections.push({
-      title: "Mensagens diretas",
-      items:
-        others.length > 0
-          ? contactItems(others)
-          : lists.contacts.length > 0
-            ? []
-            : conversationItems(lists.dms),
-    });
+    const dmItems =
+      others.length > 0
+        ? contactItems(others)
+        : lists.contacts.length === 0
+          ? conversationItems(lists.dms)
+          : [];
+
+    if (dmItems.length > 0) {
+      sections.push({
+        title: "Mensagens diretas",
+        items: dmItems,
+      });
+    }
     return sections;
   }
 
