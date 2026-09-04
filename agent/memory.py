@@ -7,7 +7,7 @@ import anthropic_llm
 import humhub_client
 from config import secretary_history_limit
 
-SUMMARY_LOOKBACK = 24
+SUMMARY_FOLD_EXTRA = 16
 MAX_SUMMARY_CHARS = 2000
 FALLBACK_REPLY = "Pronto. Se quiser, peço outro ajuste na agenda ou nas tarefas."
 
@@ -40,11 +40,20 @@ def pick_final_reply(text: str) -> str:
     return trimmed or FALLBACK_REPLY
 
 
+def summary_lookback_limit(raw_limit: int) -> int:
+    """Quantas mensagens buscar para o resumo: janela crua mais as que vão envelhecer."""
+    return raw_limit + SUMMARY_FOLD_EXTRA
+
+
 async def refresh_after_turn(http: httpx.AsyncClient, conversation_id: int) -> None:
     """Atualiza o resumo com as mensagens que saíram da janela crua e incrementa o turno."""
     state = await humhub_client.get_conversation_state(http, conversation_id)
-    lookback = await humhub_client.list_history(http, conversation_id, SUMMARY_LOOKBACK)
     raw_limit = prompt_history_limit()
+    lookback = await humhub_client.list_history(
+        http,
+        conversation_id,
+        summary_lookback_limit(raw_limit),
+    )
     raw_ids = {item["id"] for item in lookback[-raw_limit:]}
     aged = [
         item

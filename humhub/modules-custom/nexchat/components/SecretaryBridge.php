@@ -19,7 +19,7 @@ use yii\web\NotFoundHttpException;
 class SecretaryBridge
 {
     private const HISTORY_LIMIT_MIN = 4;
-    private const HISTORY_LIMIT_MAX = 40;
+    private const HISTORY_LIMIT_MAX = 80;
     private const TYPING_ACTOR_ID = 0;
 
     /**
@@ -97,7 +97,7 @@ class SecretaryBridge
     }
 
     /**
-     * Últimas mensagens cruas do fio para complementar o resumo no prompt.
+     * Últimas mensagens do fio: janela crua do prompt ou lookback do resumo.
      * Exige o segredo e que a conversa seja da secretária.
      *
      * @return array<int, array<string, mixed>>
