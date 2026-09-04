@@ -31,8 +31,16 @@ class NexchatFriendship
         return self::state($user, $friend) === self::FRIENDS;
     }
 
+    /**
+     * Diz se os dois podem abrir DM.
+     * Amizade vale no geral; a secretária Kaizzen não exige aceite.
+     */
     public static function canDirectMessage(User $user, User $friend): bool
     {
+        if (KaizzenConfig::isSecretaryUser((int) $user->id) || KaizzenConfig::isSecretaryUser((int) $friend->id)) {
+            return true;
+        }
+
         return !self::isAvailable() || self::areFriends($user, $friend);
     }
 

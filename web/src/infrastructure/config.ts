@@ -74,6 +74,84 @@ export function getLiveKitHttpUrl(): string {
   return getLiveKitUrl().replace(/^ws:/, "http:").replace(/^wss:/, "https:");
 }
 
+/**
+ * Id do usuário HumHub da secretária.
+ * Lê KAIZZEN_SECRETARY_USER_ID; sem valor devolve 0.
+ */
+export function getSecretaryUserId(): number {
+  const raw = Number.parseInt(
+    process.env.KAIZZEN_SECRETARY_USER_ID?.trim() ?? "7",
+    10,
+  );
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
+}
+
+/**
+ * Segredo compartilhado com o HumHub no cano da secretária.
+ * Vazio quando o env ainda não foi preenchido.
+ */
+export function getKaizzenServiceSecret(): string {
+  const secret = process.env.KAIZZEN_SERVICE_SECRET?.trim();
+  if (secret) {
+    return secret;
+  }
+
+  return process.env.NODE_ENV === "production"
+    ? ""
+    : "kaizzen-local-service-secret";
+}
+
+/**
+ * URL pública deste app Next (OAuth e links da secretária).
+ */
+export function getPublicAppUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "http://localhost:3001"
+  ).replace(/\/$/, "");
+}
+
+/**
+ * Chave da API Anthropic (Claude). Vazia quando o eco do cano ainda vale.
+ */
+export function getAnthropicApiKey(): string {
+  return process.env.ANTHROPIC_API_KEY?.trim() ?? "";
+}
+
+/**
+ * Chave do Gemini usada no STT dos recados.
+ */
+export function getGeminiApiKey(): string {
+  return process.env.GEMINI_API_KEY?.trim() ?? "";
+}
+
+/**
+ * Chave da OpenAI, fallback do STT (Whisper) se não houver Gemini.
+ */
+export function getOpenAiApiKey(): string {
+  return process.env.OPENAI_API_KEY?.trim() ?? "";
+}
+
+/**
+ * Client id OAuth do Google.
+ */
+export function getGoogleClientId(): string {
+  return process.env.GOOGLE_CLIENT_ID?.trim() ?? "";
+}
+
+/**
+ * Client secret OAuth do Google.
+ */
+export function getGoogleClientSecret(): string {
+  return process.env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
+}
+
+/**
+ * Diz se o OAuth Google está completo o bastante para conectar a conta.
+ */
+export function isGoogleOAuthConfigured(): boolean {
+  return Boolean(getGoogleClientId() && getGoogleClientSecret());
+}
+
 export function resolveTokenMaxAge(
   expiredAt: string | number | undefined,
 ): number {

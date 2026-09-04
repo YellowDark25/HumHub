@@ -11,11 +11,12 @@ type ChatContactButtonProps = {
   imageUrl: string;
   subtitle: string;
   isOnline: boolean;
+  isSecretary?: boolean;
 };
 
 /**
  * Abre (ou cria) a DM com um contato da lista.
- * Depois do POST /api/chat/dm troca a aba no shell, sem recarregar o chat.
+ * Secretária vai em /api/chat/secretary; os demais em /api/chat/dm.
  */
 export function ChatContactButton({
   userId,
@@ -23,6 +24,7 @@ export function ChatContactButton({
   imageUrl,
   subtitle,
   isOnline,
+  isSecretary = false,
 }: ChatContactButtonProps) {
   const openChatConversation = useOpenChatConversation();
   const [error, setError] = useState("");
@@ -33,11 +35,14 @@ export function ChatContactButton({
     setIsOpening(true);
 
     try {
-      const response = await fetch("/api/chat/dm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
-      });
+      const response = await fetch(
+        isSecretary ? "/api/chat/secretary" : "/api/chat/dm",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: isSecretary ? undefined : JSON.stringify({ userId }),
+        },
+      );
 
       if (!response.ok) {
         setError(await readApiError(response, "Não foi possível abrir a conversa."));

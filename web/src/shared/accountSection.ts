@@ -4,6 +4,7 @@ export const ACCOUNT_SECTIONS = [
   { id: "notificacoes", label: "Notificações" },
   { id: "geral", label: "Geral" },
   { id: "modulos", label: "Módulos" },
+  { id: "integracoes", label: "Integrações" },
 ] as const;
 
 export type AccountSectionId = (typeof ACCOUNT_SECTIONS)[number]["id"];

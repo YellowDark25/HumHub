@@ -6,8 +6,11 @@ use humhub\components\Controller;
 use humhub\modules\notification\components\BaseNotification;
 use humhub\modules\nexchat\assets\NexchatAsset;
 use humhub\modules\nexchat\components\BearerLogin;
+use humhub\modules\nexchat\components\KaizzenConfig;
 use humhub\modules\nexchat\components\NexchatFriendship;
 use humhub\modules\nexchat\components\NexchatMercure;
+use humhub\modules\nexchat\components\SecretaryBridge;
+use humhub\modules\nexchat\models\GoogleAccount;
 use humhub\modules\nexchat\Module;
 use humhub\modules\nexchat\models\Attachment;
 use humhub\modules\nexchat\models\Conversation;
@@ -35,12 +38,20 @@ class IndexController extends Controller
     /** @var array<int, array{lastMessageId: int, messageCount: int}>|null */
     private $messageStats;
 
+    /**
+     * Autentica Bearer e, no cano da secretária, o header do serviço.
+     * Desliga CSRF nesses dois casos e liga o parser JSON no request do serviço.
+     */
     public function beforeAction($action)
     {
         BearerLogin::authenticate();
 
-        if (BearerLogin::hasBearer()) {
+        if (BearerLogin::hasBearer() || KaizzenConfig::hasServiceSecretHeader()) {
             $this->enableCsrfValidation = false;
+        }
+
+        if (KaizzenConfig::hasServiceSecretHeader()) {
+            KaizzenConfig::enableJsonParser();
         }
 
         return parent::beforeAction($action);
@@ -662,6 +673,10 @@ class IndexController extends Controller
         ];
     }
 
+    /**
+     * Envia mensagem (texto e/ou anexo) e avisa o Mercure.
+     * Se a DM for com a secretária, dispara o turno no Next depois de publicar.
+     */
     public function actionSend()
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
@@ -717,6 +732,12 @@ class IndexController extends Controller
             Yii::error($e, 'nexchat');
         }
 
+        try {
+            SecretaryBridge::dispatchAfterSend($conversation, $message);
+        } catch (\Throwable $e) {
+            Yii::error($e, 'nexchat');
+        }
+
         $this->notifyRecipients($conversation, $message);
 
         return [
@@ -751,6 +772,122 @@ class IndexController extends Controller
         }
 
         return ['success' => true];
+    }
+
+    /**
+     * Recebe a fala da secretária (serviço Next) e grava na DM.
+     * Autentica pelo header X-Kaizzen-Secret e responde como o usuário da secretária.
+     */
+    public function actionSecretaryReply()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        $body = Yii::$app->request->getBodyParams();
+        $payload = SecretaryBridge::reply(
+            (int) ($body['conversationId'] ?? 0),
+            trim((string) ($body['content'] ?? '')),
+        );
+
+        return ['success' => true, 'message' => $payload];
+    }
+
+    /**
+     * Histórico recente da DM para o turno da secretária.
+     * Autentica pelo segredo do serviço.
+     */
+    public function actionSecretaryHistory()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        $conversationId = (int) Yii::$app->request->get('conversationId', Yii::$app->request->get('id', 0));
+
+        return [
+            'success' => true,
+            'messages' => SecretaryBridge::history($conversationId),
+        ];
+    }
+
+    /**
+     * Anexo da DM para o Next transcrever.
+     * Autentica pelo segredo do serviço.
+     */
+    public function actionSecretaryFile($id)
+    {
+        return SecretaryBridge::file((int) $id);
+    }
+
+    /**
+     * Conta Google do usuário pedida pelo serviço da secretária.
+     */
+    public function actionSecretaryGoogle()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        $userId = (int) Yii::$app->request->get('userId', 0);
+        $account = SecretaryBridge::googleAccountForUser($userId);
+
+        return [
+            'success' => true,
+            'account' => $account,
+        ];
+    }
+
+    /**
+     * Liga ou desliga o indicador de digitação da secretária.
+     */
+    public function actionSecretaryTyping()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        $body = Yii::$app->request->getBodyParams();
+        SecretaryBridge::setTyping(
+            (int) ($body['conversationId'] ?? 0),
+            filter_var($body['isTyping'] ?? false, FILTER_VALIDATE_BOOLEAN),
+        );
+
+        return ['success' => true];
+    }
+
+    /**
+     * Lê, grava ou apaga o vínculo Google do usuário autenticado.
+     * GET devolve o status; POST salva tokens; DELETE remove.
+     */
+    public function actionGoogleAccount()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        if (Yii::$app->user->isGuest) {
+            return ['success' => false, 'error' => 'Não autenticado.'];
+        }
+
+        $userId = (int) Yii::$app->user->id;
+        GoogleAccount::ensureTable();
+        $method = strtoupper((string) Yii::$app->request->method);
+
+        if ($method === 'DELETE') {
+            GoogleAccount::deleteAll(['user_id' => $userId]);
+            return ['success' => true, 'connected' => false, 'email' => ''];
+        }
+
+        if ($method === 'POST') {
+            $body = Yii::$app->request->getBodyParams();
+            $refreshToken = trim((string) ($body['refreshToken'] ?? ''));
+            $email = trim((string) ($body['email'] ?? ''));
+            if ($refreshToken === '' || $email === '') {
+                return ['success' => false, 'error' => 'Vínculo Google incompleto.'];
+            }
+
+            $account = GoogleAccount::upsert(
+                $userId,
+                $email,
+                $refreshToken,
+                self::readOptionalDate($body['expiresAt'] ?? null),
+            );
+
+            return array_merge(['success' => true], $account->toStatusPayload());
+        }
+
+        $account = GoogleAccount::findOne(['user_id' => $userId]);
+        if (!$account) {
+            return ['success' => true, 'connected' => false, 'email' => ''];
+        }
+
+        return array_merge(['success' => true], $account->toStatusPayload());
     }
 
     protected function notifyRecipients(Conversation $conversation, Message $message): void
@@ -1502,7 +1639,7 @@ class IndexController extends Controller
     /**
      * Monta os contatos da sidebar de mensagens diretas.
      * Lista só usuários ativos (exclui contas apagadas ou desativadas) e anexa preview da DM existente.
-     * @return array<int, array{id: int, name: string, username: string, guid: string, title: string, lastPreview: string, isOnline: bool, conversationId: int|null}>
+     * @return array<int, array{id: int, name: string, username: string, guid: string, title: string, lastPreview: string, isOnline: bool, conversationId: int|null, isSecretary: bool}>
      */
     protected function listContacts(int $userId): array
     {
@@ -1534,21 +1671,38 @@ class IndexController extends Controller
                 ->all() as $user
         ) {
             $existing = $directMessages[Conversation::buildDmKey($userId, (int) $user->id)] ?? null;
-            if ($restrictToFriends && $existing === null && !isset($friendIds[(int) $user->id])) {
+            $isSecretary = KaizzenConfig::isSecretaryUser((int) $user->id);
+            if (
+                $restrictToFriends
+                && $existing === null
+                && !isset($friendIds[(int) $user->id])
+                && !$isSecretary
+            ) {
                 continue;
             }
 
             $contacts[] = [
                 'id' => (int) $user->id,
-                'name' => $user->getDisplayName(),
+                'name' => $isSecretary ? 'Secretária' : $user->getDisplayName(),
                 'username' => (string) $user->username,
                 'guid' => (string) $user->guid,
-                'title' => trim((string) ($user->profile->title ?? '')),
+                'title' => $isSecretary
+                    ? 'Agenda e tarefas'
+                    : trim((string) ($user->profile->title ?? '')),
                 'lastPreview' => $existing ? ($previews[(int) $existing->id] ?? '') : '',
                 'isOnline' => $this->isUserOnline($user),
                 'conversationId' => $existing ? (int) $existing->id : null,
+                'isSecretary' => $isSecretary,
             ];
         }
+
+        usort($contacts, static function (array $left, array $right): int {
+            if (($left['isSecretary'] ?? false) !== ($right['isSecretary'] ?? false)) {
+                return ($right['isSecretary'] ?? false) <=> ($left['isSecretary'] ?? false);
+            }
+
+            return strcasecmp((string) $left['name'], (string) $right['name']);
+        });
 
         return $contacts;
     }
@@ -1796,6 +1950,23 @@ class IndexController extends Controller
      * Busca um usuário habilitado pelo id.
      * Usa o escopo `active` do HumHub (status enabled); devolve null se o id for inválido ou a conta não estiver ativa.
      */
+    /**
+     * Normaliza expiresAt do OAuth para datetime SQL ou null.
+     */
+    private static function readOptionalDate(mixed $value): ?string
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $timestamp = strtotime($value);
+        if ($timestamp === false) {
+            return null;
+        }
+
+        return date('Y-m-d H:i:s', $timestamp);
+    }
+
     private function findActiveUser(int $userId): ?User
     {
         if ($userId <= 0) {

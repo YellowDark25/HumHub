@@ -4,7 +4,7 @@ import { getHumhubUrl } from "../config";
 type NexchatRequest = {
   path: string;
   token: string;
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "DELETE";
   body?: unknown;
   query?: Record<string, string | number>;
 };

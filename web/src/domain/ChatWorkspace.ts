@@ -29,6 +29,7 @@ export type ChatSidebarItem = {
   isOnline: boolean;
   channelType: ChatChannelType | null;
   canManage: boolean;
+  isSecretary?: boolean;
 };
 
 export type ChatSidebarSection = {
