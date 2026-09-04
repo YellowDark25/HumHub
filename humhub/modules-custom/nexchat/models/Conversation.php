@@ -3,6 +3,7 @@
 namespace humhub\modules\nexchat\models;
 
 use humhub\components\ActiveRecord;
+use humhub\modules\nexchat\components\KaizzenConfig;
 use humhub\modules\space\models\Membership as SpaceMembership;
 use humhub\modules\user\models\User;
 use Yii;
@@ -32,6 +33,7 @@ class Conversation extends ActiveRecord
 {
     public const TYPE_DM = 'dm';
     public const TYPE_CHANNEL = 'channel';
+    public const TYPE_SECRETARY = 'secretary';
     public const KIND_TEXT = 'text';
     public const KIND_VOICE = 'voice';
     public const KIND_FORUM = 'forum';
@@ -45,7 +47,7 @@ class Conversation extends ActiveRecord
     {
         return [
             [['type'], 'required'],
-            [['type'], 'in', 'range' => [self::TYPE_DM, self::TYPE_CHANNEL]],
+            [['type'], 'in', 'range' => [self::TYPE_DM, self::TYPE_CHANNEL, self::TYPE_SECRETARY]],
             [['channel_kind'], 'in', 'range' => self::channelKinds()],
             [['space_id', 'parent_id'], 'integer'],
             [['is_private'], 'boolean'],
@@ -79,6 +81,10 @@ class Conversation extends ActiveRecord
     {
         if ($this->type === self::TYPE_CHANNEL) {
             return $this->name ?: Yii::t('NexchatModule.base', 'Canal sem nome');
+        }
+
+        if ($this->isSecretaryThread()) {
+            return 'Secretária';
         }
 
         $viewer = $viewer ?: Yii::$app->user->identity;
@@ -118,6 +124,98 @@ class Conversation extends ActiveRecord
         Membership::addMember($conversation->id, $userB);
 
         return $conversation;
+    }
+
+    /**
+     * Abre ou cria a conversa de sistema da secretária deste usuário.
+     * Só o dono é membro; não existe usuário HumHub do outro lado.
+     */
+    public static function findOrCreateSecretary(int $userId): Conversation
+    {
+        self::ensureSecretaryType();
+        $dmKey = self::secretaryKey($userId);
+        $conversation = self::findOne(['type' => self::TYPE_SECRETARY, 'dm_key' => $dmKey]);
+        if ($conversation) {
+            return $conversation;
+        }
+
+        $conversation = new self([
+            'type' => self::TYPE_SECRETARY,
+            'name' => 'Secretária',
+            'dm_key' => $dmKey,
+        ]);
+        $conversation->save();
+        Membership::addMember($conversation->id, $userId);
+
+        return $conversation;
+    }
+
+    /**
+     * Chave única da conversa da secretária por usuário.
+     */
+    public static function secretaryKey(int $userId): string
+    {
+        return 'secretary:' . (int) $userId;
+    }
+
+    /**
+     * Garante que o ENUM de type aceita secretary.
+     * Altera a coluna se a migration ainda não rodou.
+     */
+    public static function ensureSecretaryType(): void
+    {
+        $schema = Yii::$app->db->getTableSchema(self::tableName(), true);
+        $column = $schema?->getColumn('type');
+        if ($column === null || str_contains(strtolower((string) $column->dbType), 'secretary')) {
+            return;
+        }
+
+        $table = Yii::$app->db->quoteTableName(self::tableName());
+        Yii::$app->db->createCommand(
+            "ALTER TABLE {$table} MODIFY `type` ENUM('dm','channel','secretary') NOT NULL",
+        )->execute();
+        Yii::$app->db->getSchema()->refreshTableSchema(self::tableName());
+    }
+
+    /**
+     * Diz se esta conversa é o fio da secretária (tipo novo ou DM antiga com o user 7).
+     */
+    public function isSecretaryThread(): bool
+    {
+        if ($this->type === self::TYPE_SECRETARY) {
+            return true;
+        }
+
+        if ($this->type !== self::TYPE_DM) {
+            return false;
+        }
+
+        foreach ($this->members as $member) {
+            if (KaizzenConfig::isSecretaryUser((int) $member->id)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Dono humano da conversa da secretária.
+     * Lê o id na chave secretary:N ou o membro que não é o user legado.
+     */
+    public function secretaryOwnerId(): int
+    {
+        if (preg_match('/^secretary:(\d+)$/', (string) $this->dm_key, $match)) {
+            return (int) $match[1];
+        }
+
+        foreach ($this->members as $member) {
+            if (!KaizzenConfig::isSecretaryUser((int) $member->id)) {
+                return (int) $member->id;
+            }
+        }
+
+        return 0;
     }
 
     /**
@@ -226,6 +324,10 @@ class Conversation extends ActiveRecord
     public function hasActivePeer(int $viewerId): bool
     {
         if ($this->type !== self::TYPE_DM) {
+            return true;
+        }
+
+        if ($this->isSecretaryThread()) {
             return true;
         }
 

@@ -77,6 +77,7 @@ export interface ChatRepository {
   ): Promise<void>;
   getChatFile(token: string, fileId: number): Promise<ChatFile>;
   openDirectMessage(token: string, userId: number): Promise<Conversation>;
+  openSecretaryConversation(token: string): Promise<Conversation>;
   createChannel(
     token: string,
     input: CreateChannelInput,

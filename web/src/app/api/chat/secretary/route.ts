@@ -4,8 +4,8 @@ import { jsonError } from "@/infrastructure/http/jsonError";
 import { requireAuthToken } from "@/infrastructure/http/requireAuth";
 
 /**
- * Abre a DM com a secretária do usuário autenticado.
- * Não aceita userId no corpo — o id vem da configuração Kaizzen.
+ * Abre o fio de sistema da secretária do usuário autenticado.
+ * Não aceita userId — a conversa não é uma DM com outra conta.
  */
 export async function POST() {
   try {

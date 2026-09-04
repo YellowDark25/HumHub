@@ -6,7 +6,7 @@ import { ChatPersonRow } from "./ChatPersonRow";
 import { useOpenChatConversation } from "./ChatSession";
 
 type ChatContactButtonProps = {
-  userId: number;
+  userId: number | null;
   name: string;
   imageUrl: string;
   subtitle: string;

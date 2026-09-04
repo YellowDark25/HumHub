@@ -381,6 +381,7 @@ class IndexController extends Controller
             'isAdmin' => $isChannel && $conversation->isAdmin((int) Yii::$app->user->id),
             'lastMessageId' => $stat['lastMessageId'],
             'messageCount' => $stat['messageCount'],
+            'isSecretary' => $conversation->isSecretaryThread(),
         ];
     }
 
@@ -674,6 +675,21 @@ class IndexController extends Controller
     }
 
     /**
+     * Abre ou cria o fio da secretária do usuário autenticado.
+     * Não recebe userId — a conversa é de sistema, só com o dono.
+     */
+    public function actionOpenSecretary()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        $conversation = Conversation::findOrCreateSecretary((int) Yii::$app->user->id);
+
+        return [
+            'success' => true,
+            'conversation' => $this->conversationToItem($conversation),
+        ];
+    }
+
+    /**
      * Envia mensagem (texto e/ou anexo) e avisa o Mercure.
      * Se a DM for com a secretária, dispara o turno no Next depois de publicar.
      */
@@ -894,6 +910,10 @@ class IndexController extends Controller
     {
         $author = Yii::$app->user->identity;
         if (!$author) {
+            return;
+        }
+
+        if ($conversation->isSecretaryThread()) {
             return;
         }
 
@@ -1638,7 +1658,7 @@ class IndexController extends Controller
 
     /**
      * Monta os contatos da sidebar de mensagens diretas.
-     * Lista só usuários ativos (exclui contas apagadas ou desativadas) e anexa preview da DM existente.
+     * Lista só usuários ativos (exclui contas apagadas, desativadas e a secretária). Anexa preview da DM existente.
      * @return array<int, array{id: int, name: string, username: string, guid: string, title: string, lastPreview: string, isOnline: bool, conversationId: int|null, isSecretary: bool}>
      */
     protected function listContacts(int $userId): array
@@ -1671,36 +1691,32 @@ class IndexController extends Controller
                 ->all() as $user
         ) {
             $existing = $directMessages[Conversation::buildDmKey($userId, (int) $user->id)] ?? null;
-            $isSecretary = KaizzenConfig::isSecretaryUser((int) $user->id);
+            if (KaizzenConfig::isSecretaryUser((int) $user->id)) {
+                continue;
+            }
+
             if (
                 $restrictToFriends
                 && $existing === null
                 && !isset($friendIds[(int) $user->id])
-                && !$isSecretary
             ) {
                 continue;
             }
 
             $contacts[] = [
                 'id' => (int) $user->id,
-                'name' => $isSecretary ? 'Secretária' : $user->getDisplayName(),
+                'name' => $user->getDisplayName(),
                 'username' => (string) $user->username,
                 'guid' => (string) $user->guid,
-                'title' => $isSecretary
-                    ? 'Agenda e tarefas'
-                    : trim((string) ($user->profile->title ?? '')),
+                'title' => trim((string) ($user->profile->title ?? '')),
                 'lastPreview' => $existing ? ($previews[(int) $existing->id] ?? '') : '',
                 'isOnline' => $this->isUserOnline($user),
                 'conversationId' => $existing ? (int) $existing->id : null,
-                'isSecretary' => $isSecretary,
+                'isSecretary' => false,
             ];
         }
 
         usort($contacts, static function (array $left, array $right): int {
-            if (($left['isSecretary'] ?? false) !== ($right['isSecretary'] ?? false)) {
-                return ($right['isSecretary'] ?? false) <=> ($left['isSecretary'] ?? false);
-            }
-
             return strcasecmp((string) $left['name'], (string) $right['name']);
         });
 

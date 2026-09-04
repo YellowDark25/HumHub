@@ -92,6 +92,7 @@ return [
         'nexchat/account-modules' => 'nexchat/account-modules/index',
         'nexchat/account-modules/enable' => 'nexchat/account-modules/enable',
         'nexchat/account-modules/disable' => 'nexchat/account-modules/disable',
+        'nexchat/index/open-secretary' => 'nexchat/index/open-secretary',
         'nexchat/index/google-account' => 'nexchat/index/google-account',
         'nexchat/index/secretary-reply' => 'nexchat/index/secretary-reply',
         'nexchat/index/secretary-history' => 'nexchat/index/secretary-history',

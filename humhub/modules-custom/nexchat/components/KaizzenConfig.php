@@ -13,8 +13,8 @@ class KaizzenConfig
     public const SECRET_HEADER = 'X-Kaizzen-Secret';
 
     /**
-     * Id do usuário HumHub da secretária.
-     * Lê KAIZZEN_SECRETARY_USER_ID; sem valor devolve 0.
+     * Id legado da conta HumHub da secretária, se ainda existir.
+     * Só serve para esconder essa conta das listagens; o fio novo não usa usuário.
      */
     public static function secretaryUserId(): int
     {

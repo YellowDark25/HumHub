@@ -190,7 +190,6 @@ import { AnthropicLlmRepository } from "./llm/AnthropicLlmRepository";
 import { GeminiSpeechToTextRepository } from "./llm/GeminiSpeechToTextRepository";
 import { NexchatGoogleAccountRepository } from "./nexchat/NexchatGoogleAccountRepository";
 import { NexchatSecretaryDispatchRepository } from "./nexchat/NexchatSecretaryDispatchRepository";
-import { getSecretaryUserId } from "./config";
 
 const appRelease = new EnvAppReleaseRepository();
 const auth = new HumhubAuthRepository();
@@ -551,8 +550,7 @@ export const app = {
     getHumhubMedia(media, token, path, search),
   openDirectMessage: (token: string, userId: number) =>
     openDirectMessage(chat, token, userId),
-  openSecretaryDm: (token: string) =>
-    openSecretaryDm(chat, token, getSecretaryUserId()),
+  openSecretaryDm: (token: string) => openSecretaryDm(chat, token),
   handleSecretaryTurn: (input: SecretaryTurnInput) =>
     handleSecretaryTurn(
       secretaryDispatch,

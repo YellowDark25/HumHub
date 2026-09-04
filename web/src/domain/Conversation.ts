@@ -15,6 +15,7 @@ export type Conversation = {
   canManage: boolean;
   lastMessageId: number;
   messageCount: number;
+  isSecretary: boolean;
 };
 
 export function canJoinVoice(

@@ -11,6 +11,7 @@ export type NexchatConversation = {
   isAdmin?: boolean;
   lastMessageId?: number;
   messageCount?: number;
+  isSecretary?: boolean;
 };
 
 export type NexchatConversationUpdate = {

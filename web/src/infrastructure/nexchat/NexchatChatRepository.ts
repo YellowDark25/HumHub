@@ -337,6 +337,26 @@ export class NexchatChatRepository implements ChatRepository {
     return mapConversation(result.conversation, "dm");
   }
 
+  /**
+   * Abre o fio de sistema da secretária, sem outro usuário HumHub.
+   */
+  async openSecretaryConversation(token: string): Promise<Conversation> {
+    const result = await nexchatRequest<NexchatOpenDmResult>({
+      path: "open-secretary",
+      token,
+      method: "POST",
+    });
+
+    if (!result.success || !result.conversation) {
+      throw new ApplicationError(
+        result.error || "Não foi possível abrir a secretária.",
+        400,
+      );
+    }
+
+    return mapConversation(result.conversation, "dm");
+  }
+
   async createChannel(
     token: string,
     input: CreateChannelInput,
