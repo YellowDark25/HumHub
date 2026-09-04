@@ -31,10 +31,14 @@ export async function handleSecretaryTurn(
   try {
     await runSecretaryTurn(dispatch, llm, speech, google, input);
   } catch (error) {
-    await dispatch.reply(
-      input.conversationId,
-      "Não consegui concluir agora. Tente de novo em instantes.",
-    );
+    try {
+      await dispatch.reply(
+        input.conversationId,
+        "Não consegui concluir agora. Tente de novo em instantes.",
+      );
+    } catch (replyError) {
+      console.error("Não foi possível avisar o usuário no chat:", replyError);
+    }
     throw error;
   }
 }
