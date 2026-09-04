@@ -227,7 +227,7 @@ class SecretaryBridge
      */
     private static function postToNext(string $path, array $payload): void
     {
-        $url = KaizzenConfig::nextUrl() . $path;
+        $url = KaizzenConfig::agentUrl() . $path;
         $secret = KaizzenConfig::serviceSecret();
         $body = json_encode($payload);
         if ($body === false) {

@@ -45,6 +45,20 @@ class KaizzenConfig
     }
 
     /**
+     * URL do agente Python da secretária (sem barra final).
+     * Lê KAIZZEN_AGENT_URL; se vazia, cai no Next.
+     */
+    public static function agentUrl(): string
+    {
+        $url = trim(self::read('KAIZZEN_AGENT_URL', 'kaizzenAgentUrl'));
+        if ($url === '') {
+            return self::nextUrl();
+        }
+
+        return rtrim($url, '/');
+    }
+
+    /**
      * Diz se o id é o da secretária configurada.
      */
     public static function isSecretaryUser(int $userId): bool
