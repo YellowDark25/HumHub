@@ -253,12 +253,22 @@ class SecretaryBridge
             CURLOPT_TIMEOUT => 15,
         ]);
 
-        curl_exec($handle);
+        $raw = curl_exec($handle);
+        $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
         $error = curl_error($handle);
         curl_close($handle);
 
         if ($error !== '') {
             Yii::warning('Secretária: falha ao avisar o Next — ' . $error, 'nexchat');
+            return;
+        }
+
+        if ($status < 200 || $status >= 300) {
+            $snippet = is_string($raw) ? substr($raw, 0, 180) : '';
+            Yii::warning(
+                'Secretária: Next respondeu ' . $status . ' em ' . $url . ($snippet !== '' ? ' — ' . $snippet : ''),
+                'nexchat',
+            );
         }
     }
 

@@ -9,7 +9,7 @@ import type {
 import { getAnthropicApiKey } from "../config";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-20250514";
+const MODEL = "claude-sonnet-4-6";
 
 type AnthropicContent =
   | { type: "text"; text?: string }
@@ -70,10 +70,13 @@ export class AnthropicLlmRepository implements LlmRepository {
 
     const data = (await response.json()) as AnthropicResponse;
     if (!response.ok) {
-      throw new ApplicationError(
-        data.error?.message || "O Claude não respondeu.",
-        502,
-      );
+      const detail = data.error?.message?.trim() || "O Claude não respondeu.";
+      console.error("Anthropic recusou o turno:", {
+        status: response.status,
+        model: MODEL,
+        detail,
+      });
+      throw new ApplicationError(`${detail} (modelo ${MODEL})`, 502);
     }
 
     const text: string[] = [];

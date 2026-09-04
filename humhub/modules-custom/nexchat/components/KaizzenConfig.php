@@ -75,11 +75,13 @@ class KaizzenConfig
     }
 
     /**
-     * Liga o parser JSON neste request (ações do serviço não usam Bearer).
+     * Liga o parser JSON neste request e descarta um body já lido como POST vazio.
+     * Sem o reset, getBodyParams devolve [] e a resposta da secretária cai em 400.
      */
     public static function enableJsonParser(): void
     {
         Yii::$app->request->parsers['application/json'] = \yii\web\JsonParser::class;
+        Yii::$app->request->setBodyParams(null);
     }
 
     /**

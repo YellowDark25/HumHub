@@ -16,7 +16,18 @@ export async function POST(request: Request) {
     const input = await readTurnInput(request);
     after(async () => {
       try {
+        console.info("Turno da secretária iniciado:", {
+          conversationId: input.conversationId,
+          messageId: input.messageId,
+          userId: input.userId,
+          hasContent: Boolean(input.content.trim()),
+          audioFileId: input.audioFileId,
+        });
         await app.handleSecretaryTurn(input);
+        console.info("Turno da secretária concluído:", {
+          conversationId: input.conversationId,
+          messageId: input.messageId,
+        });
       } catch (error) {
         console.error("Turno da secretária falhou:", error);
       }
