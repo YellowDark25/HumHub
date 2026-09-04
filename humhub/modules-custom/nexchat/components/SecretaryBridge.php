@@ -6,36 +6,30 @@ use humhub\modules\nexchat\models\Attachment;
 use humhub\modules\nexchat\models\Conversation;
 use humhub\modules\nexchat\models\GoogleAccount;
 use humhub\modules\nexchat\models\Message;
-use humhub\modules\user\models\User;
 use Yii;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 
 /**
- * Ponte da secretária no HumHub: dispara o Next, responde como o user 7 e expõe histórico.
- * Autentica pelo segredo do serviço; assume a identidade da secretária só para gravar a resposta.
+ * Ponte da secretária no HumHub: dispara o Next, grava a resposta no fio de sistema e expõe histórico.
+ * Autentica pelo segredo do serviço; não assume outro usuário HumHub.
  */
 class SecretaryBridge
 {
     private const HISTORY_LIMIT = 20;
+    private const TYPING_ACTOR_ID = 0;
 
     /**
-     * Depois de uma mensagem na DM da secretária, avisa o Next e marca digitando.
+     * Depois de uma mensagem no fio da secretária, avisa o Next e marca digitando.
      * Ignora eco da própria secretária, canal e configuração incompleta.
      */
     public static function dispatchAfterSend(Conversation $conversation, Message $message): void
     {
-        if ($conversation->type !== Conversation::TYPE_DM) {
+        if (!$conversation->isSecretaryThread()) {
             return;
         }
 
-        $authorId = (int) $message->user_id;
-        if (KaizzenConfig::isSecretaryUser($authorId)) {
-            return;
-        }
-
-        $peerId = $conversation->peerUserId($authorId);
-        if ($peerId === null || !KaizzenConfig::isSecretaryUser($peerId)) {
+        if ($message->isFromSecretary()) {
             return;
         }
 
@@ -49,37 +43,37 @@ class SecretaryBridge
         self::postToNext('/api/secretary/turn', [
             'conversationId' => (int) $conversation->id,
             'messageId' => (int) $message->id,
-            'userId' => $authorId,
+            'userId' => (int) $message->user_id,
             'content' => (string) $message->content,
             'audioFileId' => $audioFileId,
         ]);
     }
 
     /**
-     * Grava a resposta da secretária na DM e publica no Mercure.
-     * Exige o segredo; entra como o usuário da secretária e reusa o fluxo de mensagem.
+     * Grava a resposta da secretária no fio e publica no Mercure.
+     * Exige o segredo; usa o user_id do dono com a flag is_secretary.
      *
      * @return array<string, mixed>
      */
     public static function reply(int $conversationId, string $content): array
     {
         KaizzenConfig::requireServiceSecret();
+        Message::ensureSecretaryFlag();
         $trimmed = trim($content);
         if ($conversationId <= 0 || $trimmed === '') {
             throw new \yii\web\BadRequestHttpException('Resposta da secretária inválida.');
         }
 
-        $secretary = self::requireSecretaryIdentity();
-        $conversation = Conversation::findOne($conversationId);
-        if (!$conversation || !$conversation->canAccess((int) $secretary->id)) {
+        $conversation = self::requireSecretaryConversation($conversationId);
+        $ownerId = $conversation->secretaryOwnerId();
+        if ($ownerId <= 0) {
             throw new ForbiddenHttpException('A secretária não participa desta conversa.');
         }
 
-        Yii::$app->user->login($secretary);
-
         $message = new Message([
             'conversation_id' => $conversation->id,
-            'user_id' => (int) $secretary->id,
+            'user_id' => $ownerId,
+            'is_secretary' => 1,
             'content' => $trimmed,
         ]);
 
@@ -100,19 +94,15 @@ class SecretaryBridge
     }
 
     /**
-     * Últimas mensagens da DM para o turno da secretária.
-     * Exige o segredo e que a secretária seja membro da conversa.
+     * Últimas mensagens do fio para o turno da secretária.
+     * Exige o segredo e que a conversa seja da secretária.
      *
      * @return array<int, array<string, mixed>>
      */
     public static function history(int $conversationId): array
     {
         KaizzenConfig::requireServiceSecret();
-        $secretary = self::requireSecretaryIdentity();
-        $conversation = Conversation::findOne($conversationId);
-        if (!$conversation || !$conversation->canAccess((int) $secretary->id)) {
-            throw new ForbiddenHttpException('A secretária não participa desta conversa.');
-        }
+        self::requireSecretaryConversation($conversationId);
 
         $messages = Message::find()
             ->where(['conversation_id' => $conversationId])
@@ -124,7 +114,7 @@ class SecretaryBridge
             'id' => (int) $message->id,
             'authorId' => (int) $message->user_id,
             'content' => $message->isDeleted() ? '' : (string) $message->content,
-            'isSecretary' => KaizzenConfig::isSecretaryUser((int) $message->user_id),
+            'isSecretary' => $message->isFromSecretary(),
             'audioFileId' => self::firstAudioFileId($message),
             'publishedAt' => $message->created_at,
         ], $messages);
@@ -139,7 +129,6 @@ class SecretaryBridge
     public static function file(int $fileId): \yii\web\Response
     {
         KaizzenConfig::requireServiceSecret();
-        $secretary = self::requireSecretaryIdentity();
         $attachment = Attachment::findOne($fileId);
         if (!$attachment) {
             throw new NotFoundHttpException('Arquivo não encontrado.');
@@ -150,10 +139,7 @@ class SecretaryBridge
             throw new NotFoundHttpException('Arquivo não encontrado.');
         }
 
-        $conversation = Conversation::findOne((int) $message->conversation_id);
-        if (!$conversation || !$conversation->canAccess((int) $secretary->id)) {
-            throw new ForbiddenHttpException('A secretária não tem acesso a este arquivo.');
-        }
+        self::requireSecretaryConversation((int) $message->conversation_id);
 
         $path = $attachment->getFilePath();
         if (!is_file($path)) {
@@ -194,13 +180,13 @@ class SecretaryBridge
     public static function setTyping(int $conversationId, bool $isTyping): void
     {
         KaizzenConfig::requireServiceSecret();
-        $secretary = self::requireSecretaryIdentity();
+        self::requireSecretaryConversation($conversationId);
 
         try {
             NexchatMercure::publishTyping(
                 $conversationId,
-                (int) $secretary->id,
-                $secretary->getDisplayName(),
+                self::TYPING_ACTOR_ID,
+                'Secretária',
                 $isTyping,
             );
         } catch (\Throwable $error) {
@@ -208,17 +194,17 @@ class SecretaryBridge
         }
     }
 
-    private static function requireSecretaryIdentity(): User
+    /**
+     * Exige que o id seja um fio da secretária.
+     */
+    private static function requireSecretaryConversation(int $conversationId): Conversation
     {
-        $userId = KaizzenConfig::secretaryUserId();
-        $user = $userId > 0
-            ? User::find()->active()->andWhere(['user.id' => $userId])->one()
-            : null;
-        if (!$user instanceof User) {
-            throw new \yii\web\ServerErrorHttpException('Usuário da secretária não está configurado.');
+        $conversation = Conversation::findOne($conversationId);
+        if (!$conversation || !$conversation->isSecretaryThread()) {
+            throw new ForbiddenHttpException('A secretária não participa desta conversa.');
         }
 
-        return $user;
+        return $conversation;
     }
 
     private static function firstAudioFileId(Message $message): ?int
@@ -275,15 +261,18 @@ class SecretaryBridge
         }
     }
 
+    /**
+     * Liga ou desliga o indicador de digitação da secretária no Mercure.
+     */
     private static function publishTyping(int $conversationId, bool $isTyping): void
     {
-        $secretaryId = KaizzenConfig::secretaryUserId();
-        if ($secretaryId <= 0) {
-            return;
-        }
-
         try {
-            NexchatMercure::publishTyping($conversationId, $secretaryId, 'Secretária', $isTyping);
+            NexchatMercure::publishTyping(
+                $conversationId,
+                self::TYPING_ACTOR_ID,
+                'Secretária',
+                $isTyping,
+            );
         } catch (\Throwable $error) {
             Yii::error($error, 'nexchat');
         }

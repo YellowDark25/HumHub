@@ -127,6 +127,10 @@ function SidebarSection({
   );
 }
 
+/**
+ * Item da sidebar: canal, DM, contato ou atalho da secretária.
+ * Sem conversa ainda, a secretária abre o fio de sistema pelo POST /api/chat/secretary.
+ */
 function SidebarItem({
   item,
   workspaceId,
@@ -143,10 +147,10 @@ function SidebarItem({
   activeConversationId?: number;
 }) {
   if (isPersonItem(item)) {
-    if (!item.conversationId && item.userId) {
+    if (!item.conversationId && (item.userId || item.isSecretary)) {
       return (
         <ChatContactButton
-          userId={item.userId}
+          userId={item.userId ?? 0}
           name={item.name}
           imageUrl={item.imageUrl}
           subtitle={item.subtitle}

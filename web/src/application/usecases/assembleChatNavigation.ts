@@ -181,21 +181,21 @@ export function chatSidebarSections(
       });
     }
 
-    const secretary = lists.contacts.filter((contact) => contact.isSecretary);
     const others = lists.contacts.filter((contact) => !contact.isSecretary);
+    const regularDms = lists.dms.filter((conversation) => !conversation.isSecretary);
+    const secretaryConversation =
+      lists.dms.find((conversation) => conversation.isSecretary) ?? null;
 
-    if (secretary.length > 0) {
-      sections.push({
-        title: "Secretária",
-        items: contactItems(secretary),
-      });
-    }
+    sections.push({
+      title: "Secretária",
+      items: [secretarySidebarItem(secretaryConversation)],
+    });
 
     const dmItems =
       others.length > 0
         ? contactItems(others)
         : lists.contacts.length === 0
-          ? conversationItems(lists.dms)
+          ? conversationItems(regularDms)
           : [];
 
     if (dmItems.length > 0) {
@@ -286,6 +286,31 @@ function channelsForWorkspace(
   return channels.filter((channel) => channel.spaceId === workspace.spaceId);
 }
 
+/**
+ * Atalho fixo da secretária na home do chat.
+ * Usa a conversa de sistema se já existir; senão o clique cria o fio.
+ */
+function secretarySidebarItem(
+  conversation: Conversation | null,
+): ChatSidebarItem {
+  return {
+    key: "secretary",
+    name: "Secretária",
+    username: "",
+    kind: conversation ? "dm" : "contact",
+    conversationId: conversation?.id ?? null,
+    parentConversationId: null,
+    userId: null,
+    imageUrl: "",
+    subtitle: "Agenda e tarefas",
+    isOnline: false,
+    channelType: null,
+    canManage: false,
+    isSecretary: true,
+    children: [],
+  };
+}
+
 function conversationItems(
   conversations: Conversation[],
   childrenByParent: Map<number, Conversation[]> = new Map(),
@@ -303,7 +328,7 @@ function conversationItems(
     isOnline: false,
     channelType: conversation.channelType,
     canManage: conversation.canManage,
-    isSecretary: false,
+    isSecretary: conversation.isSecretary,
     children: conversationItems(childrenByParent.get(conversation.id) ?? []),
   }));
 }

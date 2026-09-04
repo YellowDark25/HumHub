@@ -71,6 +71,7 @@ export function mapConversation(
     canManage: Boolean(dto.isAdmin),
     lastMessageId: dto.lastMessageId ?? 0,
     messageCount: dto.messageCount ?? 0,
+    isSecretary: Boolean(dto.isSecretary) || dto.type === "secretary",
   };
 }
 

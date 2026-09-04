@@ -4,6 +4,7 @@ namespace humhub\modules\nexchat\controllers;
 
 use humhub\components\Controller;
 use humhub\modules\nexchat\components\BearerLogin;
+use humhub\modules\nexchat\components\KaizzenConfig;
 use humhub\modules\nexchat\components\NexchatFriendship;
 use humhub\modules\nexchat\notifications\FriendshipAcceptedNotification;
 use humhub\modules\nexchat\notifications\FriendshipRequestNotification;
@@ -203,16 +204,24 @@ class PeopleController extends Controller
     }
 
     /**
+     * Pessoas ativas visíveis no diretório.
+     * Omite a conta legada da secretária, se o id ainda estiver no env.
      * @return User[]
      */
     private function visibleUsers(): array
     {
-        return User::find()
+        $query = User::find()
             ->active()
             ->with(['profile', 'groups'])
             ->orderBy(['user.username' => SORT_ASC])
-            ->limit(self::USER_LIMIT)
-            ->all();
+            ->limit(self::USER_LIMIT);
+
+        $hiddenId = KaizzenConfig::secretaryUserId();
+        if ($hiddenId > 0) {
+            $query->andWhere(['!=', 'user.id', $hiddenId]);
+        }
+
+        return $query->all();
     }
 
     /**
@@ -299,6 +308,10 @@ class PeopleController extends Controller
     {
         if ($userId <= 0) {
             return $this->fail(400, 'Pessoa inválida.');
+        }
+
+        if (KaizzenConfig::isSecretaryUser($userId)) {
+            return $this->fail(404, 'Pessoa não encontrada.');
         }
 
         $user = User::find()->active()->with('profile')->andWhere(['user.id' => $userId])->one();

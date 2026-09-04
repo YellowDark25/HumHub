@@ -3,6 +3,7 @@
 namespace humhub\modules\nexchat\models;
 
 use humhub\components\ActiveRecord;
+use humhub\modules\nexchat\components\KaizzenConfig;
 use humhub\modules\user\models\User;
 use Yii;
 
@@ -10,6 +11,7 @@ use Yii;
  * @property int $id
  * @property int $conversation_id
  * @property int $user_id
+ * @property int $is_secretary
  * @property int|null $reply_to_id
  * @property string $content
  * @property string|null $edited_at
@@ -37,6 +39,7 @@ class Message extends ActiveRecord
         return [
             [['conversation_id', 'user_id'], 'required'],
             [['conversation_id', 'user_id'], 'integer'],
+            [['is_secretary'], 'boolean'],
             [['content'], 'string', 'max' => 5000],
             [['content'], 'default', 'value' => ''],
         ];
@@ -84,16 +87,48 @@ class Message extends ActiveRecord
         return $this->deleted_at !== null;
     }
 
+    /**
+     * Diz se a mensagem foi gravada pela secretária (flag ou user legado).
+     */
+    public function isFromSecretary(): bool
+    {
+        if ($this->hasAttribute('is_secretary') && (int) $this->is_secretary === 1) {
+            return true;
+        }
+
+        return KaizzenConfig::isSecretaryUser((int) $this->user_id);
+    }
+
+    /**
+     * Garante a coluna is_secretary em nexchat_message.
+     * Cria na hora se a migration ainda não rodou.
+     */
+    public static function ensureSecretaryFlag(): void
+    {
+        $schema = Yii::$app->db->getTableSchema(self::tableName(), true);
+        if ($schema === null || $schema->getColumn('is_secretary') !== null) {
+            return;
+        }
+
+        Yii::$app->db->createCommand()->addColumn(
+            self::tableName(),
+            'is_secretary',
+            'TINYINT(1) NOT NULL DEFAULT 0',
+        )->execute();
+        Yii::$app->db->getSchema()->refreshTableSchema(self::tableName());
+    }
+
     public function toPayload(): array
     {
         $currentUserId = Yii::$app->user->isGuest ? 0 : (int) Yii::$app->user->id;
         $deleted = $this->isDeleted();
+        $fromSecretary = $this->isFromSecretary();
 
         return [
             'id' => (int) $this->id,
-            'userId' => (int) $this->user_id,
-            'authorName' => $this->author->displayName ?? 'Usuário',
-            'avatarUrl' => self::resolveAvatarUrl($this->author),
+            'userId' => $fromSecretary ? 0 : (int) $this->user_id,
+            'authorName' => $fromSecretary ? 'Secretária' : ($this->author->displayName ?? 'Usuário'),
+            'avatarUrl' => $fromSecretary ? '' : self::resolveAvatarUrl($this->author),
             'content' => $deleted ? '' : ($this->content ?? ''),
             'createdAt' => $this->created_at,
             'createdAtTs' => $this->created_at ? strtotime($this->created_at) : time(),
