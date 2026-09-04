@@ -41,7 +41,7 @@ export async function nexchatServiceRequest<T>(
 
   if (!response.ok) {
     throw new ApplicationError(
-      `Chat retornou ${response.status}`,
+      await chatStatusError(response),
       response.status,
     );
   }
@@ -70,7 +70,7 @@ export async function nexchatServiceFileRequest(fileId: number): Promise<{
 
   if (!response.ok) {
     throw new ApplicationError(
-      `Chat retornou ${response.status}`,
+      await chatStatusError(response),
       response.status,
     );
   }
@@ -80,4 +80,20 @@ export async function nexchatServiceFileRequest(fileId: number): Promise<{
     contentType: response.headers.get("content-type") || "application/octet-stream",
     fileName: `audio-${fileId}`,
   };
+}
+
+/**
+ * Monta a mensagem de erro com o status HTTP e um recorte do corpo do HumHub.
+ * Lê texto curto para o log; se a leitura falhar, fica só o status.
+ */
+async function chatStatusError(response: Response): Promise<string> {
+  try {
+    const body = (await response.text()).replace(/\s+/g, " ").trim();
+    const detail = body.slice(0, 180);
+    return detail
+      ? `Chat retornou ${response.status}: ${detail}`
+      : `Chat retornou ${response.status}`;
+  } catch {
+    return `Chat retornou ${response.status}`;
+  }
 }

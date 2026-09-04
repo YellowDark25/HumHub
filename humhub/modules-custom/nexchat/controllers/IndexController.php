@@ -2,6 +2,7 @@
 
 namespace humhub\modules\nexchat\controllers;
 
+use humhub\components\access\ControllerAccess;
 use humhub\components\Controller;
 use humhub\modules\notification\components\BaseNotification;
 use humhub\modules\nexchat\assets\NexchatAsset;
@@ -35,6 +36,14 @@ class IndexController extends Controller
 {
     private const MESSAGE_PAGE_SIZE = 50;
 
+    private const SECRETARY_SERVICE_ACTIONS = [
+        'secretary-reply',
+        'secretary-history',
+        'secretary-file',
+        'secretary-google',
+        'secretary-typing',
+    ];
+
     /** @var array<int, array{lastMessageId: int, messageCount: int}>|null */
     private $messageStats;
 
@@ -46,11 +55,11 @@ class IndexController extends Controller
     {
         BearerLogin::authenticate();
 
-        if (BearerLogin::hasBearer() || KaizzenConfig::hasServiceSecretHeader()) {
+        if ($this->isSecretaryServiceAction($action) || BearerLogin::hasBearer() || KaizzenConfig::hasServiceSecretHeader()) {
             $this->enableCsrfValidation = false;
         }
 
-        if (KaizzenConfig::hasServiceSecretHeader()) {
+        if ($this->isSecretaryServiceAction($action) || KaizzenConfig::hasServiceSecretHeader()) {
             KaizzenConfig::enableJsonParser();
         }
 
@@ -58,22 +67,58 @@ class IndexController extends Controller
     }
 
     /**
-     * Libera as actions do cano da secretária para o Next (sem sessão de usuário).
-     * O segredo do serviço continua obrigatório em cada action.
+     * No cano da secretária usa ControllerAccess (sem strict); o resto continua StrictAccess.
+     * StrictAccess trata o Next como visitante e, com Accept JSON, responde 403 antes da action.
+     */
+    public function getAccess()
+    {
+        $action = $this->action ?? Yii::$app->requestedAction ?? null;
+        if ($this->isSecretaryServiceAction($action)) {
+            return Yii::createObject(ControllerAccess::class);
+        }
+
+        return parent::getAccess();
+    }
+
+    /**
+     * No cano da secretária exige o segredo do serviço; as outras actions ficam no StrictAccess.
      */
     protected function getAccessRules()
     {
         return [
-            [
-                'guestAccess' => [
-                    'secretary-reply',
-                    'secretary-history',
-                    'secretary-file',
-                    'secretary-google',
-                    'secretary-typing',
-                ],
-            ],
+            ['validateSecretaryService', 'actions' => self::SECRETARY_SERVICE_ACTIONS],
         ];
+    }
+
+    /**
+     * Confere o segredo compartilhado nas actions chamadas pelo Next.
+     * Sem match devolve 403; nas demais actions este validador não se aplica.
+     */
+    public function validateSecretaryService($rule, $access): bool
+    {
+        $action = $this->action ?? Yii::$app->requestedAction ?? null;
+        if (!$this->isSecretaryServiceAction($action)) {
+            return true;
+        }
+
+        try {
+            KaizzenConfig::requireServiceSecret();
+            return true;
+        } catch (\Throwable $error) {
+            $access->code = 403;
+            $access->reason = $error->getMessage();
+            return false;
+        }
+    }
+
+    /**
+     * Diz se a action faz parte do cano da secretária (sem sessão de usuário).
+     */
+    private function isSecretaryServiceAction($action): bool
+    {
+        $id = is_object($action) ? (string) $action->id : (string) $action;
+
+        return $id !== '' && in_array($id, self::SECRETARY_SERVICE_ACTIONS, true);
     }
 
     public function actionIndex()
