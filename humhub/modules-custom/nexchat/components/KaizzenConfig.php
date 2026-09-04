@@ -82,9 +82,29 @@ class KaizzenConfig
         Yii::$app->request->parsers['application/json'] = \yii\web\JsonParser::class;
     }
 
+    /**
+     * Lê o segredo do request: header próprio, Authorization Bearer ou CGI.
+     */
     private static function requestSecret(): string
     {
-        return trim((string) Yii::$app->request->headers->get(self::SECRET_HEADER, ''));
+        $headers = Yii::$app->request->headers;
+        $direct = trim((string) $headers->get(self::SECRET_HEADER, ''));
+        if ($direct !== '') {
+            return $direct;
+        }
+
+        $authorization = trim((string) $headers->get('Authorization', ''));
+        if (stripos($authorization, 'Bearer ') === 0) {
+            return trim(substr($authorization, 7));
+        }
+
+        $cgi = $_SERVER['HTTP_X_KAIZZEN_SECRET'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+        $cgi = trim((string) $cgi);
+        if (stripos($cgi, 'Bearer ') === 0) {
+            return trim(substr($cgi, 7));
+        }
+
+        return $cgi;
     }
 
     private static function read(string $envName, string $paramName): string

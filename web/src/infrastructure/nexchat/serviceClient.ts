@@ -32,6 +32,7 @@ export async function nexchatServiceRequest<T>(
         Accept: "application/json",
         "Content-Type": "application/json",
         [KAIZZEN_SECRET_HEADER]: getKaizzenServiceSecret(),
+        Authorization: `Bearer ${getKaizzenServiceSecret()}`,
       },
       body: input.body === undefined ? undefined : JSON.stringify(input.body),
       cache: "no-store",
@@ -61,6 +62,7 @@ export async function nexchatServiceFileRequest(fileId: number): Promise<{
     {
       headers: {
         [KAIZZEN_SECRET_HEADER]: getKaizzenServiceSecret(),
+        Authorization: `Bearer ${getKaizzenServiceSecret()}`,
       },
       cache: "no-store",
     },
