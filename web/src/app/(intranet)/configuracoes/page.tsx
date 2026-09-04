@@ -1,4 +1,4 @@
-import { errorMessage } from "@/application/errors";
+import { errorMessage, isUnauthorized } from "@/application/errors";
 import { AccountDeleteForm } from "@/components/AccountDeleteForm";
 import { AccountDigestSettings } from "@/components/AccountDigestSettings";
 import { AccountEmailForm } from "@/components/AccountEmailForm";
@@ -42,6 +42,11 @@ import {
 } from "@/shared/accountSection";
 import { Suspense } from "react";
 
+/**
+ * Página de configurações da conta.
+ * Lê a seção da URL, carrega os dados pelo token e renderiza o painel correspondente.
+ * Falha do vínculo Google não derruba as outras seções.
+ */
 export default async function ConfiguracoesPage({
   searchParams,
 }: {
@@ -77,7 +82,7 @@ export default async function ConfiguracoesPage({
       profileModules = await app.listAccountModules(token);
     }
     if (section === "integracoes") {
-      googleAccount = await app.getGoogleAccountStatus(token);
+      googleAccount = await loadGoogleAccount(token);
     }
   } catch (error) {
     await redirectIfUnauthorized(error);
@@ -257,4 +262,21 @@ async function loadGeneralPage(token: string) {
     : [];
 
   return { settings, people };
+}
+
+/**
+ * Lê o vínculo Google sem derrubar o restante das configurações.
+ * 404 ou falha do HumHub vira "desconectado"; 401 sobe para o redirect.
+ */
+async function loadGoogleAccount(token: string): Promise<GoogleAccountStatus> {
+  try {
+    return await app.getGoogleAccountStatus(token);
+  } catch (error) {
+    if (isUnauthorized(error)) {
+      throw error;
+    }
+
+    console.error("Falha ao ler vínculo Google:", error);
+    return { connected: false, email: "" };
+  }
 }

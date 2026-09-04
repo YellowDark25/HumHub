@@ -35,7 +35,7 @@ export default defineRailway(() => {
         '{"yii\\\\log\\\\DbTarget":{"enabled":false}}',
       KAIZZEN_SECRETARY_USER_ID: "7",
       KAIZZEN_SERVICE_SECRET: "kaizzen-change-me",
-      KAIZZEN_NEXT_URL: "http://localhost:3000",
+      KAIZZEN_NEXT_URL: "https://nex-hub-teal.vercel.app",
     },
   });
 
