@@ -121,6 +121,24 @@ class IndexController extends Controller
         return $id !== '' && in_array($id, self::SECRETARY_SERVICE_ACTIONS, true);
     }
 
+    /**
+     * Lê o JSON do cano da secretária, com fallback para o raw body.
+     * Evita 400 quando o Yii já tinha cacheado $_POST vazio antes do JsonParser.
+     *
+     * @return array<string, mixed>
+     */
+    private function secretaryServiceBody(): array
+    {
+        $body = Yii::$app->request->getBodyParams();
+        if (is_array($body) && ($body['conversationId'] ?? $body['content'] ?? $body['isTyping'] ?? null) !== null) {
+            return $body;
+        }
+
+        $raw = json_decode((string) Yii::$app->request->getRawBody(), true);
+
+        return is_array($raw) ? $raw : [];
+    }
+
     public function actionIndex()
     {
         $data = $this->buildPageData();
@@ -861,7 +879,7 @@ class IndexController extends Controller
     public function actionSecretaryReply()
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
-        $body = Yii::$app->request->getBodyParams();
+        $body = $this->secretaryServiceBody();
         $payload = SecretaryBridge::reply(
             (int) ($body['conversationId'] ?? 0),
             trim((string) ($body['content'] ?? '')),
@@ -915,7 +933,7 @@ class IndexController extends Controller
     public function actionSecretaryTyping()
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
-        $body = Yii::$app->request->getBodyParams();
+        $body = $this->secretaryServiceBody();
         SecretaryBridge::setTyping(
             (int) ($body['conversationId'] ?? 0),
             filter_var($body['isTyping'] ?? false, FILTER_VALIDATE_BOOLEAN),

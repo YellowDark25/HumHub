@@ -45,6 +45,20 @@ class KaizzenConfig
     }
 
     /**
+     * URL do agente Python da secretária (sem barra final).
+     * Lê KAIZZEN_AGENT_URL; se vazia, cai no Next.
+     */
+    public static function agentUrl(): string
+    {
+        $url = trim(self::read('KAIZZEN_AGENT_URL', 'kaizzenAgentUrl'));
+        if ($url === '') {
+            return self::nextUrl();
+        }
+
+        return rtrim($url, '/');
+    }
+
+    /**
      * Diz se o id é o da secretária configurada.
      */
     public static function isSecretaryUser(int $userId): bool
@@ -75,11 +89,13 @@ class KaizzenConfig
     }
 
     /**
-     * Liga o parser JSON neste request (ações do serviço não usam Bearer).
+     * Liga o parser JSON neste request e descarta um body já lido como POST vazio.
+     * Sem o reset, getBodyParams devolve [] e a resposta da secretária cai em 400.
      */
     public static function enableJsonParser(): void
     {
         Yii::$app->request->parsers['application/json'] = \yii\web\JsonParser::class;
+        Yii::$app->request->setBodyParams(null);
     }
 
     /**

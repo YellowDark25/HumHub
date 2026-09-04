@@ -1,2 +1,6 @@
 /.cursor
 humhub/docker/humhub-local.sql.gz
+agent/.venv
+agent/.env
+agent/__pycache__/
+agent/**/__pycache__/
