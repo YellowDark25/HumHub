@@ -107,6 +107,7 @@ export type NexchatContact = {
   lastPreview?: string;
   isOnline?: boolean;
   conversationId?: number | null;
+  isSecretary?: boolean;
 };
 
 export type NexchatMutualServer = {

@@ -151,6 +151,7 @@ function SidebarItem({
           imageUrl={item.imageUrl}
           subtitle={item.subtitle}
           isOnline={item.isOnline}
+          isSecretary={item.isSecretary}
         />
       );
     }

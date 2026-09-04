@@ -3,6 +3,7 @@ import { AccountDeleteForm } from "@/components/AccountDeleteForm";
 import { AccountDigestSettings } from "@/components/AccountDigestSettings";
 import { AccountEmailForm } from "@/components/AccountEmailForm";
 import { AccountGeneralForm } from "@/components/AccountGeneralForm";
+import { AccountGoogleConnect } from "@/components/AccountGoogleConnect";
 import { AccountModulesSettings } from "@/components/AccountModulesSettings";
 import { AccountNotificationSettings } from "@/components/AccountNotificationSettings";
 import { AccountPanel, AccountProfileTabs } from "@/components/AccountPanel";
@@ -13,6 +14,7 @@ import { AccountUsernameForm } from "@/components/AccountUsernameForm";
 import { LoadError } from "@/components/LoadError";
 import type { Account } from "@/domain/Account";
 import type { AccountGeneralSettings } from "@/domain/AccountGeneralSettings";
+import type { GoogleAccountStatus } from "@/domain/GoogleAccount";
 import type { AccountProfileModule } from "@/domain/AccountProfileModule";
 import type { NotificationPreferences } from "@/domain/NotificationPreferences";
 import type { Space } from "@/domain/Space";
@@ -38,6 +40,7 @@ import {
   type AccountProfileTabId,
   type AccountSectionId,
 } from "@/shared/accountSection";
+import { Suspense } from "react";
 
 export default async function ConfiguracoesPage({
   searchParams,
@@ -55,6 +58,7 @@ export default async function ConfiguracoesPage({
   let generalSettings: AccountGeneralSettings | null = null;
   let people: User[] = [];
   let profileModules: AccountProfileModule[] | null = null;
+  let googleAccount: GoogleAccountStatus | null = null;
   let loadError = "";
 
   try {
@@ -71,6 +75,9 @@ export default async function ConfiguracoesPage({
     }
     if (section === "modulos") {
       profileModules = await app.listAccountModules(token);
+    }
+    if (section === "integracoes") {
+      googleAccount = await app.getGoogleAccountStatus(token);
     }
   } catch (error) {
     await redirectIfUnauthorized(error);
@@ -93,6 +100,7 @@ export default async function ConfiguracoesPage({
             generalSettings={generalSettings}
             people={people}
             profileModules={profileModules}
+            googleAccount={googleAccount}
             section={section}
             tab={tab}
           />
@@ -109,6 +117,7 @@ function AccountContent({
   generalSettings,
   people,
   profileModules,
+  googleAccount,
   section,
   tab,
 }: {
@@ -118,6 +127,7 @@ function AccountContent({
   generalSettings: AccountGeneralSettings | null;
   people: User[];
   profileModules: AccountProfileModule[] | null;
+  googleAccount: GoogleAccountStatus | null;
   section: AccountSectionId;
   tab: AccountProfileTabId;
 }) {
@@ -160,6 +170,23 @@ function AccountContent({
           <AccountGeneralForm settings={generalSettings} people={people} />
         ) : (
           <LoadError message="Não foi possível carregar as configurações gerais." />
+        )}
+      </AccountPanel>
+    );
+  }
+
+  if (section === "integracoes") {
+    return (
+      <AccountPanel
+        title="Integrações"
+        description="Conecte o Google para a secretária cuidar da agenda e das tarefas."
+      >
+        {googleAccount ? (
+          <Suspense fallback={<p className="text-sm text-zinc-500">Carregando…</p>}>
+            <AccountGoogleConnect status={googleAccount} />
+          </Suspense>
+        ) : (
+          <LoadError message="Não foi possível carregar o vínculo Google." />
         )}
       </AccountPanel>
     );

@@ -33,6 +33,9 @@ export default defineRailway(() => {
       HUMHUB_CONFIG__PARAMS__MODULE_AUTOLOAD_PATHS: '["/opt/modules-custom"]',
       HUMHUB_CONFIG__COMPONENTS__LOG__TARGETS:
         '{"yii\\\\log\\\\DbTarget":{"enabled":false}}',
+      KAIZZEN_SECRETARY_USER_ID: "7",
+      KAIZZEN_SERVICE_SECRET: "kaizzen-change-me",
+      KAIZZEN_NEXT_URL: "http://localhost:3000",
     },
   });
 

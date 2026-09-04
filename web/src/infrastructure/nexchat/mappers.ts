@@ -196,6 +196,7 @@ export function mapChatContact(dto: NexchatContact): ChatContact {
       "",
     isOnline: Boolean(dto.isOnline),
     conversationId: dto.conversationId ?? null,
+    isSecretary: Boolean(dto.isSecretary),
   };
 }
 

@@ -165,7 +165,7 @@ export function resolveChatWorkspace(input: {
 
 /**
  * Monta as seções da sidebar do workspace atual.
- * Na home lista convites e DMs; no servidor, canais de texto e voz.
+ * Na home lista secretária, convites e DMs; no servidor, canais de texto e voz.
  */
 export function chatSidebarSections(
   lists: ConversationLists,
@@ -181,12 +181,24 @@ export function chatSidebarSections(
       });
     }
 
+    const secretary = lists.contacts.filter((contact) => contact.isSecretary);
+    const others = lists.contacts.filter((contact) => !contact.isSecretary);
+
+    if (secretary.length > 0) {
+      sections.push({
+        title: "Secretária",
+        items: contactItems(secretary),
+      });
+    }
+
     sections.push({
       title: "Mensagens diretas",
       items:
-        lists.contacts.length > 0
-          ? contactItems(lists.contacts)
-          : conversationItems(lists.dms),
+        others.length > 0
+          ? contactItems(others)
+          : lists.contacts.length > 0
+            ? []
+            : conversationItems(lists.dms),
     });
     return sections;
   }
@@ -287,6 +299,7 @@ function conversationItems(
     isOnline: false,
     channelType: conversation.channelType,
     canManage: conversation.canManage,
+    isSecretary: false,
     children: conversationItems(childrenByParent.get(conversation.id) ?? []),
   }));
 }
@@ -305,6 +318,7 @@ function contactItems(contacts: ChatContact[]): ChatSidebarItem[] {
     isOnline: contact.isOnline,
     channelType: null,
     canManage: false,
+    isSecretary: contact.isSecretary,
     children: [],
   }));
 }

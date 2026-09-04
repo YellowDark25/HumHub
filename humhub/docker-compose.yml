@@ -20,6 +20,9 @@ services:
       - HUMHUB_CONFIG__COMPONENTS__DB__USERNAME=humhub
       - HUMHUB_CONFIG__COMPONENTS__DB__PASSWORD=humhub_senha_local
       - 'HUMHUB_CONFIG__COMPONENTS__LOG__TARGETS={"yii\\log\\DbTarget":{"enabled":false}}'
+      - KAIZZEN_SECRETARY_USER_ID=7
+      - KAIZZEN_SERVICE_SECRET=kaizzen-local-service-secret
+      - KAIZZEN_NEXT_URL=http://host.docker.internal:3001
 
   db:
     image: mariadb:11

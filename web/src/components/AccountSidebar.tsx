@@ -16,6 +16,7 @@ const SECTION_ICONS: Record<AccountSectionId, () => ReactNode> = {
   notificacoes: BellIcon,
   geral: WrenchIcon,
   modulos: ModulesIcon,
+  integracoes: LinkIcon,
 };
 
 export function AccountSidebar({ section }: AccountSidebarProps) {
@@ -93,6 +94,15 @@ function ModulesIcon() {
       <path d="M12 12 4 7.5" />
       <path d="M12 12v9" />
       <path d="m12 12 8-4.5" />
+    </svg>
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={iconClass()} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10 5.93" />
+      <path d="M14 11a5 5 0 0 0-7.07 0L5.52 12.41a5 5 0 0 0 7.07 7.07L14 18.07" />
     </svg>
   );
 }

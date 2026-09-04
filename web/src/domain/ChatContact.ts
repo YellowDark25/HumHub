@@ -1,3 +1,4 @@
+/** Contato da lista de DMs; isSecretary marca o atalho da secretária. */
 export type ChatContact = {
   userId: number;
   name: string;
@@ -6,4 +7,5 @@ export type ChatContact = {
   subtitle: string;
   isOnline: boolean;
   conversationId: number | null;
+  isSecretary: boolean;
 };
