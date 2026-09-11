@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import Any
 
 import httpx
@@ -14,10 +15,12 @@ from errors import AgentError
 from tools import SECRETARY_NOT_CONNECTED, SECRETARY_SYSTEM_PROMPT, secretary_tool_definitions
 
 MAX_TOOL_ROUNDS = 6
-# Verbos que pedem create/update na agenda; se o modelo responder sem tool, empurramos uma vez.
+# Pedido concreto de escrita na agenda (verbo + horário). Só isso dispara o nudge.
 AGENDA_WRITE_MARKERS = (
     "marcar",
+    "marca ",
     "agendar",
+    "agende",
     "coloque",
     "coloca",
     "colocar",
@@ -28,11 +31,31 @@ AGENDA_WRITE_MARKERS = (
     "remarcar",
     "remarca",
 )
-# Recado interno para o modelo, quando ele confirma agendamento sem ter chamado a tool.
+# Pergunta sobre o que a secretária faz — conversa, não ação na agenda.
+CAPABILITY_MARKERS = (
+    "o que você",
+    "o que vc",
+    "o que mais",
+    "pode fazer",
+    "podendo",
+    "você faz",
+    "vc faz",
+    "suas funções",
+    "suas capacidades",
+    "o que consegue",
+)
+# Horário falado: 17h, 17:00, às 17.
+AGENDA_TIME_HINT = re.compile(
+    r"\b(\d{1,2}(:\d{2})?h|\d{1,2}:\d{2}|às\s+\d{1,2}|as\s+\d{1,2})\b",
+    re.IGNORECASE,
+)
+# Recado interno. Se for só papo, o modelo deve ignorar e não repetir isto no chat.
 TOOL_NUDGE = (
-    "Você não chamou nenhuma tool neste turno. "
-    "Se o pedido era marcar, alterar ou listar agenda ou tarefa, chame a tool agora. "
-    "Não diga que agendou sem o resultado da tool."
+    "Recado interno, não mostre isto ao usuário. "
+    "Se o último recado pedia criar, alterar ou listar um item concreto da agenda "
+    "(título e horário), chame a tool agora. "
+    "Se era só conversa ou pergunta sobre o que você faz, ignore este recado e responda à pessoa. "
+    "Nunca fale em tool, turno ou aviso interno."
 )
 
 
@@ -134,18 +157,30 @@ def _history_to_messages(history: list[dict[str, Any]], spoken: str) -> list[dic
 
 
 def _needs_agenda_tool(messages: list[dict[str, Any]]) -> bool:
-    """Diz se o último recado do usuário pede escrita na agenda e ainda não houve tool.
-    Lê o texto da última mensagem user (histórico cru, sem tool_result) e procura verbos de marcar.
+    """Diz se o último recado é um pedido concreto de agenda (verbo + horário).
+    Pergunta sobre capacidade ou papo sem horário não entra: o nudge não deve
+    interromper conversa simples.
     """
-    text = ""
+    text = _last_user_text(messages)
+    if not text:
+        return False
+    if any(marker in text for marker in CAPABILITY_MARKERS):
+        return False
+    has_verb = any(marker in text for marker in AGENDA_WRITE_MARKERS)
+    has_when = bool(AGENDA_TIME_HINT.search(text))
+    return has_verb and has_when
+
+
+def _last_user_text(messages: list[dict[str, Any]]) -> str:
+    """Texto da última fala do usuário no prompt, em minúsculas."""
     for item in reversed(messages):
         if item.get("role") != "user":
             continue
         content = item.get("content")
         if isinstance(content, str):
-            text = content.lower()
-        break
-    return any(marker in text for marker in AGENDA_WRITE_MARKERS)
+            return content.lower()
+        return ""
+    return ""
 
 
 def _trailing_user_contents(history: list[dict[str, Any]]) -> list[str]:
