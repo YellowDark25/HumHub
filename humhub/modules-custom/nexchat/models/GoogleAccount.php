@@ -8,6 +8,8 @@ use Yii;
 /**
  * Vínculo OAuth do usuário com o Google (Calendar e Tasks).
  * Guarda o refresh token; a agenda em si fica no Google, não nesta tabela.
+ * O token ainda vai em texto puro — cifrar a coluna com chave de aplicação
+ * quando o projeto sair do MVP (acesso à agenda e às tarefas da pessoa).
  *
  * @property int $id
  * @property int $user_id

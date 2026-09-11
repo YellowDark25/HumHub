@@ -18,7 +18,7 @@ def is_configured() -> bool:
 async def complete(
     http: httpx.AsyncClient,
     system: str,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
     tools: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """Uma rodada no Claude: texto e/ou tool_use. Sem chave o turno não deve chegar aqui."""
@@ -54,7 +54,7 @@ async def complete(
 
 def _completion_payload(
     system: str,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
     tools: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """Monta o corpo da Messages API; omite tools quando a rodada é só texto."""

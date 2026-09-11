@@ -14,6 +14,11 @@ class ConversationTurnInbox:
     Cada POST só atualiza o pendente e reinicia a espera. Quando a conversa
     quieta, roda um turno com o histórico já juntado. Mensagem no meio do
     turno marca nova rodada no fim, em vez de abrir outro loop em paralelo.
+
+    A fila vive só na memória deste processo: restart no debounce perde o
+    recado (o HumHub já devolveu 202). Uma réplica só — várias instâncias
+    quebram o agrupamento e o um-turno-por-conversa. Se escalar, mover o
+    estado para Redis ou uma tabela pending turns no HumHub.
     """
 
     def __init__(self, runner: TurnRunner, debounce_seconds: float) -> None:

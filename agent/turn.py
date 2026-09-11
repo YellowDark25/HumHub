@@ -59,7 +59,8 @@ async def _run_secretary_turn(http: httpx.AsyncClient, payload: dict[str, Any]) 
 
     system = memory.build_system_prompt(SECRETARY_SYSTEM_PROMPT, state["summary"], preferences)
     messages = _history_to_messages(history, spoken)
-    reply = await _collect_model_reply(http, system, messages, account["refreshToken"], user_id)
+    session = google_workspace.GoogleSession(account["refreshToken"])
+    reply = await _collect_model_reply(http, system, messages, session, user_id)
     await humhub_client.reply(http, conversation_id, reply)
     await _refresh_memory_after_turn(http, conversation_id)
 
@@ -80,7 +81,7 @@ async def _load_prompt_context(
     return state, preferences, history
 
 
-def _history_to_messages(history: list[dict[str, Any]], spoken: str) -> list[dict[str, str]]:
+def _history_to_messages(history: list[dict[str, Any]], spoken: str) -> list[dict[str, Any]]:
     """Converte o histórico em mensagens do modelo e garante o recado atual."""
     messages = [
         {"role": "assistant" if item["isSecretary"] else "user", "content": item["content"]}
@@ -107,29 +108,81 @@ def _trailing_user_contents(history: list[dict[str, Any]]) -> list[str]:
 async def _collect_model_reply(
     http: httpx.AsyncClient,
     system: str,
-    messages: list[dict[str, str]],
-    refresh_token: str,
+    messages: list[dict[str, Any]],
+    session: google_workspace.GoogleSession,
     user_id: int,
 ) -> str:
     """Roda o loop de tools e só aceita como resposta o texto de uma rodada sem tool calls."""
     tools = secretary_tool_definitions()
+    tool_outcomes: list[str] = []
     for _ in range(MAX_TOOL_ROUNDS):
         completion = await anthropic_llm.complete(http, system, messages, tools)
         if not completion["toolCalls"]:
             return memory.pick_final_reply(completion["text"])
-        tool_lines = [
-            await _run_secretary_tool(http, refresh_token, user_id, call)
-            for call in completion["toolCalls"]
-        ]
-        messages.append({
-            "role": "assistant",
-            "content": completion["text"] or "(usei as ferramentas da agenda)",
+        assistant_blocks, result_blocks, outcomes = await _apply_tool_round(
+            http,
+            session,
+            user_id,
+            completion,
+        )
+        tool_outcomes.extend(outcomes)
+        messages.append({"role": "assistant", "content": assistant_blocks})
+        messages.append({"role": "user", "content": result_blocks})
+    return _reply_after_tool_limit(tool_outcomes)
+
+
+async def _apply_tool_round(
+    http: httpx.AsyncClient,
+    session: google_workspace.GoogleSession,
+    user_id: int,
+    completion: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
+    """Executa as tools da rodada e monta tool_use/tool_result da Messages API."""
+    assistant_blocks: list[dict[str, Any]] = []
+    if completion["text"]:
+        assistant_blocks.append({"type": "text", "text": completion["text"]})
+    result_blocks: list[dict[str, Any]] = []
+    outcomes: list[str] = []
+    for call in completion["toolCalls"]:
+        name = str(call.get("name") or "")
+        assistant_blocks.append({
+            "type": "tool_use",
+            "id": call["id"],
+            "name": name,
+            "input": call.get("arguments") or {},
         })
-        messages.append({
-            "role": "user",
-            "content": "Resultado das ferramentas:\n" + "\n".join(tool_lines),
+        line = await _run_secretary_tool(http, session, user_id, call)
+        outcomes.append(line)
+        result_blocks.append({
+            "type": "tool_result",
+            "tool_use_id": call["id"],
+            "content": line,
         })
-    return memory.pick_final_reply("")
+    return assistant_blocks, result_blocks, outcomes
+
+
+def _reply_after_tool_limit(tool_outcomes: list[str]) -> str:
+    """Quando o loop estoura, descreve as tools já executadas em vez do fallback genérico."""
+    if not tool_outcomes:
+        return memory.pick_final_reply("")
+    logging.warning(
+        "Secretária atingiu o limite de %s rodadas de tools; último lote: %s",
+        MAX_TOOL_ROUNDS,
+        tool_outcomes[-3:],
+    )
+    digest = "\n".join(f"- {_short_tool_outcome(line)}" for line in tool_outcomes[-4:])
+    return (
+        "Fiz as ações abaixo, mas não fechei a confirmação neste turno:\n"
+        f"{digest}\n"
+        "Se quiser, peço o estado atual da agenda ou das tarefas."
+    )
+
+
+def _short_tool_outcome(line: str) -> str:
+    """Corta resultado longo de tool para o fallback visível no chat."""
+    if len(line) <= 180:
+        return line
+    return line[:177] + "..."
 
 
 async def _refresh_memory_after_turn(http: httpx.AsyncClient, conversation_id: int) -> None:
@@ -154,17 +207,17 @@ async def _resolve_user_text(http: httpx.AsyncClient, payload: dict[str, Any]) -
 
 async def _run_secretary_tool(
     http: httpx.AsyncClient,
-    refresh_token: str,
+    session: google_workspace.GoogleSession,
     user_id: int,
     call: dict[str, Any],
 ) -> str:
-    """Executa uma tool (Google ou memória) e devolve um resumo em texto para o modelo."""
+    """Executa uma tool (Google ou memória) e devolve um resumo rotulado para o modelo."""
     name = call.get("name") or ""
     arguments = call.get("arguments") or {}
     try:
-        result = await _dispatch_tool(http, refresh_token, user_id, name, arguments)
+        result = await _dispatch_tool(http, session, user_id, name, arguments)
         logging.info("Tool da secretária ok: %s", name)
-        return json.dumps(result, ensure_ascii=False)
+        return f"{name}: {json.dumps(result, ensure_ascii=False)}"
     except Exception as error:
         message = str(error) if isinstance(error, Exception) else "falha na ferramenta"
         return f"Erro em {name}: {message}"
@@ -172,7 +225,7 @@ async def _run_secretary_tool(
 
 async def _dispatch_tool(
     http: httpx.AsyncClient,
-    refresh_token: str,
+    session: google_workspace.GoogleSession,
     user_id: int,
     name: str,
     arguments: dict[str, Any],
@@ -190,12 +243,12 @@ async def _dispatch_tool(
         return {"key": str(arguments.get("chave") or ""), "forgotten": forgotten}
     if name == "list_events":
         return await google_workspace.list_events(
-            http, refresh_token, str(arguments.get("timeMin") or ""), str(arguments.get("timeMax") or ""),
+            http, session, str(arguments.get("timeMin") or ""), str(arguments.get("timeMax") or ""),
         )
     if name == "create_event":
         return await google_workspace.create_event(
             http,
-            refresh_token,
+            session,
             str(arguments.get("title") or ""),
             str(arguments.get("start") or ""),
             str(arguments.get("end") or ""),
@@ -204,7 +257,7 @@ async def _dispatch_tool(
     if name == "update_event":
         return await google_workspace.update_event(
             http,
-            refresh_token,
+            session,
             str(arguments.get("eventId") or ""),
             _optional_string(arguments.get("title")),
             _optional_string(arguments.get("start")),
@@ -212,11 +265,11 @@ async def _dispatch_tool(
             _optional_string(arguments.get("description")),
         )
     if name == "list_tasks":
-        return await google_workspace.list_tasks(http, refresh_token)
+        return await google_workspace.list_tasks(http, session)
     if name == "create_task":
         return await google_workspace.create_task(
             http,
-            refresh_token,
+            session,
             str(arguments.get("title") or ""),
             _optional_string(arguments.get("notes")),
             _optional_string(arguments.get("due")),
@@ -224,7 +277,7 @@ async def _dispatch_tool(
     if name == "complete_task":
         return await google_workspace.complete_task(
             http,
-            refresh_token,
+            session,
             _optional_string(arguments.get("taskId")),
             _optional_string(arguments.get("title")),
             _optional_string(arguments.get("listId")),
