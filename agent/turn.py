@@ -44,10 +44,17 @@ CAPABILITY_MARKERS = (
     "suas capacidades",
     "o que consegue",
 )
-# Horário falado: 17h, 17:00, às 17.
+# Horário falado. "as 5 tarefas" não entra: "as" sem acento só vale com h, :mm ou fim de frase.
 AGENDA_TIME_HINT = re.compile(
-    r"\b(\d{1,2}(:\d{2})?h|\d{1,2}:\d{2}|às\s+\d{1,2}|as\s+\d{1,2})\b",
-    re.IGNORECASE,
+    r"""
+    (?:
+        \d{1,2}:\d{2}
+        | \d{1,2}h
+        | às\s+\d{1,2}(?::\d{2})?h?
+        | as\s+\d{1,2}(?::\d{2}|h|(?=\s*(?:horas?\b|$|[.,;!?])))
+    )
+    """,
+    re.IGNORECASE | re.VERBOSE,
 )
 # Recado interno. Se for só papo, o modelo deve ignorar e não repetir isto no chat.
 TOOL_NUDGE = (
@@ -172,7 +179,13 @@ def _needs_agenda_tool(messages: list[dict[str, Any]]) -> bool:
 
 
 def _last_user_text(messages: list[dict[str, Any]]) -> str:
-    """Texto da última fala do usuário no prompt, em minúsculas."""
+    """Texto da última fala do usuário no prompt, para o nudge de agenda.
+    Percorre as mensagens de trás para frente, pega a primeira com role user e,
+    se o content for string, devolve em minúsculas.
+    @param messages histórico já no formato da Messages API (texto ou blocos).
+    @returns o texto em minúsculas; string vazia se não houver user, se o content
+    for lista de blocos (tool_result) ou se a lista estiver vazia.
+    """
     for item in reversed(messages):
         if item.get("role") != "user":
             continue
