@@ -58,7 +58,8 @@ def format_clock_block(now: datetime | None = None) -> str:
             f"- Amanhã: timeMin {_iso(tomorrow)} / timeMax {_iso(tomorrow + timedelta(days=1))}",
             f"- Esta semana (segunda a domingo): timeMin {_iso(week_start)} / timeMax {_iso(next_week_start)}",
             f"- Próxima semana: timeMin {_iso(next_week_start)} / timeMax {_iso(week_after)}",
-            "Use estes intervalos para hoje, amanhã e esta semana. Não pergunte a data ao usuário.",
+            "Se perguntarem a data ou a hora, responda com Agora. Os intervalos são só para timeMin/timeMax da agenda.",
+            "Não pergunte a data ao usuário.",
         ]
     )
 

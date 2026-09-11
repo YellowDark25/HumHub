@@ -39,9 +39,6 @@ async def _run_secretary_turn(http: httpx.AsyncClient, payload: dict[str, Any]) 
     user_id = int(payload["userId"])
     spoken = await _resolve_user_text(http, payload)
     account = await humhub_client.get_google_account(http, user_id)
-    if not account:
-        await humhub_client.reply(http, conversation_id, SECRETARY_NOT_CONNECTED)
-        return
 
     state, preferences, history = await _load_prompt_context(http, conversation_id, user_id)
     if not spoken and not _trailing_user_contents(history):
@@ -59,7 +56,7 @@ async def _run_secretary_turn(http: httpx.AsyncClient, payload: dict[str, Any]) 
 
     system = memory.build_system_prompt(SECRETARY_SYSTEM_PROMPT, state["summary"], preferences)
     messages = _history_to_messages(history, spoken)
-    session = google_workspace.GoogleSession(account["refreshToken"])
+    session = google_workspace.GoogleSession(account["refreshToken"]) if account else None
     reply = await _collect_model_reply(http, system, messages, session, user_id)
     await humhub_client.reply(http, conversation_id, reply)
     await _refresh_memory_after_turn(http, conversation_id)
@@ -109,10 +106,13 @@ async def _collect_model_reply(
     http: httpx.AsyncClient,
     system: str,
     messages: list[dict[str, Any]],
-    session: google_workspace.GoogleSession,
+    session: google_workspace.GoogleSession | None,
     user_id: int,
 ) -> str:
-    """Roda o loop de tools e só aceita como resposta o texto de uma rodada sem tool calls."""
+    """Roda o loop de tools e só aceita como resposta o texto de uma rodada sem tool calls.
+    A sessão Google (se houver) é a mesma em todas as tools do turno, para reusar o access token.
+    Cada rodada com tools entra no histórico no formato da Messages API (tool_use + tool_result).
+    """
     tools = secretary_tool_definitions()
     tool_outcomes: list[str] = []
     for _ in range(MAX_TOOL_ROUNDS):
@@ -133,11 +133,14 @@ async def _collect_model_reply(
 
 async def _apply_tool_round(
     http: httpx.AsyncClient,
-    session: google_workspace.GoogleSession,
+    session: google_workspace.GoogleSession | None,
     user_id: int,
     completion: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
-    """Executa as tools da rodada e monta tool_use/tool_result da Messages API."""
+    """Executa as tools da rodada e monta tool_use/tool_result da Messages API.
+    O assistente leva o texto (se houver) e um bloco tool_use por chamada; o user
+    responde com tool_result apontando o mesmo id, para o modelo ligar o resultado.
+    """
     assistant_blocks: list[dict[str, Any]] = []
     if completion["text"]:
         assistant_blocks.append({"type": "text", "text": completion["text"]})
@@ -205,19 +208,32 @@ async def _resolve_user_text(http: httpx.AsyncClient, payload: dict[str, Any]) -
     return (await speech.transcribe(http, file)).strip()
 
 
+# Nomes das tools que falam com o Google Calendar/Tasks.
+# O despacho usa este conjunto para, sem sessão, devolver o aviso de conexão
+# em vez de chamar a API; memória (lembrar/esquecer) fica de fora.
+GOOGLE_TOOL_NAMES = {
+    "list_events",
+    "create_event",
+    "update_event",
+    "list_tasks",
+    "create_task",
+    "complete_task",
+}
+
+
 async def _run_secretary_tool(
     http: httpx.AsyncClient,
-    session: google_workspace.GoogleSession,
+    session: google_workspace.GoogleSession | None,
     user_id: int,
     call: dict[str, Any],
 ) -> str:
-    """Executa uma tool (Google ou memória) e devolve um resumo rotulado para o modelo."""
+    """Executa uma tool (Google ou memória) e devolve um resumo em texto para o modelo, rotulado com o nome dela."""
     name = call.get("name") or ""
     arguments = call.get("arguments") or {}
     try:
         result = await _dispatch_tool(http, session, user_id, name, arguments)
         logging.info("Tool da secretária ok: %s", name)
-        return f"{name}: {json.dumps(result, ensure_ascii=False)}"
+        return f"{name}: " + json.dumps(result, ensure_ascii=False)
     except Exception as error:
         message = str(error) if isinstance(error, Exception) else "falha na ferramenta"
         return f"Erro em {name}: {message}"
@@ -225,12 +241,14 @@ async def _run_secretary_tool(
 
 async def _dispatch_tool(
     http: httpx.AsyncClient,
-    session: google_workspace.GoogleSession,
+    session: google_workspace.GoogleSession | None,
     user_id: int,
     name: str,
     arguments: dict[str, Any],
 ) -> Any:
-    """Encaminha o nome da tool para a função do Google ou da memória."""
+    """Encaminha o nome da tool para a função do Google ou da memória.
+    Tools do Google sem sessão devolvem o aviso de conexão, sem travar o turno.
+    """
     if name == "lembrar_preferencia":
         return await humhub_client.remember_memory(
             http,
@@ -241,6 +259,8 @@ async def _dispatch_tool(
     if name == "esquecer_preferencia":
         forgotten = await humhub_client.forget_memory(http, user_id, str(arguments.get("chave") or ""))
         return {"key": str(arguments.get("chave") or ""), "forgotten": forgotten}
+    if name in GOOGLE_TOOL_NAMES and not session:
+        return {"connected": False, "message": SECRETARY_NOT_CONNECTED}
     if name == "list_events":
         return await google_workspace.list_events(
             http, session, str(arguments.get("timeMin") or ""), str(arguments.get("timeMax") or ""),
