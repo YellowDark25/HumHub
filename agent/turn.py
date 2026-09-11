@@ -78,7 +78,7 @@ async def _load_prompt_context(
     return state, preferences, history
 
 
-def _history_to_messages(history: list[dict[str, Any]], spoken: str) -> list[dict[str, str]]:
+def _history_to_messages(history: list[dict[str, Any]], spoken: str) -> list[dict[str, Any]]:
     """Converte o histórico em mensagens do modelo e garante o recado atual."""
     messages = [
         {"role": "assistant" if item["isSecretary"] else "user", "content": item["content"]}
@@ -105,31 +105,87 @@ def _trailing_user_contents(history: list[dict[str, Any]]) -> list[str]:
 async def _collect_model_reply(
     http: httpx.AsyncClient,
     system: str,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
     session: google_workspace.GoogleSession | None,
     user_id: int,
 ) -> str:
     """Roda o loop de tools e só aceita como resposta o texto de uma rodada sem tool calls.
     A sessão Google (se houver) é a mesma em todas as tools do turno, para reusar o access token.
+    Cada rodada com tools entra no histórico no formato da Messages API (tool_use + tool_result).
     """
     tools = secretary_tool_definitions()
+    tool_outcomes: list[str] = []
     for _ in range(MAX_TOOL_ROUNDS):
         completion = await anthropic_llm.complete(http, system, messages, tools)
         if not completion["toolCalls"]:
             return memory.pick_final_reply(completion["text"])
-        tool_lines = [
-            await _run_secretary_tool(http, session, user_id, call)
-            for call in completion["toolCalls"]
-        ]
-        messages.append({
-            "role": "assistant",
-            "content": completion["text"] or "(usei as ferramentas da agenda)",
+        assistant_blocks, result_blocks, outcomes = await _apply_tool_round(
+            http,
+            session,
+            user_id,
+            completion,
+        )
+        tool_outcomes.extend(outcomes)
+        messages.append({"role": "assistant", "content": assistant_blocks})
+        messages.append({"role": "user", "content": result_blocks})
+    return _reply_after_tool_limit(tool_outcomes)
+
+
+async def _apply_tool_round(
+    http: httpx.AsyncClient,
+    session: google_workspace.GoogleSession | None,
+    user_id: int,
+    completion: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
+    """Executa as tools da rodada e monta tool_use/tool_result da Messages API.
+    O assistente leva o texto (se houver) e um bloco tool_use por chamada; o user
+    responde com tool_result apontando o mesmo id, para o modelo ligar o resultado.
+    """
+    assistant_blocks: list[dict[str, Any]] = []
+    if completion["text"]:
+        assistant_blocks.append({"type": "text", "text": completion["text"]})
+    result_blocks: list[dict[str, Any]] = []
+    outcomes: list[str] = []
+    for call in completion["toolCalls"]:
+        name = str(call.get("name") or "")
+        assistant_blocks.append({
+            "type": "tool_use",
+            "id": call["id"],
+            "name": name,
+            "input": call.get("arguments") or {},
         })
-        messages.append({
-            "role": "user",
-            "content": "Resultado das ferramentas:\n" + "\n".join(tool_lines),
+        line = await _run_secretary_tool(http, session, user_id, call)
+        outcomes.append(line)
+        result_blocks.append({
+            "type": "tool_result",
+            "tool_use_id": call["id"],
+            "content": line,
         })
-    return memory.pick_final_reply("")
+    return assistant_blocks, result_blocks, outcomes
+
+
+def _reply_after_tool_limit(tool_outcomes: list[str]) -> str:
+    """Quando o loop estoura, descreve as tools já executadas em vez do fallback genérico."""
+    if not tool_outcomes:
+        return memory.pick_final_reply("")
+    logging.warning(
+        "Secretária atingiu o limite de %s rodadas de tools; último lote: %s",
+        MAX_TOOL_ROUNDS,
+        tool_outcomes[-3:],
+    )
+    digest = "\n".join(f"- {_short_tool_outcome(line)}" for line in tool_outcomes[-4:])
+    return (
+        "Fiz as ações abaixo, mas não fechei a confirmação neste turno:\n"
+        f"{digest}\n"
+        "Se quiser, peço o estado atual da agenda ou das tarefas."
+    )
+
+
+def _short_tool_outcome(line: str) -> str:
+    """Corta resultado longo de tool para o fallback visível no chat."""
+    if len(line) <= 180:
+        return line
+    return line[:177] + "..."
 
 
 async def _refresh_memory_after_turn(http: httpx.AsyncClient, conversation_id: int) -> None:
@@ -152,6 +208,9 @@ async def _resolve_user_text(http: httpx.AsyncClient, payload: dict[str, Any]) -
     return (await speech.transcribe(http, file)).strip()
 
 
+# Nomes das tools que falam com o Google Calendar/Tasks.
+# O despacho usa este conjunto para, sem sessão, devolver o aviso de conexão
+# em vez de chamar a API; memória (lembrar/esquecer) fica de fora.
 GOOGLE_TOOL_NAMES = {
     "list_events",
     "create_event",
