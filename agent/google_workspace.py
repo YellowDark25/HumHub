@@ -1,4 +1,5 @@
-from datetime import datetime
+import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -31,15 +32,57 @@ class GoogleSession:
 
     async def calendar_time_zone(self, http: httpx.AsyncClient) -> str:
         """Lê o fuso IANA do calendário principal e guarda no turno.
-        Se o Google não devolver um nome, usa o fuso padrão da intranet.
+        Sem escopo de metadado, infere de um evento existente; se nada der, usa o padrão.
+        Não levanta erro: create/update de evento não pode falhar só por falta de fuso.
         """
         if self._calendar_time_zone:
             return self._calendar_time_zone
         access = await self.access_token(http)
+        self._calendar_time_zone = await _read_calendar_time_zone(http, access)
+        return self._calendar_time_zone
+
+
+async def _read_calendar_time_zone(http: httpx.AsyncClient, access: str) -> str:
+    """Resolve o fuso da agenda sem derrubar o turno.
+    Tenta GET /calendars/primary; se o token não tiver o escopo, lê timeZone de um evento.
+    """
+    try:
         data = await _google_json(http, CALENDAR_URL, access)
-        zone = str(data.get("timeZone") or "").strip() or TIME_ZONE
-        self._calendar_time_zone = zone
-        return zone
+        zone = str(data.get("timeZone") or "").strip()
+        if zone:
+            return zone
+    except AgentError as error:
+        logging.warning("Metadado da agenda indisponível: %s", error)
+    inferred = await _time_zone_from_events(http, access)
+    if inferred:
+        return inferred
+    return TIME_ZONE
+
+
+async def _time_zone_from_events(http: httpx.AsyncClient, access: str) -> str:
+    """Pega o timeZone de um evento recente; funciona com o escopo calendar.events."""
+    time_min = (datetime.now(timezone.utc) - timedelta(days=60)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        data = await _google_json(
+            http,
+            f"{CALENDAR_URL}/events",
+            access,
+            params={
+                "timeMin": time_min,
+                "maxResults": "10",
+                "singleEvents": "true",
+                "orderBy": "startTime",
+            },
+        )
+    except AgentError as error:
+        logging.warning("Não inferi o fuso pelos eventos: %s", error)
+        return ""
+    for item in data.get("items") or []:
+        for key in ("start", "end"):
+            zone = str((item.get(key) or {}).get("timeZone") or "").strip()
+            if zone:
+                return zone
+    return ""
 
 
 async def list_events(
