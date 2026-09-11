@@ -2,12 +2,12 @@ from typing import Any
 
 import httpx
 
+from clock import TIME_ZONE
 from config import google_client_id, google_client_secret
 from errors import AgentError
 
 CALENDAR_URL = "https://www.googleapis.com/calendar/v3/calendars/primary"
 TASKS_LISTS_URL = "https://tasks.googleapis.com/tasks/v1/users/@me/lists"
-TIME_ZONE = "America/Sao_Paulo"
 
 
 async def list_events(http: httpx.AsyncClient, refresh_token: str, time_min: str, time_max: str) -> list[dict[str, str]]:

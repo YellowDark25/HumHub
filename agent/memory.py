@@ -1,9 +1,11 @@
 import logging
+from datetime import datetime
 from typing import Any
 
 import httpx
 
 import anthropic_llm
+import clock
 import humhub_client
 from config import secretary_history_limit
 
@@ -22,9 +24,17 @@ def prompt_history_limit() -> int:
     return secretary_history_limit()
 
 
-def build_system_prompt(base: str, summary: str, preferences: list[dict[str, str]]) -> str:
-    """Junta o prompt base com o resumo da conversa e as preferências gravadas."""
-    parts = [base.strip()]
+def build_system_prompt(
+    base: str,
+    summary: str,
+    preferences: list[dict[str, str]],
+    now: datetime | None = None,
+) -> str:
+    """Junta o prompt base com o relógio do turno, o resumo e as preferências gravadas.
+    O relógio entra em todo turno para o modelo resolver hoje/amanhã/esta semana
+    sem perguntar a data. Preferências e resumo só entram se existirem.
+    """
+    parts = [base.strip(), clock.format_clock_block(now)]
     memory_block = _format_preferences(preferences)
     if memory_block:
         parts.append(memory_block)
