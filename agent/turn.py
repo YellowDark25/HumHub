@@ -56,7 +56,8 @@ async def _run_secretary_turn(http: httpx.AsyncClient, payload: dict[str, Any]) 
 
     system = memory.build_system_prompt(SECRETARY_SYSTEM_PROMPT, state["summary"], preferences)
     messages = _history_to_messages(history, spoken)
-    reply = await _collect_model_reply(http, system, messages, account, user_id)
+    session = google_workspace.GoogleSession(account["refreshToken"]) if account else None
+    reply = await _collect_model_reply(http, system, messages, session, user_id)
     await humhub_client.reply(http, conversation_id, reply)
     await _refresh_memory_after_turn(http, conversation_id)
 
@@ -105,17 +106,19 @@ async def _collect_model_reply(
     http: httpx.AsyncClient,
     system: str,
     messages: list[dict[str, str]],
-    account: dict[str, str] | None,
+    session: google_workspace.GoogleSession | None,
     user_id: int,
 ) -> str:
-    """Roda o loop de tools e só aceita como resposta o texto de uma rodada sem tool calls."""
+    """Roda o loop de tools e só aceita como resposta o texto de uma rodada sem tool calls.
+    A sessão Google (se houver) é a mesma em todas as tools do turno, para reusar o access token.
+    """
     tools = secretary_tool_definitions()
     for _ in range(MAX_TOOL_ROUNDS):
         completion = await anthropic_llm.complete(http, system, messages, tools)
         if not completion["toolCalls"]:
             return memory.pick_final_reply(completion["text"])
         tool_lines = [
-            await _run_secretary_tool(http, account, user_id, call)
+            await _run_secretary_tool(http, session, user_id, call)
             for call in completion["toolCalls"]
         ]
         messages.append({
@@ -161,7 +164,7 @@ GOOGLE_TOOL_NAMES = {
 
 async def _run_secretary_tool(
     http: httpx.AsyncClient,
-    account: dict[str, str] | None,
+    session: google_workspace.GoogleSession | None,
     user_id: int,
     call: dict[str, Any],
 ) -> str:
@@ -169,7 +172,7 @@ async def _run_secretary_tool(
     name = call.get("name") or ""
     arguments = call.get("arguments") or {}
     try:
-        result = await _dispatch_tool(http, account, user_id, name, arguments)
+        result = await _dispatch_tool(http, session, user_id, name, arguments)
         logging.info("Tool da secretária ok: %s", name)
         return f"{name}: " + json.dumps(result, ensure_ascii=False)
     except Exception as error:
@@ -179,13 +182,14 @@ async def _run_secretary_tool(
 
 async def _dispatch_tool(
     http: httpx.AsyncClient,
-    account: dict[str, str] | None,
+    session: google_workspace.GoogleSession | None,
     user_id: int,
     name: str,
     arguments: dict[str, Any],
 ) -> Any:
     """Encaminha o nome da tool para a função do Google ou da memória.
-    Tools do Google sem conta conectada devolvem o aviso de conexão, sem travar o turno."""
+    Tools do Google sem sessão devolvem o aviso de conexão, sem travar o turno.
+    """
     if name == "lembrar_preferencia":
         return await humhub_client.remember_memory(
             http,
@@ -196,17 +200,16 @@ async def _dispatch_tool(
     if name == "esquecer_preferencia":
         forgotten = await humhub_client.forget_memory(http, user_id, str(arguments.get("chave") or ""))
         return {"key": str(arguments.get("chave") or ""), "forgotten": forgotten}
-    if name in GOOGLE_TOOL_NAMES and not account:
+    if name in GOOGLE_TOOL_NAMES and not session:
         return {"connected": False, "message": SECRETARY_NOT_CONNECTED}
-    refresh_token = account["refreshToken"] if account else ""
     if name == "list_events":
         return await google_workspace.list_events(
-            http, refresh_token, str(arguments.get("timeMin") or ""), str(arguments.get("timeMax") or ""),
+            http, session, str(arguments.get("timeMin") or ""), str(arguments.get("timeMax") or ""),
         )
     if name == "create_event":
         return await google_workspace.create_event(
             http,
-            refresh_token,
+            session,
             str(arguments.get("title") or ""),
             str(arguments.get("start") or ""),
             str(arguments.get("end") or ""),
@@ -215,7 +218,7 @@ async def _dispatch_tool(
     if name == "update_event":
         return await google_workspace.update_event(
             http,
-            refresh_token,
+            session,
             str(arguments.get("eventId") or ""),
             _optional_string(arguments.get("title")),
             _optional_string(arguments.get("start")),
@@ -223,11 +226,11 @@ async def _dispatch_tool(
             _optional_string(arguments.get("description")),
         )
     if name == "list_tasks":
-        return await google_workspace.list_tasks(http, refresh_token)
+        return await google_workspace.list_tasks(http, session)
     if name == "create_task":
         return await google_workspace.create_task(
             http,
-            refresh_token,
+            session,
             str(arguments.get("title") or ""),
             _optional_string(arguments.get("notes")),
             _optional_string(arguments.get("due")),
@@ -235,7 +238,7 @@ async def _dispatch_tool(
     if name == "complete_task":
         return await google_workspace.complete_task(
             http,
-            refresh_token,
+            session,
             _optional_string(arguments.get("taskId")),
             _optional_string(arguments.get("title")),
             _optional_string(arguments.get("listId")),
