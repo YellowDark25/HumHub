@@ -28,22 +28,37 @@ _MONTHS = (
 )
 
 
+def zone_info(time_zone: str) -> ZoneInfo:
+    """Resolve o fuso IANA; se o nome for inválido, cai no fuso padrão da intranet."""
+    try:
+        return ZoneInfo(time_zone)
+    except Exception:
+        return ZoneInfo(TIME_ZONE)
+
+
+def now_in_zone(time_zone: str) -> datetime:
+    """Instante atual no fuso pedido, via ZoneInfo/tzdata."""
+    return datetime.now(zone_info(time_zone))
+
+
 def now_in_secretary_zone() -> datetime:
-    """Instante atual no fuso da intranet (America/Sao_Paulo).
-    Usa só a base IANA via ZoneInfo (pacote tzdata), sem offset fixo: São Paulo
-    está em UTC-3 o ano todo desde 2019, e qualquer horário de verão futuro
-    entra pela atualização da base, não por um fallback hardcoded.
+    """Instante atual no fuso padrão da intranet (America/Sao_Paulo).
+    Usado quando ainda não há fuso da agenda Google.
     """
-    return datetime.now(ZoneInfo(TIME_ZONE))
+    return now_in_zone(TIME_ZONE)
 
 
-def format_clock_block(now: datetime | None = None) -> str:
+def format_clock_block(now: datetime | None = None, time_zone: str | None = None) -> str:
     """Bloco de data e intervalos para o system prompt do turno.
-    Calcula agora, hoje, amanhã e a semana (segunda a domingo) no fuso da intranet
+    Calcula agora, hoje, amanhã e a semana (segunda a domingo) no fuso informado
     para o modelo montar timeMin/timeMax sem perguntar a data ao usuário.
     @param now instante já no fuso da secretária; se omitido, usa o relógio do servidor.
+    @param time_zone IANA da agenda do usuário; se omitido, usa America/Sao_Paulo.
     """
-    instant = now or now_in_secretary_zone()
+    zone_name = time_zone or TIME_ZONE
+    instant = now or now_in_zone(zone_name)
+    if instant.tzinfo is None:
+        instant = instant.replace(tzinfo=zone_info(zone_name))
     today = instant.replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
     week_start = today - timedelta(days=today.weekday())
@@ -51,7 +66,7 @@ def format_clock_block(now: datetime | None = None) -> str:
     week_after = next_week_start + timedelta(days=7)
     return "\n".join(
         [
-            f"Relógio deste turno ({TIME_ZONE}):",
+            f"Relógio deste turno ({zone_name}):",
             f"- Agora: {_human_datetime(instant)}",
             f"- ISO: {_iso(instant)}",
             f"- Hoje: timeMin {_iso(today)} / timeMax {_iso(tomorrow)}",

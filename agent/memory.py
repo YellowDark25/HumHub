@@ -29,13 +29,15 @@ def build_system_prompt(
     summary: str,
     preferences: list[dict[str, str]],
     now: datetime | None = None,
+    time_zone: str | None = None,
 ) -> str:
     """Junta o prompt base com o relógio do turno, o resumo e as preferências gravadas.
     O relógio entra em todo turno para o modelo resolver hoje/amanhã/esta semana
     sem perguntar a data. Preferências e resumo só entram se existirem.
     @param now instante já no fuso da secretária; se omitido, usa o relógio do servidor.
+    @param time_zone IANA da agenda Google; se omitido, o relógio usa o fuso padrão.
     """
-    parts = [base.strip(), clock.format_clock_block(now)]
+    parts = [base.strip(), clock.format_clock_block(now, time_zone)]
     memory_block = _format_preferences(preferences)
     if memory_block:
         parts.append(memory_block)
