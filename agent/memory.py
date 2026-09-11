@@ -33,6 +33,7 @@ def build_system_prompt(
     """Junta o prompt base com o relógio do turno, o resumo e as preferências gravadas.
     O relógio entra em todo turno para o modelo resolver hoje/amanhã/esta semana
     sem perguntar a data. Preferências e resumo só entram se existirem.
+    @param now instante já no fuso da secretária; se omitido, usa o relógio do servidor.
     """
     parts = [base.strip(), clock.format_clock_block(now)]
     memory_block = _format_preferences(preferences)
