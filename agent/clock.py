@@ -1,8 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 TIME_ZONE = "America/Sao_Paulo"
-_UTC_MINUS_3 = timezone(timedelta(hours=-3), name=TIME_ZONE)
 
 _WEEKDAYS = (
     "segunda-feira",
@@ -31,12 +30,11 @@ _MONTHS = (
 
 def now_in_secretary_zone() -> datetime:
     """Instante atual no fuso da intranet (America/Sao_Paulo).
-    Tenta ZoneInfo; se o fuso não estiver no sistema, usa UTC-3, o horário oficial vigente.
+    Usa só a base IANA via ZoneInfo (pacote tzdata), sem offset fixo: São Paulo
+    está em UTC-3 o ano todo desde 2019, e qualquer horário de verão futuro
+    entra pela atualização da base, não por um fallback hardcoded.
     """
-    try:
-        return datetime.now(ZoneInfo(TIME_ZONE))
-    except Exception:
-        return datetime.now(_UTC_MINUS_3)
+    return datetime.now(ZoneInfo(TIME_ZONE))
 
 
 def format_clock_block(now: datetime | None = None) -> str:

@@ -57,7 +57,9 @@ def summary_lookback_limit(raw_limit: int) -> int:
 
 
 async def refresh_after_turn(http: httpx.AsyncClient, conversation_id: int) -> None:
-    """Atualiza o resumo com as mensagens que saíram da janela crua e incrementa o turno."""
+    """Atualiza o resumo com as falas que saíram da janela crua e incrementa o turno.
+    Se o Claude falhar, o cursor não avança — o bloco volta a ser tentado no próximo turno.
+    """
     state = await humhub_client.get_conversation_state(http, conversation_id)
     raw_limit = prompt_history_limit()
     lookback = await humhub_client.list_history(
@@ -75,9 +77,14 @@ async def refresh_after_turn(http: httpx.AsyncClient, conversation_id: int) -> N
     summary = state["summary"]
     summarized_up_to = state["summarizedUpToMessageId"]
     if aged:
-        if to_fold:
-            summary = await _summarize(http, summary, to_fold) or summary
-        summarized_up_to = max(item["id"] for item in aged)
+        summary, summarized_up_to = await _fold_aged_messages(
+            http,
+            conversation_id,
+            summary,
+            summarized_up_to,
+            aged,
+            to_fold,
+        )
     await humhub_client.save_conversation_state(
         http,
         conversation_id,
@@ -87,12 +94,35 @@ async def refresh_after_turn(http: httpx.AsyncClient, conversation_id: int) -> N
     )
 
 
+async def _fold_aged_messages(
+    http: httpx.AsyncClient,
+    conversation_id: int,
+    summary: str,
+    summarized_up_to: int,
+    aged: list[dict[str, Any]],
+    to_fold: list[dict[str, Any]],
+) -> tuple[str, int]:
+    """Incorpora falas que saíram da janela crua. Só avança o cursor se o resumo for gravado."""
+    next_cursor = max(item["id"] for item in aged)
+    if not to_fold:
+        return summary, next_cursor
+    folded = await _summarize(http, summary, to_fold)
+    if folded is None:
+        logging.warning(
+            "Resumo da conversa %s falhou; cursor permanece em %s",
+            conversation_id,
+            summarized_up_to,
+        )
+        return summary, summarized_up_to
+    return folded, next_cursor
+
+
 async def _summarize(
     http: httpx.AsyncClient,
     previous: str,
     new_messages: list[dict[str, Any]],
-) -> str:
-    """Pede ao modelo um resumo curto a partir do texto anterior e das falas que envelheceram."""
+) -> str | None:
+    """Pede ao modelo um resumo curto. None se a chamada falhar, para não avançar o cursor."""
     lines = []
     if previous:
         lines.append(f"Resumo anterior:\n{previous}")
@@ -109,7 +139,7 @@ async def _summarize(
         )
     except Exception as error:
         logging.error("Falha ao resumir a conversa da secretária: %s", error)
-        return previous
+        return None
     return (completion["text"].strip() or previous)[:MAX_SUMMARY_CHARS]
 
 

@@ -1,3 +1,4 @@
+import hmac
 import logging
 from contextlib import asynccontextmanager
 from typing import Any
@@ -18,7 +19,9 @@ inbox: ConversationTurnInbox | None = None
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Cria a caixa de entrada da secretária e cancela esperas no shutdown."""
+    """Cria a caixa em memória e cancela esperas no shutdown.
+    Uma réplica só: debounce e um-turno-por-conversa não sobrevivem a várias instâncias.
+    """
     global inbox
     inbox = ConversationTurnInbox(_run_turn_safe, secretary_debounce_seconds())
     logging.info(
@@ -53,14 +56,16 @@ async def secretary_turn(request: Request) -> JSONResponse:
 
 
 def _require_service_secret(request: Request) -> None:
-    """Compara X-Kaizzen-Secret ou Bearer com KAIZZEN_SERVICE_SECRET."""
+    """Compara X-Kaizzen-Secret ou Bearer com KAIZZEN_SERVICE_SECRET em tempo constante."""
     expected = service_secret()
     given = (request.headers.get("x-kaizzen-secret") or "").strip()
     if not given:
         authorization = (request.headers.get("authorization") or "").strip()
         if authorization.lower().startswith("bearer "):
             given = authorization[7:].strip()
-    if not given or not expected or given != expected:
+    if not given or not expected:
+        raise AgentError("Serviço da secretária não autorizado.", 401)
+    if not hmac.compare_digest(given.encode("utf-8"), expected.encode("utf-8")):
         raise AgentError("Serviço da secretária não autorizado.", 401)
 
 

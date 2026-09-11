@@ -10,9 +10,29 @@ CALENDAR_URL = "https://www.googleapis.com/calendar/v3/calendars/primary"
 TASKS_LISTS_URL = "https://tasks.googleapis.com/tasks/v1/users/@me/lists"
 
 
-async def list_events(http: httpx.AsyncClient, refresh_token: str, time_min: str, time_max: str) -> list[dict[str, str]]:
+class GoogleSession:
+    """Renova o access token uma vez e reusa nas tools do mesmo turno (~1h no Google)."""
+
+    def __init__(self, refresh_token: str) -> None:
+        self._refresh_token = refresh_token
+        self._access_token: str | None = None
+
+    async def access_token(self, http: httpx.AsyncClient) -> str:
+        """Devolve o access token em cache ou pede um novo com o refresh token."""
+        if self._access_token:
+            return self._access_token
+        self._access_token = await _request_access_token(http, self._refresh_token)
+        return self._access_token
+
+
+async def list_events(
+    http: httpx.AsyncClient,
+    session: GoogleSession,
+    time_min: str,
+    time_max: str,
+) -> list[dict[str, str]]:
     """Eventos no intervalo [time_min, time_max] do calendário principal."""
-    access = await _access_token(http, refresh_token)
+    access = await session.access_token(http)
     data = await _google_json(
         http,
         f"{CALENDAR_URL}/events",
@@ -29,14 +49,14 @@ async def list_events(http: httpx.AsyncClient, refresh_token: str, time_min: str
 
 async def create_event(
     http: httpx.AsyncClient,
-    refresh_token: str,
+    session: GoogleSession,
     title: str,
     start: str,
     end: str,
     description: str | None,
 ) -> dict[str, str]:
     """Cria um evento no calendário principal."""
-    access = await _access_token(http, refresh_token)
+    access = await session.access_token(http)
     created = await _google_json(
         http,
         f"{CALENDAR_URL}/events",
@@ -54,7 +74,7 @@ async def create_event(
 
 async def update_event(
     http: httpx.AsyncClient,
-    refresh_token: str,
+    session: GoogleSession,
     event_id: str,
     title: str | None,
     start: str | None,
@@ -62,7 +82,7 @@ async def update_event(
     description: str | None,
 ) -> dict[str, str]:
     """Altera título, horário ou descrição de um evento."""
-    access = await _access_token(http, refresh_token)
+    access = await session.access_token(http)
     body: dict[str, Any] = {}
     if title:
         body["summary"] = title
@@ -82,21 +102,21 @@ async def update_event(
     return _map_event(updated)
 
 
-async def list_tasks(http: httpx.AsyncClient, refresh_token: str) -> list[dict[str, Any]]:
+async def list_tasks(http: httpx.AsyncClient, session: GoogleSession) -> list[dict[str, Any]]:
     """Tarefas abertas de todas as listas da conta."""
-    access = await _access_token(http, refresh_token)
+    access = await session.access_token(http)
     return await _list_open_tasks(http, access)
 
 
 async def create_task(
     http: httpx.AsyncClient,
-    refresh_token: str,
+    session: GoogleSession,
     title: str,
     notes: str | None,
     due: str | None,
 ) -> dict[str, Any]:
     """Cria uma tarefa na lista padrão."""
-    access = await _access_token(http, refresh_token)
+    access = await session.access_token(http)
     list_id = await _default_task_list_id(http, access)
     created = await _google_json(
         http,
@@ -110,13 +130,13 @@ async def create_task(
 
 async def complete_task(
     http: httpx.AsyncClient,
-    refresh_token: str,
+    session: GoogleSession,
     task_id: str | None,
     title: str | None,
     list_id: str | None,
 ) -> dict[str, Any]:
     """Marca a tarefa como concluída. Acha pelo id ou pelo título nas listas abertas."""
-    access = await _access_token(http, refresh_token)
+    access = await session.access_token(http)
     resolved = await _resolve_open_task(http, access, task_id, title, list_id)
     updated = await _google_json(
         http,
@@ -131,8 +151,8 @@ async def complete_task(
     return mapped
 
 
-async def _access_token(http: httpx.AsyncClient, refresh_token: str) -> str:
-    """Renova o access token com o refresh token gravado no vínculo."""
+async def _request_access_token(http: httpx.AsyncClient, refresh_token: str) -> str:
+    """Pede um access token novo ao OAuth do Google com o refresh token do vínculo."""
     response = await http.post(
         "https://oauth2.googleapis.com/token",
         data={
