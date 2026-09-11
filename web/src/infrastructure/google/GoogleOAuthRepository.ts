@@ -8,8 +8,10 @@ import {
   isGoogleOAuthConfigured,
 } from "../config";
 
+/** Escopos do vínculo: eventos, metadado da agenda (fuso), tarefas e e-mail. */
 const SCOPES = [
   "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/calendar.readonly",
   "https://www.googleapis.com/auth/tasks",
   "https://www.googleapis.com/auth/userinfo.email",
 ].join(" ");

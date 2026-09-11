@@ -14,6 +14,26 @@ from errors import AgentError
 from tools import SECRETARY_NOT_CONNECTED, SECRETARY_SYSTEM_PROMPT, secretary_tool_definitions
 
 MAX_TOOL_ROUNDS = 6
+# Verbos que pedem create/update na agenda; se o modelo responder sem tool, empurramos uma vez.
+AGENDA_WRITE_MARKERS = (
+    "marcar",
+    "agendar",
+    "coloque",
+    "coloca",
+    "colocar",
+    "cria ",
+    "crie ",
+    "criar ",
+    "adiciona",
+    "remarcar",
+    "remarca",
+)
+# Recado interno para o modelo, quando ele confirma agendamento sem ter chamado a tool.
+TOOL_NUDGE = (
+    "Você não chamou nenhuma tool neste turno. "
+    "Se o pedido era marcar, alterar ou listar agenda ou tarefa, chame a tool agora. "
+    "Não diga que agendou sem o resultado da tool."
+)
 
 
 async def handle_secretary_turn(http: httpx.AsyncClient, payload: dict[str, Any]) -> None:
@@ -113,6 +133,21 @@ def _history_to_messages(history: list[dict[str, Any]], spoken: str) -> list[dic
     return messages
 
 
+def _needs_agenda_tool(messages: list[dict[str, Any]]) -> bool:
+    """Diz se o último recado do usuário pede escrita na agenda e ainda não houve tool.
+    Lê o texto da última mensagem user (histórico cru, sem tool_result) e procura verbos de marcar.
+    """
+    text = ""
+    for item in reversed(messages):
+        if item.get("role") != "user":
+            continue
+        content = item.get("content")
+        if isinstance(content, str):
+            text = content.lower()
+        break
+    return any(marker in text for marker in AGENDA_WRITE_MARKERS)
+
+
 def _trailing_user_contents(history: list[dict[str, Any]]) -> list[str]:
     """Textos do usuário depois da última fala da secretária — os pedaços desta fala."""
     texts: list[str] = []
@@ -138,9 +173,19 @@ async def _collect_model_reply(
     """
     tools = secretary_tool_definitions()
     tool_outcomes: list[str] = []
+    nudged_for_tools = False
     for _ in range(MAX_TOOL_ROUNDS):
         completion = await anthropic_llm.complete(http, system, messages, tools)
         if not completion["toolCalls"]:
+            if not nudged_for_tools and _needs_agenda_tool(messages):
+                logging.warning("Modelo falou de agenda sem tool; peço a tool neste turno.")
+                nudged_for_tools = True
+                messages.append({
+                    "role": "assistant",
+                    "content": completion["text"] or "(sem texto)",
+                })
+                messages.append({"role": "user", "content": TOOL_NUDGE})
+                continue
             return memory.pick_final_reply(completion["text"])
         assistant_blocks, result_blocks, outcomes = await _apply_tool_round(
             http,
