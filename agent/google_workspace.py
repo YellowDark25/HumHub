@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 import httpx
@@ -11,11 +12,15 @@ TASKS_LISTS_URL = "https://tasks.googleapis.com/tasks/v1/users/@me/lists"
 
 
 class GoogleSession:
-    """Renova o access token uma vez e reusa nas tools do mesmo turno (~1h no Google)."""
+    """Renova o access token uma vez e reusa nas tools do mesmo turno (~1h no Google).
+    Também guarda o fuso do calendário principal, para o relógio e os eventos
+    usarem o mesmo horário de parede que o usuário vê no Google.
+    """
 
     def __init__(self, refresh_token: str) -> None:
         self._refresh_token = refresh_token
         self._access_token: str | None = None
+        self._calendar_time_zone: str | None = None
 
     async def access_token(self, http: httpx.AsyncClient) -> str:
         """Devolve o access token em cache ou pede um novo com o refresh token."""
@@ -23,6 +28,18 @@ class GoogleSession:
             return self._access_token
         self._access_token = await _request_access_token(http, self._refresh_token)
         return self._access_token
+
+    async def calendar_time_zone(self, http: httpx.AsyncClient) -> str:
+        """Lê o fuso IANA do calendário principal e guarda no turno.
+        Se o Google não devolver um nome, usa o fuso padrão da intranet.
+        """
+        if self._calendar_time_zone:
+            return self._calendar_time_zone
+        access = await self.access_token(http)
+        data = await _google_json(http, CALENDAR_URL, access)
+        zone = str(data.get("timeZone") or "").strip() or TIME_ZONE
+        self._calendar_time_zone = zone
+        return zone
 
 
 async def list_events(
@@ -57,6 +74,7 @@ async def create_event(
 ) -> dict[str, str]:
     """Cria um evento no calendário principal."""
     access = await session.access_token(http)
+    zone = await session.calendar_time_zone(http)
     created = await _google_json(
         http,
         f"{CALENDAR_URL}/events",
@@ -65,8 +83,8 @@ async def create_event(
         body={
             "summary": title,
             "description": description or "",
-            "start": _date_field(start),
-            "end": _date_field(end),
+            "start": _date_field(start, zone),
+            "end": _date_field(end, zone),
         },
     )
     return _map_event(created)
@@ -83,15 +101,16 @@ async def update_event(
 ) -> dict[str, str]:
     """Altera título, horário ou descrição de um evento."""
     access = await session.access_token(http)
+    zone = await session.calendar_time_zone(http)
     body: dict[str, Any] = {}
     if title:
         body["summary"] = title
     if description is not None:
         body["description"] = description
     if start:
-        body["start"] = _date_field(start)
+        body["start"] = _date_field(start, zone)
     if end:
-        body["end"] = _date_field(end)
+        body["end"] = _date_field(end, zone)
     updated = await _google_json(
         http,
         f"{CALENDAR_URL}/events/{event_id}",
@@ -284,6 +303,19 @@ def _map_task(dto: dict[str, Any], list_id: str = "") -> dict[str, Any]:
     }
 
 
-def _date_field(value: str) -> dict[str, str]:
-    """Campo de data do Calendar no fuso da intranet."""
-    return {"dateTime": value, "timeZone": TIME_ZONE}
+def _date_field(value: str, time_zone: str) -> dict[str, str]:
+    """Campo de data do Calendar no fuso da agenda do usuário.
+    Usa a hora de parede do ISO (15:30) e ignora o offset que o modelo
+    tenha colado, para 15h30 não virar 14h30 quando o relógio estava em outro fuso.
+    """
+    return {"dateTime": _wall_clock_local(value), "timeZone": time_zone}
+
+
+def _wall_clock_local(value: str) -> str:
+    """Extrai ano-mês-dia hora:minuto:segundo do ISO, sem offset."""
+    trimmed = value.strip()
+    try:
+        parsed = datetime.fromisoformat(trimmed.replace("Z", "+00:00"))
+    except ValueError:
+        return trimmed
+    return parsed.replace(tzinfo=None, microsecond=0).isoformat()

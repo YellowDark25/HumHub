@@ -5,6 +5,7 @@ from typing import Any
 import httpx
 
 import anthropic_llm
+import clock
 import google_workspace
 import humhub_client
 import memory
@@ -54,12 +55,34 @@ async def _run_secretary_turn(http: httpx.AsyncClient, payload: dict[str, Any]) 
         await humhub_client.reply(http, conversation_id, f"Recebi: {echo}")
         return
 
-    system = memory.build_system_prompt(SECRETARY_SYSTEM_PROMPT, state["summary"], preferences)
-    messages = _history_to_messages(history, spoken)
     session = google_workspace.GoogleSession(account["refreshToken"]) if account else None
+    time_zone = await _calendar_time_zone(http, session)
+    system = memory.build_system_prompt(
+        SECRETARY_SYSTEM_PROMPT,
+        state["summary"],
+        preferences,
+        time_zone=time_zone,
+    )
+    messages = _history_to_messages(history, spoken)
     reply = await _collect_model_reply(http, system, messages, session, user_id)
     await humhub_client.reply(http, conversation_id, reply)
     await _refresh_memory_after_turn(http, conversation_id)
+
+
+async def _calendar_time_zone(
+    http: httpx.AsyncClient,
+    session: google_workspace.GoogleSession | None,
+) -> str:
+    """Fuso da agenda Google para o relógio do turno; sem sessão, usa o padrão da intranet.
+    Se o Google falhar, registra e segue com o fuso padrão para não travar a conversa.
+    """
+    if not session:
+        return clock.TIME_ZONE
+    try:
+        return await session.calendar_time_zone(http)
+    except Exception as error:
+        logging.warning("Não li o fuso da agenda Google: %s", error)
+        return clock.TIME_ZONE
 
 
 async def _load_prompt_context(
